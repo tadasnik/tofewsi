@@ -329,7 +329,7 @@ if __name__ == '__main__':
     Indonesia_bb = [5.47982086834, 95.2930261576, -10.3599874813, 141.03385176]
     Indonesia_bb_rounded = [6.0, 95.0, -11.0, 142.0]
     coord_bounds = Indonesia_bb_rounded
-    #w,s,e,n
+
     #MARS coordinates format 'area: North/West/South/East'
     #uncomment to retrieve total column water vapour, soil moisture or/and temperature
     # for tcwv param is "137.128",
