@@ -1,4 +1,4 @@
-# !/usr/bin/env python
+# !/usr/bin/env python3
 import datetime
 import os, glob
 import time
@@ -7,11 +7,24 @@ import shutil
 import errno
 import subprocess
 import numpy as np
-import firegrib as fg
 import pandas as pd
+from ecmwfapi import ECMWFService
 
-from ecmwfapi import ECMWFService, ECMWFDataServer
-import utilities as ut
+def createDir(directory):
+    """ Create a new directory under 'dir' if possible
+    Arguments:
+        directory : a string to the dir to be made
+    Returns:
+        None : if directory could be made or already existed
+        Throws an OSError if the directory couldn't be made and didn't exist
+    """
+    try:
+        os.makedirs(directory)
+    except OSError as exc:
+        # If the directory already exists, no OSError is raised, any other
+        # error will raise an exception
+        if directory != '' and exc.errno != errno.EEXIST:
+            raise
 
 def getMonthlyDateRanges(start_date, end_date):
     stDates = pd.date_range(start=start_date, end=end_date, freq='MS')
@@ -31,7 +44,7 @@ def populateGeff(dataFile, start_date, end_date, expv):
         tar.extractall()
         tar.close()
     except:
-        print 'Could not untar geff archive'
+        print('Could not untar geff archive')
         sys.exit()
     daypaths = [day.strftime('%Y%m%d') for day in dateRange.date]
     expvdir = str(expv).zfill(4)
@@ -57,10 +70,10 @@ def retrieveMars(dataPath, marsDict):
         dataFile :
     """
     server = ECMWFService("mars")
-    dataFile = os.path.join(dataPath, "{0}_{2}deg_tmp.nc".format(
-                                      marsDict['stream'],
+    dataFile = os.path.join(dataPath, "{0}_{1}deg_tmp.nc".format(
+                                      '_'.join(marsDict['param'].split('/')),
                                       marsDict['grid'].split('/')[0]))
-    ut.createDir(dataPath)
+    createDir(dataPath)
     server.execute(marsDict, dataFile)
     return dataFile
 
@@ -83,13 +96,13 @@ def create_directories(start_date, end_date, dataPath, expv, frequency, steps):
     daypaths = [day.strftime('%Y%m%d') for day in date_range.date]
     expvdir = str(expv).zfill(4)
     for dpath in daypaths:
-        ut.createDir(os.path.join(dataPath, expvdir, dpath))
+        createDir(os.path.join(dataPath, expvdir, dpath))
         for hour in np.unique(date_range.hour):
             hourpath = str(hour).zfill(2).ljust(4, '0')
-            ut.createDir(os.path.join(dataPath, expvdir, dpath, hourpath))
+            createDir(os.path.join(dataPath, expvdir, dpath, hourpath))
             if steps:
                 for step in steps.split('/'):
-                    ut.createDir(os.path.join(dataPath, expvdir, dpath, hourpath, step))
+                    createDir(os.path.join(dataPath, expvdir, dpath, hourpath, step))
 
 
 def populate_directories(dataFile, expvdir, steps):
@@ -129,7 +142,7 @@ def tp24Hours(dataPath, start_date, end_date, expv):
     #dayPaths = [day.strftime('%Y%m%d') for day in np.unique(dateRange.date)]
     expvdir = str(expv).zfill(4)
     for nr,day in enumerate(dayRange):
-        #ut.createDir(os.path.join(dataPath, expvdir, daypaths[nr]))
+        #createDir(os.path.join(dataPath, expvdir, daypaths[nr]))
         dayPath = os.path.join(dataPath, expvdir, day.strftime('%Y%m%d'))
         yesterday = dayRange[nr]
         yestPath = os.path.join(dataPath, expvdir, yesterday.strftime('%Y%m%d'))
@@ -171,7 +184,7 @@ def windSpeed(dataPath, start_date, end_date, expv):
     #dayPaths = [day.strftime('%Y%m%d') for day in np.unique(dateRange.date)]
     expvdir = str(expv).zfill(4)
     for nr,date in enumerate(dateRange):
-        #ut.createDir(os.path.join(dataPath, expvdir, daypaths[nr]))
+        #createDir(os.path.join(dataPath, expvdir, daypaths[nr]))
         datePath = os.path.join(dataPath, expvdir, date.strftime('%Y%m%d'),
                                         str(date.hour).zfill(2).ljust(4,'0'))
 
@@ -184,7 +197,7 @@ def windSpeed(dataPath, start_date, end_date, expv):
 
 
 def getMarsData(start_date, end_date, dataPath, marsDict, frequency, expv):
-    """Retireves and stores datasets from Mars"""
+    """Retrieves and stores datasets from Mars"""
 
     steps = None
     if 'step' in marsDict:
@@ -219,7 +232,7 @@ def getGeff(dataPath, start_date, end_date, expv):
             "target": dataFile
         }
         curdir = os.getcwd()
-        ut.createDir(dataPath)
+        createDir(dataPath)
         os.chdir(dataPath)
         server = ECMWFDataServer()
         server.retrieve(geffDict)
@@ -249,7 +262,6 @@ def getTp24Hours(dataPath, start_date, end_date, expv):
     tpstart_date = start_date - datetime.timedelta(days=1)
     stDates, enDates = getMonthlyDateRanges(tpstart_date, end_date)
     for dateR in zip(stDates.unique(), enDates):
-        print dateR
         tpDict = {
             'class': "ei",
             'stream': "oper",
@@ -287,36 +299,61 @@ def getWindSpeed(dataPath, start_date, end_date, expv):
         time.sleep(10)
         windSpeed(dataPath, dateR[0], dateR[1], expv)
 
-def ERA5_surface_rad(data_path, start_date, end_date, coord_bounds):
+def join_values(values):
+    """If values is a list, joins values with "/" and returns
+    the product as a single string. If values is a single value 
+    returns it back. Values are converted to strings.
+
+    Args: 
+        values (str/list of strings)
+    Returns:
+        string
+    """
+    if isinstance(values, list):
+        return '/'.join([str(x) for x in values])
+    else:
+        return str(values)
+
+
+
+    
+
+def ERA5_data(data_path, start_date, end_date, times, steps, parameters, coord_bounds):
+    """A generic method to retrieve ERA5 data from MARS"""
+
     daterange = "{0}-{1:0>2}-{2:0>2}/to/{3}-{4:0>2}-{5:0>2}".format(start_date.year,
                                                                     start_date.month,
                                                                     start_date.day,
                                                                     end_date.year,
                                                                     end_date.month,
                                                                     end_date.day)
-    bbox = '/'.join([str(x) for x in coord_bounds])
-    mars_dict = {
-    "class": "ea",
-    "dataset": "era5",
-    "date": daterange,
-    "expver": "1",
-    "levtype": "sfc",
-    "param": "169.128",
-    "step": "9/10/11",
-    "stream": "oper",
-    "time": "18:00:00",
-    "type": "fc",
-    "area": bbox,
-    "grid": "0.25/0.25"
-    }
-    print mars_dict
+    #Format the arguments
+    bbox = join_values(coord_bounds)
+    param = join_values(parameters)
+    step = join_values(steps)
+    time = join_values(times)
+
+    mars_dict = {"class": "ea",
+               "dataset": "era5",
+                  "date": daterange,
+                "expver": "1",
+               "levtype": "sfc",
+                 "param": param,
+                  "step": step,
+                "stream": "oper",
+                  "time": time,
+                  "type": "fc",
+                  "area": bbox,
+                  "grid": "0.25/0.25",
+                "format": "netcdf"}
+    print(mars_dict)
     getMarsData(start_date, end_date, data_path, mars_dict, '1D', 'test')
 
 
 if __name__ == '__main__':
 
     # Change these as needed
-    start_date = datetime.datetime(2015, 1, 1)
+    start_date = datetime.datetime(2014, 12, 31)
     end_date = datetime.datetime(2015, 12, 31)
 
     # Change this directory
@@ -324,17 +361,21 @@ if __name__ == '__main__':
 
     expv = 'oper'
 
-    #ERA5_surface_rad(data_path, start_date, end_date)
 
     Indonesia_bb = [5.47982086834, 95.2930261576, -10.3599874813, 141.03385176]
-    Indonesia_bb_rounded = [6.0, 95.0, -11.0, 142.0]
+    Indonesia_bb_rounded = [8.0, 93.0, -13.0, 143.0]
     coord_bounds = Indonesia_bb_rounded
 
+    ERA5_data(data_path, start_date, end_date, 18, [9, 10, 11], 169, coord_bounds)
+
+
     #MARS coordinates format 'area: North/West/South/East'
-    #uncomment to retrieve total column water vapour, soil moisture or/and temperature
-    # for tcwv param is "137.128",
-    # for temperature param is "167.128",
-    # for soil moisture param is "39.128"
+
+    # surface solar radiation downwards: 169
+    # 2 metre temperature: 167
+    # 10 metre wind U component: 165
+    # 10 metre wind V component: 166
+
     # the bellow will retrieve temperature data at 1 deg resolution
     #resolution = "1/1"
     #param = "167.128"
