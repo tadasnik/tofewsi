@@ -318,7 +318,7 @@ def join_values(values):
 
     
 
-def ERA5_data(data_path, start_date, end_date, times, steps, parameters, coord_bounds):
+def ERA5_data(data_path, start_date, end_date, era5type, times, parameters, coord_bounds, step):
     """A generic method to retrieve ERA5 data from MARS"""
 
     daterange = "{0}-{1:0>2}-{2:0>2}/to/{3}-{4:0>2}-{5:0>2}".format(start_date.year,
@@ -330,7 +330,6 @@ def ERA5_data(data_path, start_date, end_date, times, steps, parameters, coord_b
     #Format the arguments
     bbox = join_values(coord_bounds)
     param = join_values(parameters)
-    step = join_values(steps)
     time = join_values(times)
 
     mars_dict = {"class": "ea",
@@ -339,13 +338,15 @@ def ERA5_data(data_path, start_date, end_date, times, steps, parameters, coord_b
                 "expver": "1",
                "levtype": "sfc",
                  "param": param,
-                  "step": step,
                 "stream": "oper",
                   "time": time,
-                  "type": "fc",
+                  "type": era5type,
                   "area": bbox,
                   "grid": "0.25/0.25",
                 "format": "netcdf"}
+    if step:
+        step = join_values(step)
+        mars_dict["step"] = step
     print(mars_dict)
     getMarsData(start_date, end_date, data_path, mars_dict, '1D', 'test')
 
@@ -366,15 +367,32 @@ if __name__ == '__main__':
     Indonesia_bb_rounded = [8.0, 93.0, -13.0, 143.0]
     coord_bounds = Indonesia_bb_rounded
 
-    ERA5_data(data_path, start_date, end_date, 18, [9, 10, 11], 169, coord_bounds)
+    #for 2 metre temperature, 2 metre dewpoint temperature and the 
+    #wind speed components U and V we can use analysis, setting era5type to "an".
+    #era5type = "an"
+
+    #ERA5_data(data_path, start_date, end_date, era5type, list(range(24)), ['165.128', '166.128', '167.128', '168.128'], coord_bounds, step=None)
+
+    # Accumulated parameters 
+    # In ERA5, the short forecast accumulations are accumulated from the end 
+    # of the previous step.
+    # Accumulated parameters are not available from the analyses.
+
+    # for precipitation and surface solar radiation downwards we need to use forecasts,
+    # setting era5type to "fc".
+    era5type = "fc"
+
+    ERA5_data(data_path, start_date, end_date, era5type, [6, 18], ['169.128', '228.128'], coord_bounds, step=list(range(12)))
 
 
     #MARS coordinates format 'area: North/West/South/East'
 
-    # surface solar radiation downwards: 169
-    # 2 metre temperature: 167
-    # 10 metre wind U component: 165
-    # 10 metre wind V component: 166
+    # surface solar radiation downwards: 169.128
+    # 2 metre temperature: 167.128
+    # 2 metre dewpoint temperature: 168.128
+    # 10 metre wind U component: 165.128
+    # 10 metre wind V component: 166.128
+    # total precipitaion: 228.128
 
     # the bellow will retrieve temperature data at 1 deg resolution
     #resolution = "1/1"

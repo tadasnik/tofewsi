@@ -5,14 +5,12 @@ import xarray as xr
 
 class Climdata(object):
 
-
-
     def __init__(self, data_path, bbox=None, hour=None):
         self.data_path = data_path
         self.bbox = bbox
         self.hour = hour
 
-    def read_dataset(self, parameter):
+    def read_dataset(self, file_name):
         """
         Reads netCDF dataset using xarray. Currently file names
         are hardcoded! TODO
@@ -21,14 +19,12 @@ class Climdata(object):
         Returns
             xarray dataframe
         """
-        file_name = str(parameter) + '_0.25deg_tmp.nc'
         dataset_path = os.path.join(self.data_path, file_name)
         dataset = xr.open_dataset(dataset_path)
         if self.bbox:
             dataset = self.spatial_subset(dataset, self.bbox)
         if self.hour:
             dataset = self.time_subset(dataset, self.hour)
- 
         return dataset
 
     def spatial_subset(self, dataset, bbox):
@@ -49,7 +45,7 @@ class Climdata(object):
                                 (dataset.longitude < bbox[3]), drop=True)
         return dataset
 
-    def time_subset(self, dataset, hour, start_date=None, end_date=None):
+    def time_subset(self, dataset, hour=None, start_date=None, end_date=None):
         """
         Selects data within spatial bbox.
         Args:
@@ -58,21 +54,20 @@ class Climdata(object):
         Returns:
             xarray dataset
         """
-        dataset = dataset.sel(time=datetime.time(hour))
+        if hour:
+            dataset = dataset.sel(time=datetime.time(hour))
         return dataset
 
-    def wind_speed(self):
-        dataset_uv = self.read_dataset('165_166')
-        if self.bbox:
-            dataset_uv = self.spatial_subset(dataset_uv, self.bbox)
+    def wind_speed(self, file_name):
         dataset_uv = self.time_subset(dataset_uv, 5)
         wind_speed = np.sqrt(dataset_uv['u10']**2 + dataset_uv['v10']**2)
         return wind_speed
 
     def to_csv(self):
+        an_dataset = self.read_dataset('165.128_166.128_167.128_168.128_0.25deg_tmp.nc')
+        fc_dataset = self.read_dataset('169.128_228.128_0.25deg_tmp.nc')
         wind_speed = self.wind_speed()
         temperature = self.read_dataset(167)
-
         rad = self.read_dataset(169)
 
 
@@ -84,8 +79,8 @@ class Climdata(object):
 if __name__ == '__main__':
     data_path = '/home/tadas/tofewsi/data/'
 
-    #Riau bbox
+    # Riau bbox
     bbox = [3, -2, 99, 104]
-    hour = 5
-    ds = Climdata(data_path, bbox=bbox, hour=hour)
+    # hour = 5
+    ds = Climdata(data_path, bbox=bbox, hour=None)
 
