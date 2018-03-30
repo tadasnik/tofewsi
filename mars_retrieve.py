@@ -8,7 +8,7 @@ import errno
 import subprocess
 import numpy as np
 import pandas as pd
-#from ecmwfapi import ECMWFService
+from ecmwfapi import ECMWFService
 
 def createDir(directory):
     """ Create a new directory under 'dir' if possible
@@ -348,7 +348,7 @@ def ERA5_data(data_path, start_date, end_date, era5type, times, parameters, coor
         step = join_values(step)
         mars_dict["step"] = step
     print(mars_dict)
-    #getMarsData(start_date, end_date, data_path, mars_dict, '1D', 'test')
+    getMarsData(start_date, end_date, data_path, mars_dict, '1D', 'test')
 
 
 if __name__ == '__main__':
