@@ -58,17 +58,25 @@ class Climdata(object):
             dataset = dataset.sel(time=datetime.time(hour))
         return dataset
 
-    def wind_speed(self, file_name):
-        dataset_uv = self.time_subset(dataset_uv, 5)
-        wind_speed = np.sqrt(dataset_uv['u10']**2 + dataset_uv['v10']**2)
-        return wind_speed
+    def wind_speed(self, dataset):
+        dataset['w10'] = np.sqrt(dataset['u10']**2 + dataset['v10']**2)
+        return dataset
+
+    def rel_huumidity(dataset):
+        """
+        Relative humidity is calculated from 2 metre temperature and 
+        2 metre dewpoint temperature using the August-Roche-Magnus approximation
+        """
+        top = np.exp((17.625 * dataset['d2m']) / (243.04 + dataset['d2m'])
+        bot = np.exp((17.625 * dataset['t2m']) / (243.04 + dataset['t2m'])
+        dataset['h2m'] = 100 * (top / bot)
+        return dataset
 
     def to_csv(self):
         an_dataset = self.read_dataset('165.128_166.128_167.128_168.128_0.25deg_tmp.nc')
+        an_dataset = self.wind_speed(an_dataset)
         fc_dataset = self.read_dataset('169.128_228.128_0.25deg_tmp.nc')
-        wind_speed = self.wind_speed()
-        temperature = self.read_dataset(167)
-        rad = self.read_dataset(169)
+
 
 
 
