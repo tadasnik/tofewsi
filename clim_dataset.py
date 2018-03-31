@@ -12,8 +12,7 @@ class Climdata(object):
 
     def read_dataset(self, file_name):
         """
-        Reads netCDF dataset using xarray. Currently file names
-        are hardcoded! TODO
+        Reads netCDF dataset using xarray. 
         Args:
             parameter - (int) grib_id of the dataset to read.
         Returns
@@ -111,15 +110,12 @@ class Climdata(object):
         print('finished writing')
 
 
-
-
-
 if __name__ == '__main__':
     data_path = '/home/tadas/tofewsi/data/'
 
     # Riau bbox
     bbox = [3, -2, 99, 104]
-    # hour = 5
     ds = Climdata(data_path, bbox=bbox, hour=None)
-    #dfr = ds.prepare_dataframe()
+    dfr = ds.prepare_dataframe()
+    ds.write_csv(dfr, 'era5_2015_riau.csv')
 
