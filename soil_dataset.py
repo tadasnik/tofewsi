@@ -35,7 +35,7 @@ class Climdata(object):
                 'sl7': 200
                 }
 
-    def read_soil_grids(self, sp_res):
+    def read_soil_grids_tiff(self, sp_res):
         """
         Read SoilGrids datasets stored in GeoTiff
         """
@@ -60,6 +60,22 @@ class Climdata(object):
                                         'longitude': lons})
             datasets.append(dataset)
         dataset = xr.merge(datasets)
+        return dataset
+
+    def read_dataset(self, file_name):
+        """
+        Reads netCDF dataset using xarray. 
+        Args:
+            parameter - (int) grib_id of the dataset to read.
+        Returns
+            xarray dataframe
+        """
+        dataset_path = os.path.join(self.data_path, file_name)
+        dataset = xr.open_dataset(dataset_path)
+        if self.bbox:
+            dataset = self.spatial_subset(dataset, self.bbox)
+        if self.hour:
+            dataset = self.time_subset(dataset, self.hour)
         return dataset
 
     def subset_dataset(self, dataset):
