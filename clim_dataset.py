@@ -38,10 +38,12 @@ class Climdata(object):
         Returns:
             xarray dataset
         """
-        dataset = dataset.where((dataset.latitude < bbox[0]) &
-                                (dataset.latitude > bbox[1]), drop=True)
-        dataset = dataset.where((dataset.longitude > bbox[2]) &
-                                (dataset.longitude < bbox[3]), drop=True)
+        lat_name = [x for x in list(dataset.coords) if 'lat' in x]
+        lon_name = [x for x in list(dataset.coords) if 'lon' in x]
+        dataset = dataset.where((dataset[lat_name[0]] < bbox[0]) &
+                                (dataset[lat_name[0]] > bbox[1]), drop=True)
+        dataset = dataset.where((dataset[lon_name[0]] > bbox[2]) &
+                                (dataset[lon_name[0]] < bbox[3]), drop=True)
         return dataset
 
     def time_subset(self, dataset, hour=None, start_date=None, end_date=None):
@@ -75,14 +77,14 @@ class Climdata(object):
         dataset['h2m'] = 100 * (top / bot)
         return dataset
 
-    def prepare_dataframe(self):
-        an_dataset = self.read_dataset('165.128_166.128_167.128_168.128_0.25deg_tmp.nc')
+    def prepare_dataframe_era5(self, an_dataset, fc_dataset):
+        an_dataset = self.read_dataset(an_dataset)
         an_dataset = self.wind_speed(an_dataset)
         an_dataset = self.relative_humidity(an_dataset)
         an_dfr = an_dataset[['t2m', 'w10', 'h2m']].to_dataframe()
         an_dfr.reset_index(inplace=True)
 
-        fc_dataset = self.read_dataset('169.128_228.128_0.25deg_tmp.nc')
+        fc_dataset = self.read_dataset(fc_dataset)
         fc_dfr = fc_dataset[['ssrd', 'tp']].to_dataframe()
         fc_dfr.reset_index(inplace=True)
 
@@ -105,17 +107,26 @@ class Climdata(object):
 
 
     def write_csv(self, dfr, fname):
-        print('writing dataframe to csv file {0}'.format(name))
+        print('writing dataframe to csv file {0}'.format(fname))
         dfr.to_csv(fname, index=False, float_format='%.2f')
         print('finished writing')
 
 
 if __name__ == '__main__':
-    data_path = '/home/tadas/tofewsi/data/'
+    #data_path = '/home/tadas/tofewsi/data/'
+    #fname = '2013-12-31_to_2014-12-31_169.128_228.128_0.25deg.nc'
+    data_path = '/mnt/data/SEAS5/20110501'
+    #fname = '23_tt_6hourly.nc'
+    fname1 = '24_tt_6hourly.nc'
 
     # Riau bbox
     bbox = [3, -2, 99, 104]
     ds = Climdata(data_path, bbox=bbox, hour=None)
-    dfr = ds.prepare_dataframe()
-    ds.write_csv(dfr, 'era5_2015_riau.csv')
+    """
+    for year in [2010, 2011, 2012, 2013, 2014]:
+        an_fname = '{0}-12-31_to_{1}-12-31_165.128_166.128_167.128_168.128_0.25deg.nc'.format(year-1, year)
+        fc_fname = '{0}-12-31_to_{1}-12-31_169.128_228.128_0.25deg.nc'.format(year-1, year)
+        dfr = ds.prepare_dataframe_era5(an_fname, fc_fname)
+        ds.write_csv(dfr, 'era5_{0}_riau.csv'.format(year))
 
+    """
