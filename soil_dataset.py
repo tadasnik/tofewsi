@@ -118,6 +118,24 @@ class Climdata(object):
             dataset = dataset.sel(time=datetime.time(hour))
         return dataset
 
+    def prepare_dataframe_soil(self, soil_dataset):
+        for depth in np.unique(soil_dataset.level):
+            level_dataset = soil_dataset.where(soil_dataset.level == depth, drop=True)
+            lv_dfr = level_dataset.to_dataframe()
+            lv_dfr.reset_index(inplace=True)
+            lv_dfr.drop('level', axis=1, inplace=True)
+            lv_dfr['bulk_density'] = lv_dfr['bulk_density'].astype(int)
+            lv_dfr['sand_content'] = lv_dfr['sand_content'].astype(int)
+            lv_dfr['silt_content'] = lv_dfr['silt_content'].astype(int)
+            lv_dfr['organic_matter'] = lv_dfr['organic_matter'].astype(int)
+            lv_dfr['soil_ph'] = lv_dfr['soil_ph'].astype(int)
+            lv_dfr['cation_exchange'] = lv_dfr['cation_exchange'].astype(int)
+            lv_dfr.replace([255, -32768], -999, inplace=True)
+            print(lv_dfr)
+            fname_path = os.path.join(self.data_path, 
+                                      'soilgrids_riau_depth_{0}_cm.csv'.format(depth))
+            self.write_csv(lv_dfr, fname_path, '%.3f')
+
     def write_csv(self, dfr, fname, fl_prec):
         print('writing dataframe to csv file {0}'.format(fname))
         dfr.to_csv(fname, index=False, float_format=fl_prec)
@@ -129,12 +147,12 @@ if __name__ == '__main__':
     #fname = '2013-12-31_to_2014-12-31_169.128_228.128_0.25deg.nc'
     data_path = '/mnt/data/soil/soilgrids/'
     #fname = '23_tt_6hourly.nc'
-    fname = 'BLDFIE_M_sl1_5km_ll.tif'
+    fname = 'soilgrids.nc'
 
     # Riau bbox
     bbox = [3, -2, 99, 104]
     ds = Climdata(data_path, bbox=bbox, hour=None)
-    #lc = ds.read_dataset(fname)
+    sg = ds.read_dataset(fname)
     #lc = ds.subset_dataset(lc)
     #lc = ds.prepare_dataframe_lc(lc)
     #ds.write_csv(lc, 'lulc_mcd12c1_2010_riau.csv', '%.3f')
