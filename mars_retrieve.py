@@ -70,12 +70,27 @@ class Marser(object):
         self.data_path = data_path
         self.date_range = mars_date_range(start_date, end_date)
         self.bbox = join_values(bbox)
+        #MARS dictionary with items which are shared between all retrievals:
         self.mars_dict = { "date": self.date_range,
                          "expver": "1",
                         "levtype": "sfc",
                            "area": self.bbox,
                            "grid": "0.25/0.25",
-                         "format": "netcdf"}
+                         "format": "netcdf" }
+        
+        #ECMWF parameters:
+        # surface solar radiation downwards: 169.128
+        # 2 metre temperature: 167.128
+        # 2 metre dewpoint temperature: 168.128
+        # 10 metre wind U component: 165.128
+        # 10 metre wind V component: 166.128
+        # total precipitaion: 228.128
+        self.param_dict = { "windU": 165.128,
+                            "windV": 166.128,
+                             "temp": 167.128,
+                           "dptemp": 168.128,
+                         "solarrad": 169.128,
+                          "totprep": 228.128 }
  
     def SEAS5_mars_dict(self):
         """
@@ -107,7 +122,7 @@ class Marser(object):
         self.mars_dict["type"] = source_type
         if source_type == "fc":
             param_list = ['169.128', '228.128']
-            self.mars_dict["step"] = join_values(step=list(range(1, 13, 1)))
+            self.mars_dict["step"] = join_values(list(range(1, 13, 1)))
         elif source_type == "an":
             param_list = ['165.128', '166.128', '167.128', '168.128']
         else:
@@ -142,7 +157,7 @@ class Marser(object):
         """
         print('Calling MARS with dictionary:\n {0}'.format(self.mars_dict))
         server = ECMWFService("mars")
-        data_file_name = self.get_file_name(self.data_path, self.mars_dict)
+        data_file_name = self.get_file_name()
         create_directory(self.data_path)
         server.execute(self.mars_dict, data_file_name)
 
@@ -159,8 +174,11 @@ class Marser(object):
 
 if __name__ == '__main__':
 
-    # Change these as needed
+    # How to setup ECMWF data access:
+    # https://software.ecmwf.int/wiki/display/WEBAPI/Accessing+ECMWF+data+servers+in+batch
+    
 
+    # Change these as needed
     #MARS coordinates format 'area: North/West/South/East'
     #Indonesia bounding box = [5.47982086834, 95.2930261576, -10.3599874813, 141.03385176]
     #Round Indonesia bb to get data for wider area
@@ -174,14 +192,56 @@ if __name__ == '__main__':
     # 10 metre wind V component: 166.128
     # total precipitaion: 228.128
 
-    #for 2 metre temperature, 2 metre dewpoint temperature and the 
+    #ERA5 for 2 metre temperature, 2 metre dewpoint temperature and the 
     #wind speed components U and V we can use analysis, setting source_type to "an".
-    #source_type = "an"
+    #Accumulated fields surface solar radiation downwards and total precipitation
+    #are only available as forecasts, source_type "fc"
 
-    # Change these as needed
-
+    # ERA5 example for 2013
+    """
     year = 2013
+    # start_date and end_date are the same for SEAS5
+    start_date = datetime.datetime(year - 1, 12, 31)
+    end_date = datetime.datetime(year, 12, 31)
+    data_path = '/mnt/data/era5'
+    #Create a Marser class instance
+    mar = Marser(data_path, start_date, end_date, coord_bounds)
+    #Then we can either:
+    #invoke method to fill mars dictionary for analysis fields:
+    mar.ERA5_mars_dict(source_type = 'an')
+    # look if it is ok
+    print(mar.mars_dict)
+    # if it does, incomment the line below to call ecmwf:
+    # mar.call_mars()
+
+    #invoke method to fill mars dictionary for forecast fields:
+    mar.ERA5_mars_dict(source_type = 'fc')
+    # look if it is ok
+    print(mar.mars_dict)
+    # if it does, call ecmwf:
+    # if it does, incomment the line below to call ecmwf:
+    #mar.call_mars()
+
+    #or invoke ERA5 retireval method which will do all of the above in one step:
+    #mar.retrieve_ERA5()
+    """
+
+
+    # SEAS5 example for 2013 May hindcasts
+    """
+    year = 2013
+    # start_date and end_date are the same for SEAS5
     start_date = datetime.datetime(year, 5, 1)
     end_date = datetime.datetime(year, 5, 1)
     data_path = '/mnt/data/seas5'
+    #Create a Marser class instance
+    mar = Marser(data_path, start_date, end_date, coord_bounds)
+    #invoke method to fill mars dictionary
+    mar.SEAS5_mars_dict()
+    # look if it is ok
+    print(mar.mars_dict)
+    # if it does, incomment the line below to call ecmwf:
+    # mar.call_mars()
+    """
+
 
