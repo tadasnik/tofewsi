@@ -96,12 +96,32 @@ class Marser(object):
         self.end_date = end_date
         self.date_range = mars_date_range(self.start_date, self.end_date)
         self.bbox = join_values(bbox)
+        #MARS dictionary with items which are shared between all retrievals:
         self.mars_dict = { "date": self.date_range,
                          "expver": "1",
                         "levtype": "sfc",
                            "area": self.bbox,
+<<<<<<< HEAD
                            "grid": join_values([grid, grid]),
                          "format": "netcdf"}
+=======
+                           "grid": "0.25/0.25",
+                         "format": "netcdf" }
+        
+        #ECMWF parameters:
+        # surface solar radiation downwards: 169.128
+        # 2 metre temperature: 167.128
+        # 2 metre dewpoint temperature: 168.128
+        # 10 metre wind U component: 165.128
+        # 10 metre wind V component: 166.128
+        # total precipitaion: 228.128
+        self.param_dict = { "windU": 165.128,
+                            "windV": 166.128,
+                             "temp": 167.128,
+                           "dptemp": 168.128,
+                         "solarrad": 169.128,
+                          "totprep": 228.128 }
+>>>>>>> ad0c6257f5b7dc8b6c93838bcba80f058bebae2d
  
     def SEAS5_mars_dict(self):
         """
@@ -136,8 +156,19 @@ class Marser(object):
         else:
             self.mars_dict["date"] = mars_monthly_date_range(self.start_date, self.end_date)
         self.mars_dict["type"] = source_type
+<<<<<<< HEAD
         if source_type == "fc" and stream == "oper":
             self.mars_dict["step"] = join_values(step=list(range(1, 13, 1)))
+=======
+        if source_type == "fc":
+            param_list = ['169.128', '228.128']
+            self.mars_dict["step"] = join_values(list(range(1, 13, 1)))
+        elif source_type == "an":
+            param_list = ['165.128', '166.128', '167.128', '168.128']
+        else:
+            print('Do not know source type {0}'.format(source_type))
+            sys.exit()
+>>>>>>> ad0c6257f5b7dc8b6c93838bcba80f058bebae2d
         self.mars_dict["param"] = join_values(param_list)
 
     def call_mars(self):
@@ -167,12 +198,16 @@ class Marser(object):
      
 if __name__ == '__main__':
 
-    # Change these as needed
+    # How to setup ECMWF data access:
+    # https://software.ecmwf.int/wiki/display/WEBAPI/Accessing+ECMWF+data+servers+in+batch
+    
 
+<<<<<<< HEAD
     #grid spacing in degrees
     grid = 0.5
     #grid = 1
 
+    # Change these as needed
     #MARS coordinates format 'area: North/West/South/East'
     #Indonesia bounding box = [5.47982086834, 95.2930261576, -10.3599874813, 141.03385176]
     #Round Indonesia bb to get data for wider area
@@ -193,12 +228,15 @@ if __name__ == '__main__':
     # 10 metre wind V component: 166.128
     # total precipitaion: 228.128
 
-    #for 2 metre temperature, 2 metre dewpoint temperature and the 
+    #ERA5 for 2 metre temperature, 2 metre dewpoint temperature and the 
     #wind speed components U and V we can use analysis, setting source_type to "an".
     #Precipitation is only available as forecasts, hence source_type must be "fc"
 
     #change this!!!!
     data_path = '/mnt/data/era5'
+
+    #Accumulated fields surface solar radiation downwards and total precipitation
+    #are only available as forecasts, source_type "fc"
 
     # In this example era5 monthly means for two decades (2000s and 2010s) will be retrieved
     # At the moment data for 2000s is available only starting from 2008! End date is Feb 2018,
