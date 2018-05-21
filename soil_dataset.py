@@ -4,8 +4,9 @@ import numpy as np
 import xarray as xr
 import pandas as pd
 from pyhdf.SD import SD
+from envdata import Envdata
 
-class Climdata(object):
+class Climdata(Envdata):
 
     def __init__(self, data_path, bbox=None, hour=None):
         self.data_path = data_path
@@ -35,7 +36,7 @@ class Climdata(object):
                 'sl7': 200
                 }
 
-    def read_soil_grids_tiff(self, sp_res):
+    def read_geotif(self, sp_res):
         """
         Read SoilGrids datasets stored in GeoTiff
         """
@@ -60,62 +61,6 @@ class Climdata(object):
                                         'longitude': lons})
             datasets.append(dataset)
         dataset = xr.merge(datasets)
-        return dataset
-
-    def read_dataset(self, file_name):
-        """
-        Reads netCDF dataset using xarray. 
-        Args:
-            parameter - (int) grib_id of the dataset to read.
-        Returns
-            xarray dataframe
-        """
-        dataset_path = os.path.join(self.data_path, file_name)
-        dataset = xr.open_dataset(dataset_path)
-        if self.bbox:
-            dataset = self.spatial_subset(dataset, self.bbox)
-        if self.hour:
-            dataset = self.time_subset(dataset, self.hour)
-        return dataset
-
-    def subset_dataset(self, dataset):
-        if self.bbox:
-            dataset = self.spatial_subset(dataset, self.bbox)
-        if self.hour:
-            dataset = self.time_subset(dataset, self.hour)
-        return dataset
-
-    def spatial_subset(self, dataset, bbox):
-        """
-        Selects data within spatial bbox. bbox coords must be given as
-        positive values for the Northern hemisphere, and negative for
-        Southern. West and East both positive - Note - the method is
-        naive and will only work for bboxes fully fitting in the Eastern hemisphere!!!
-        Args:
-            dataset - xarray dataset
-            bbox - (list) [North, South, West, East]
-        Returns:
-            xarray dataset
-        """
-        lat_name = [x for x in list(dataset.coords) if 'lat' in x]
-        lon_name = [x for x in list(dataset.coords) if 'lon' in x]
-        dataset = dataset.where((dataset[lat_name[0]] <= bbox[0]) &
-                                (dataset[lat_name[0]] >= bbox[1]), drop=True)
-        dataset = dataset.where((dataset[lon_name[0]] >= bbox[2]) &
-                                (dataset[lon_name[0]] <= bbox[3]), drop=True)
-        return dataset
-
-    def time_subset(self, dataset, hour=None, start_date=None, end_date=None):
-        """
-        Selects data for the hour.
-        Args:
-            dataset - xarray dataset
-            hour - (int) hour
-        Returns:
-            xarray dataset
-        """
-        if hour:
-            dataset = dataset.sel(time=datetime.time(hour))
         return dataset
 
     def prepare_dataframe_soil(self, soil_dataset):

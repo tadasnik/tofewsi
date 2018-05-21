@@ -176,19 +176,19 @@ class Climdata(object):
 
 
 if __name__ == '__main__':
-    #data_path = '/home/tadas/tofewsi/data/'
-    #fname = '2013-12-31_to_2014-12-31_169.128_228.128_0.25deg.nc'
-    data_path = '/mnt/data/land_cover/mcd12c1'
+    #data_path = '/mnt/data/land_cover/mcd12c1'
+    data_path = '/mnt/data/land_cover/peatlands'
     #fname = '23_tt_6hourly.nc'
-    fname = 'MCD12C1.A2010001.051.2012264191019.hdf'
+    #fname = 'MCD12C1.A2010001.051.2012264191019.hdf'
+    fname = 'Per-humid_SEA_LC_2015_CRISP_Geotiff_indexed_colour.tif'
 
     # Riau bbox
     bbox = [3, -2, 99, 104]
     ds = Climdata(data_path, bbox=bbox, hour=None)
     lc = ds.read_dataset(fname)
-    lc = ds.subset_dataset(lc)
-    lc = ds.prepare_dataframe_lc(lc)
-    ds.write_csv(lc, 'lulc_mcd12c1_2010_riau.csv', '%.3f')
+    #lc = ds.subset_dataset(lc)
+    #lc = ds.prepare_dataframe_lc(lc)
+    #ds.write_csv(lc, 'lulc_mcd12c1_2010_riau.csv', '%.3f')
 
 
     """

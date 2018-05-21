@@ -1,9 +1,11 @@
 # !/usr/bin/env python3
 import os
 import sys
+import copy
 import errno
 import datetime
 from ecmwfapi import ECMWFService
+from dateutil.relativedelta import relativedelta
 
 def create_directory(directory):
     """ Create a new directory under 'dir' if possible
@@ -36,6 +38,28 @@ def join_values(values):
     else:
         return str(values)
 
+def mars_monthly_date_range(start_date, end_date):
+    """
+    Format date range string as required by MARS for monthly means retrieval.
+    Args:
+        start_date : datetime object
+        end_date : datetime object
+    Returns:
+        string
+    """
+    monthly_dates = []
+    st_date = copy.copy(start_date)
+    #make sure st_date is the first of the month
+    st_date.replace(day = 1)
+    while st_date <= end_date:
+        date_to_retrieve = '{0}{1:0>2}{2:0>2}'.format(st_date.year,
+                                                      st_date.month,
+                                                      st_date.day)
+        monthly_dates.append(date_to_retrieve)
+        st_date += relativedelta(months = 1)
+    return '/'.join(monthly_dates)
+
+
 def mars_date_range(start_date, end_date):
     """
     Format date range string as required by MARS. If both arguments
@@ -66,15 +90,17 @@ class Marser(object):
     """
     A class facilitating data retrieval from MARS
     """
-    def __init__(self, data_path, start_date, end_date, bbox):
+    def __init__(self, data_path, start_date, end_date, bbox, grid):
         self.data_path = data_path
-        self.date_range = mars_date_range(start_date, end_date)
+        self.start_date = start_date
+        self.end_date = end_date
+        self.date_range = mars_date_range(self.start_date, self.end_date)
         self.bbox = join_values(bbox)
         self.mars_dict = { "date": self.date_range,
                          "expver": "1",
                         "levtype": "sfc",
                            "area": self.bbox,
-                           "grid": "0.25/0.25",
+                           "grid": join_values([grid, grid]),
                          "format": "netcdf"}
  
     def SEAS5_mars_dict(self):
@@ -85,6 +111,7 @@ class Marser(object):
         param_list = ['164.128', '165.128', '166.128', '167.128',
                       '168.128', '169.128', '228.128']
         #Add items specific to SEAS5 to mars_dict
+        self.mars_dict["date"] = mars_date_range(self.start_date, self.end_date)
         self.mars_dict["class"] = "od"
         self.mars_dict["method"] = "1"
         self.mars_dict["number"] = "0/to/24"
@@ -96,41 +123,22 @@ class Marser(object):
         self.mars_dict["type"] = "fc"
         self.mars_dict["step"] = join_values(list(range(0, 5161, 6)))
 
-    def ERA5_mars_dict(self, source_type):
+    def ERA5_mars_dict(self, stream, param_list ,source_type):
         """
         Add items to mars_dict specific to ERA5
         """
         self.mars_dict["class"] = "ea"
         self.mars_dict["dataset"] = "era5"
-        self.mars_dict["stream"] = "oper"
-        self.mars_dict["time"] = join_values([6, 18])
-        self.mars_dict["type"] = source_type
-        if source_type == "fc":
-            param_list = ['169.128', '228.128']
-            self.mars_dict["step"] = join_values(step=list(range(1, 13, 1)))
-        elif source_type == "an":
-            param_list = ['165.128', '166.128', '167.128', '168.128']
+        self.mars_dict["stream"] = stream
+        if stream != "moda":
+            self.mars_dict["time"] = join_values([6, 18])
+            self.mars_dict["date"] = mars_date_range(self.start_date, self.end_date)
         else:
-            print('Do not know source type {0}'.format(source_type))
-            sys.exit()
+            self.mars_dict["date"] = mars_monthly_date_range(self.start_date, self.end_date)
+        self.mars_dict["type"] = source_type
+        if source_type == "fc" and stream == "oper":
+            self.mars_dict["step"] = join_values(step=list(range(1, 13, 1)))
         self.mars_dict["param"] = join_values(param_list)
-
-    def retrieve_SEAS5(self):
-        """
-        Create SEAS5 mars dictionary and call mars
-        """
-        self.SEAS5_mars_dict()
-        self.call_mars()
-
-    def retrieve_ERA5(self):
-        """
-        Create ERA5 mars dictionary and call mars.
-        Needs to be done twice, once for forecast once for analysis.
-        """
-        self.ERA5_mars_dict(source_type = "fc")
-        self.call_mars()
-        self.ERA5_mars_dict(source_type = "an")
-        self.call_mars()
 
     def call_mars(self):
         """
@@ -142,7 +150,7 @@ class Marser(object):
         """
         print('Calling MARS with dictionary:\n {0}'.format(self.mars_dict))
         server = ECMWFService("mars")
-        data_file_name = self.get_file_name(self.data_path, self.mars_dict)
+        data_file_name = self.get_file_name()
         create_directory(self.data_path)
         server.execute(self.mars_dict, data_file_name)
 
@@ -151,20 +159,31 @@ class Marser(object):
         Returns absolute path file name for mars data.
         """
         data_file_name= os.path.join(self.data_path, "{0}_{1}_{2}deg.nc".format(
-                                     '_'.join(self.mars_dict['date'].split('/')),
+                                     '_'.join([self.mars_dict['date'].split('/')[0], 
+                                              self.mars_dict['date'].split('/')[-1]]),
                                      '_'.join(self.mars_dict['param'].split('/')),
                                      self.mars_dict['grid'].split('/')[0]))
         return data_file_name
      
-
 if __name__ == '__main__':
 
     # Change these as needed
 
+    #grid spacing in degrees
+    grid = 0.5
+    #grid = 1
+
     #MARS coordinates format 'area: North/West/South/East'
     #Indonesia bounding box = [5.47982086834, 95.2930261576, -10.3599874813, 141.03385176]
     #Round Indonesia bb to get data for wider area
-    coord_bounds = [8.0, 93.0, -13.0, 143.0]
+    #bbox = [8.0, 93.0, -13.0, 143.0]
+
+    #Allans 0.5 grid:
+    bbox = [-16.25, 133.25, -37.25, 151.25]
+    #Allan's 1 deg grid
+    #bbox = [-16, 133, -38, 151]
+
+
 
     #MARS parameters
     # surface solar radiation downwards: 169.128
@@ -176,12 +195,33 @@ if __name__ == '__main__':
 
     #for 2 metre temperature, 2 metre dewpoint temperature and the 
     #wind speed components U and V we can use analysis, setting source_type to "an".
-    #source_type = "an"
+    #Precipitation is only available as forecasts, hence source_type must be "fc"
 
-    # Change these as needed
+    #change this!!!!
+    data_path = '/mnt/data/era5'
 
-    year = 2013
-    start_date = datetime.datetime(year, 5, 1)
-    end_date = datetime.datetime(year, 5, 1)
-    data_path = '/mnt/data/seas5'
+    # In this example era5 monthly means for two decades (2000s and 2010s) will be retrieved
+    # At the moment data for 2000s is available only starting from 2008! End date is Feb 2018,
+    # as of 21/05/2018
+ 
+    start_date = datetime.datetime(2008, 1, 1)
+    end_date = datetime.datetime(2018, 2, 20)
+    
 
+    # The following runs retrieval
+    # Instantiate Mars object with defined properties
+    mars = Marser(data_path, start_date, end_date, bbox, grid)
+
+    # invoke ERA5 dictioinary filling method to retireve monthly mean 2m temperature
+    mars.ERA5_mars_dict(stream = "moda", param_list = ['167.128'], source_type = "an")
+    # we can check what mars dictionary looks like:
+    print(mars.mars_dict)
+
+    # If it looks reasonable, 
+    # call ecmwf to retrieve the data
+    mars.call_mars()
+
+    #Total precipitation is stored as forecasts, hence separate retrieval.
+    mars.ERA5_mars_dict(stream = "moda", param_list = ['228.128'], source_type = "fc")
+    # call ecmwf to retrieve the data
+    mars.call_mars()
