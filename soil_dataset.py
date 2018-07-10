@@ -3,7 +3,6 @@ import datetime
 import numpy as np
 import xarray as xr
 import pandas as pd
-from pyhdf.SD import SD
 from envdata import Envdata
 
 class Climdata(Envdata):
