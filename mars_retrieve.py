@@ -26,9 +26,9 @@ def create_directory(directory):
 def join_values(values):
     """
     If values is a list, joins values with "/" and returns
-    the product as a single string. If values is a single value 
+    the product as a single string. If values is a single value
     returns it back. Values are converted to strings.
-    Args: 
+    Args:
         values (str/list of strings)
     Returns:
         string
@@ -154,7 +154,7 @@ class Marser(object):
             self.mars_dict["date"] = mars_monthly_date_range(self.start_date, self.end_date)
         self.mars_dict["type"] = source_type
         if source_type == "fc" and stream == "oper":
-            self.mars_dict["step"] = join_values(step=list(range(1, 13, 1)))
+            self.mars_dict["step"] = join_values(list(range(1, 13, 1)))
         self.mars_dict["param"] = join_values(param_list)
 
     def call_mars(self):
@@ -181,12 +181,10 @@ class Marser(object):
                                      '_'.join(self.mars_dict['param'].split('/')),
                                      self.mars_dict['grid'].split('/')[0]))
         return data_file_name
-     
 if __name__ == '__main__':
 
     # How to setup ECMWF data access:
     # https://software.ecmwf.int/wiki/display/WEBAPI/Accessing+ECMWF+data+servers+in+batch
-    
     #grid spacing in degrees
     grid = 0.25
     #grid = 1
@@ -195,10 +193,10 @@ if __name__ == '__main__':
     #MARS coordinates format 'area: North/West/South/East'
     #Indonesia bounding box = [5.47982086834, 95.2930261576, -10.3599874813, 141.03385176]
     #Round Indonesia bb to get data for wider area
-    #bbox = [8.0, 93.0, -13.0, 143.0]
+    bbox = [8.0, 93.0, -13.0, 143.0]
 
     #Allans 0.5 grid:
-    bbox = [-16.25, 133.25, -37.25, 151.25]
+    #bbox = [-16.25, 133.25, -37.25, 151.25]
     #Allan's 1 deg grid
     #bbox = [-16, 133, -38, 151]
 
@@ -224,28 +222,36 @@ if __name__ == '__main__':
     # In this example era5 monthly means for two decades (2000s and 2010s) will be retrieved
     # At the moment data for 2000s is available only starting from 2008! End date is Feb 2018,
     # as of 21/05/2018
-    bbox = [59, -10, 34, 30]
-    for year in range(2008, 2018):
-        data_path = '/mnt/data/era5/clouds'
-        start_date = datetime.datetime(year, 1, 1)
-        end_date = datetime.datetime(year, 12, 31)
+
+    #Europe bbox:
+    #bbox = [59, -10, 34, 30]
 
     # The following runs retrieval
-    # Instantiate Mars object with defined properties
-        mars = Marser(data_path, start_date, end_date, grid, bbox = bbox)
+    data_path = '/mnt/data/era5/indonesia'
 
     # invoke ERA5 dictioinary filling method to retireve monthly mean 2m temperature
     #mars.ERA5_mars_dict(stream = "moda", param_list = ['167.128'], source_type = "an")
-        times = join_values([0, 1, 2, 3, 22, 23])
-        mars.ERA5_mars_dict(stream = "oper", param_list = ['164.128', '165.128', '166.128', '167.128', '168.128'], times = times, source_type = "an")
-    # call ecmwf to retrieve the data
+
+    #era5 hourly.
+    for year in [2009, 2010, 2011, 2012, 2013, 2014, 2015]:
+        start_date = datetime.datetime(year, 1, 1)
+        end_date = datetime.datetime(year, 12, 31)
+        # Instantiate Mars object with defined properties
+        mars = Marser(data_path, start_date, end_date, grid, bbox = bbox)
+        #first analysis fields:
+        times = list(range(24))
+        param_list = ['165.128', '166.128', '167.128', '168.128']
+        mars.ERA5_mars_dict(stream = "oper", param_list = param_list, times = times, source_type = "an")
         mars.call_mars()
+        # call ecmwf to retrieve the data
+        #mars.call_mars()
+        #Total radiation downwards and precipitation
+        #are stored as forecasts, hence separate retrieval.
+        #times = [6, 18]
+        #mars.ERA5_mars_dict(stream = "oper", param_list = ['169.128', '228.128'], times=times, source_type = "fc")
+        #mars.call_mars()
 
-    # we can check what mars dictionary looks like:
-    #print(mars.mars_dict)
-    # If it looks reasonable, 
-    # call ecmwf to retrieve the data
-    #mars.call_mars()
-
-    #Total precipitation is stored as forecasts, hence separate retrieval.
-    #mars.ERA5_mars_dict(stream = "moda", param_list = ['228.128'], source_type = "fc")
+        # we can check what mars dictionary looks like:
+        #print(mars.mars_dict)
+        # If it looks reasonable, 
+        # call ecmwf to retrieve the data
