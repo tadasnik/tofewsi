@@ -115,18 +115,18 @@ class Climdata(object):
 if __name__ == '__main__':
     #data_path = '/home/tadas/tofewsi/data/'
     #fname = '2013-12-31_to_2014-12-31_169.128_228.128_0.25deg.nc'
-    data_path = '/mnt/data/SEAS5/20110501'
+    #data_path = '/mnt/data/SEAS5/20110501'
+    data_path = '/mnt/data/era5/indonesia'
     #fname = '23_tt_6hourly.nc'
-    fname1 = '24_tt_6hourly.nc'
+    #fname1 = '24_tt_6hourly.nc'
 
     # Riau bbox
     bbox = [3, -2, 99, 104]
     ds = Climdata(data_path, bbox=bbox, hour=None)
-    """
-    for year in [2010, 2011, 2012, 2013, 2014]:
-        an_fname = '{0}-12-31_to_{1}-12-31_165.128_166.128_167.128_168.128_0.25deg.nc'.format(year-1, year)
-        fc_fname = '{0}-12-31_to_{1}-12-31_169.128_228.128_0.25deg.nc'.format(year-1, year)
+    for year in [2009, 2010]:#, 2009, 2010, 2011, 2012, 2013, 2014, 2015]:
+        an_fname = '{0}-01-01_{0}-12-31_165.128_166.128_167.128_168.128_0.25deg.nc'.format(year)
+        fc_fname = '{0}-01-01_{0}-12-31_169.128_228.128_0.25deg.nc'.format(year)
         dfr = ds.prepare_dataframe_era5(an_fname, fc_fname)
-        ds.write_csv(dfr, 'era5_{0}_riau.csv'.format(year))
+        dfr.to_pickle('/home/tadas/tofewsi/data/era5_ecosys_{0}'.format(year))
+        #ds.write_csv(dfr, 'era5_{0}_riau.csv'.format(year))
 
-    """
