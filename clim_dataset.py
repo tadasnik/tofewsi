@@ -12,7 +12,7 @@ class Climdata(object):
 
     def read_dataset(self, file_name):
         """
-        Reads netCDF dataset using xarray. 
+        Reads netCDF dataset using xarray.
         Args:
             parameter - (int) grib_id of the dataset to read.
         Returns
@@ -40,10 +40,10 @@ class Climdata(object):
         """
         lat_name = [x for x in list(dataset.coords) if 'lat' in x]
         lon_name = [x for x in list(dataset.coords) if 'lon' in x]
-        dataset = dataset.where((dataset[lat_name[0]] < bbox[0]) &
-                                (dataset[lat_name[0]] > bbox[1]), drop=True)
-        dataset = dataset.where((dataset[lon_name[0]] > bbox[2]) &
-                                (dataset[lon_name[0]] < bbox[3]), drop=True)
+        dataset = dataset.where((dataset[lat_name[0]] <= bbox[0]) &
+                                (dataset[lat_name[0]] >= bbox[1]), drop=True)
+        dataset = dataset.where((dataset[lon_name[0]] >= bbox[2]) &
+                                (dataset[lon_name[0]] <= bbox[3]), drop=True)
         return dataset
 
     def time_subset(self, dataset, hour=None, start_date=None, end_date=None):
@@ -77,14 +77,33 @@ class Climdata(object):
         dataset['h2m'] = 100 * (top / bot)
         return dataset
 
-    def prepare_dataframe_era5(self, an_dataset, fc_dataset):
-        an_dataset = self.read_dataset(an_dataset)
+    def prepare_xarray_fwi(self, an_fname, fc_fname):
+        an_dataset = self.read_dataset(an_fname)
+        an_dataset = self.time_subset(an_dataset, hour = 7)
+        an_dataset = self.wind_speed(an_dataset)
+        an_dataset = self.relative_humidity(an_dataset)
+
+        fc_dataset = self.read_dataset(fc_fname)
+        preci = fc_dataset['tp'].resample(time = '24H',
+                                          closed = 'right',
+                                          label = 'right',
+                                          base = 7).sum(dim = 'time')
+        # converting total precipitation to mm from m
+        preci = preci * 1000
+
+        #converting K to C
+        an_dataset['t2m'] = an_dataset['t2m'] - 273.15
+        fwi_darray = xr.merge([an_dataset[['t2m', 'w10', 'h2m']], preci[:-1]])
+        return fwi_darray
+
+    def prepare_dataframe_era5(self, an_fname, fc_fname):
+        an_dataset = self.read_dataset(an_fname)
         an_dataset = self.wind_speed(an_dataset)
         an_dataset = self.relative_humidity(an_dataset)
         an_dfr = an_dataset[['t2m', 'w10', 'h2m']].to_dataframe()
         an_dfr.reset_index(inplace=True)
 
-        fc_dataset = self.read_dataset(fc_dataset)
+        fc_dataset = self.read_dataset(fc_fname)
         fc_dfr = fc_dataset[['ssrd', 'tp']].to_dataframe()
         fc_dfr.reset_index(inplace=True)
 
@@ -123,10 +142,13 @@ if __name__ == '__main__':
     # Riau bbox
     bbox = [3, -2, 99, 104]
     ds = Climdata(data_path, bbox=bbox, hour=None)
-    for year in [2009, 2010]:#, 2009, 2010, 2011, 2012, 2013, 2014, 2015]:
+    for year in [2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015]:
+        print(year)
         an_fname = '{0}-01-01_{0}-12-31_165.128_166.128_167.128_168.128_0.25deg.nc'.format(year)
         fc_fname = '{0}-01-01_{0}-12-31_169.128_228.128_0.25deg.nc'.format(year)
-        dfr = ds.prepare_dataframe_era5(an_fname, fc_fname)
-        dfr.to_pickle('/home/tadas/tofewsi/data/era5_ecosys_{0}'.format(year))
+        fwi_darray = ds.prepare_xarray_fwi(an_fname, fc_fname)
+        fwi_name = 'rh_temp_wind_prcp_{0}.nc'.format(year)
+        fwi_darray.to_netcdf(os.path.join('data', fwi_name))
+        #dfr = ds.prepare_dataframe_era5(an_fname, fc_fname)
+        #dfr.to_pickle('/home/tadas/tofewsi/data/era5_ecosys_{0}'.format(year))
         #ds.write_csv(dfr, 'era5_{0}_riau.csv'.format(year))
-

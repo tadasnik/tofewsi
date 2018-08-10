@@ -5,11 +5,12 @@ import numpy as np
 import xarray as xr
 
 class Envdata(metaclass=abc.ABCMeta):
-
     def __init__(self, data_path, bbox=None, hour=None):
         self.data_path = data_path
         self.bbox = bbox
         self.hour = hour
+        self.region_bbox = {'indonesia': [8.0, 93.0, -13.0, 143.0],
+                                 'riau': [3, -2, 99, 104]}
 
     def read_hdf4(self, file_name, dataset=None):
         """
@@ -38,15 +39,13 @@ class Envdata(metaclass=abc.ABCMeta):
             print('Could not read dataset {0}'.format(file_name))
             raise
 
-    @abc.abstractmethod
     def read_geotif(self, file_name):
         product = xr.open_rasterio(file_name)
         return product
 
-
     def read_dataset(self, file_name):
         """
-        Reads netCDF dataset using xarray. 
+        Reads netCDF dataset using xarray.
         Args:
             parameter - (int) grib_id of the dataset to read.
         Returns
@@ -58,33 +57,6 @@ class Envdata(metaclass=abc.ABCMeta):
             dataset = self.spatial_subset(dataset, self.bbox)
         if self.hour:
             dataset = self.time_subset(dataset, self.hour)
-        return dataset
- 
-    def read_soil_grids_tiff(self, sp_res=0.05):
-        """
-        Read SoilGrids datasets stored in GeoTiff
-        """
-        datasets = []
-        for prod_key in self.codes_names:
-            products = []
-            for lev_key in self.levels:
-                fname = '{0}_M_{1}_5km_ll.tif'.format(prod_key, lev_key)
-                fname_path = os.path.join(self.data_path, fname)
-                product = xr.open_rasterio(fname_path)
-                products.append(product.values.squeeze())
-            lons = product.x.values
-            #latitudes need tiying as they are off by a bit
-            #porbably due to float conversion somewhere in the pipline
-            lats = np.arange(product.y[-1].values.round(0) + sp_res/2, 
-                             product.y[0].values + sp_res/2, 
-                             sp_res)[::-1]
-            dataset = xr.Dataset({self.codes_names[prod_key]: (('level', 'latitude', 'longitude'),
-                                                                np.array(products))},
-                                  coords = {'level': list(self.levels.values()),
-                                         'latitude': lats,
-                                        'longitude': lons})
-            datasets.append(dataset)
-        dataset = xr.merge(datasets)
         return dataset
 
     def spatial_subset(self, dataset, bbox):
@@ -125,3 +97,7 @@ class Envdata(metaclass=abc.ABCMeta):
         dfr.to_csv(fname, index=False, float_format='%.2f')
         print('finished writing')
 
+if __name__ == '__main__':
+    data_path = '/mnt/data/SEAS5'
+    store_name = os.path.join(data_path, '2013-05-01_164.128_165.128_166.128_167.128_168.128_169.128_228.128_0.25deg.nc')
+    fo = Envdata(data_path, os.path.join(data_path, store_name))

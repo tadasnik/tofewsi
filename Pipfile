@@ -13,6 +13,9 @@ matplotlib = "*"
 cartopy = "*"
 neovim = "*"
 xlrd = "*"
+"python-hdf4" = "*"
+rasterio = "*"
+gdal = "*"
 
 [dev-packages]
 

@@ -101,11 +101,9 @@ class Marser(object):
                         "levtype": "sfc",
                            "grid": join_values([grid, grid]),
                          "format": "netcdf"}
- 
         if bbox:
             self.bbox = join_values(bbox)
             self.mars_dict["area"] = self.bbox
-        
         #ECMWF parameters:
         # surface solar radiation downwards: 169.128
         # 2 metre temperature: 167.128
@@ -119,7 +117,7 @@ class Marser(object):
                            "dptemp": 168.128,
                          "solarrad": 169.128,
                           "totprep": 228.128 }
- 
+
     def SEAS5_mars_dict(self):
         """
         Add items to mars_dict specific to SEAS5
@@ -162,7 +160,7 @@ class Marser(object):
         Retrieves Mars datasets
 
         Arguments:
-            data_path: 
+            data_path:
             :
         """
         print('Calling MARS with dictionary:\n {0}'.format(self.mars_dict))
@@ -176,11 +174,12 @@ class Marser(object):
         Returns absolute path file name for mars data.
         """
         data_file_name= os.path.join(self.data_path, "{0}_{1}_{2}deg.nc".format(
-                                     '_'.join([self.mars_dict['date'].split('/')[0], 
+                                     '_'.join([self.mars_dict['date'].split('/')[0],
                                               self.mars_dict['date'].split('/')[-1]]),
                                      '_'.join(self.mars_dict['param'].split('/')),
                                      self.mars_dict['grid'].split('/')[0]))
         return data_file_name
+
 if __name__ == '__main__':
 
     # How to setup ECMWF data access:
@@ -194,6 +193,18 @@ if __name__ == '__main__':
     #Indonesia bounding box = [5.47982086834, 95.2930261576, -10.3599874813, 141.03385176]
     #Round Indonesia bb to get data for wider area
     bbox = [8.0, 93.0, -13.0, 143.0]
+
+    #SEAS5
+    data_path = '/mnt/data/SEAS5'
+    years = [2008, 2009, 2010, 2011, 2012]
+    for year in years:
+        start_date = datetime.datetime(year, 5, 1)
+        end_date = datetime.datetime(year, 5, 1)
+        mars = Marser(data_path, start_date, end_date, grid, bbox=bbox)
+        mars.SEAS5_mars_dict()
+        mars.call_mars()
+
+
 
     #Allans 0.5 grid:
     #bbox = [-16.25, 133.25, -37.25, 151.25]
@@ -227,11 +238,12 @@ if __name__ == '__main__':
     #bbox = [59, -10, 34, 30]
 
     # The following runs retrieval
-    data_path = '/mnt/data/era5/indonesia'
+    #data_path = '/mnt/data/era5/indonesia'
 
-    # invoke ERA5 dictioinary filling method to retireve monthly mean 2m temperature
+    # invoke ERA5 dictionary filling method to retireve monthly mean 2m temperature
     #mars.ERA5_mars_dict(stream = "moda", param_list = ['167.128'], source_type = "an")
 
+    """
     #era5 hourly.
     for year in [2009, 2010, 2011, 2012, 2013, 2014, 2015]:
         start_date = datetime.datetime(year, 1, 1)
@@ -243,6 +255,7 @@ if __name__ == '__main__':
         param_list = ['165.128', '166.128', '167.128', '168.128']
         mars.ERA5_mars_dict(stream = "oper", param_list = param_list, times = times, source_type = "an")
         mars.call_mars()
+    """
         # call ecmwf to retrieve the data
         #mars.call_mars()
         #Total radiation downwards and precipitation
@@ -255,3 +268,4 @@ if __name__ == '__main__':
         #print(mars.mars_dict)
         # If it looks reasonable, 
         # call ecmwf to retrieve the data
+

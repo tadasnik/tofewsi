@@ -6,7 +6,6 @@ import pandas as pd
 from envdata import Envdata
 
 class Climdata(Envdata):
-
     def __init__(self, data_path, bbox=None, hour=None):
         self.data_path = data_path
         self.bbox = bbox
@@ -35,7 +34,7 @@ class Climdata(Envdata):
                 'sl7': 200
                 }
 
-    def read_geotif(self, sp_res):
+    def read_soil_grids_tiff(self, sp_res=0.05):
         """
         Read SoilGrids datasets stored in GeoTiff
         """
@@ -50,8 +49,8 @@ class Climdata(Envdata):
             lons = product.x.values
             #latitudes need tiying as they are off by a bit
             #porbably due to float conversion somewhere in the pipline
-            lats = np.arange(product.y[-1].values.round(0) + sp_res/2, 
-                             product.y[0].values + sp_res/2, 
+            lats = np.arange(product.y[-1].values.round(0) + sp_res/2,
+                             product.y[0].values + sp_res/2,
                              sp_res)[::-1]
             dataset = xr.Dataset({self.codes_names[prod_key]: (('level', 'latitude', 'longitude'),
                                                                 np.array(products))},
@@ -61,6 +60,7 @@ class Climdata(Envdata):
             datasets.append(dataset)
         dataset = xr.merge(datasets)
         return dataset
+
 
     def prepare_dataframe_soil(self, soil_dataset):
         for depth in np.unique(soil_dataset.level):
@@ -76,7 +76,7 @@ class Climdata(Envdata):
             lv_dfr['cation_exchange'] = lv_dfr['cation_exchange'].astype(int)
             lv_dfr.replace([255, -32768], -999, inplace=True)
             print(lv_dfr)
-            fname_path = os.path.join(self.data_path, 
+            fname_path = os.path.join(self.data_path,
                                       'soilgrids_riau_depth_{0}_cm.csv'.format(depth))
             self.write_csv(lv_dfr, fname_path, '%.3f')
 
