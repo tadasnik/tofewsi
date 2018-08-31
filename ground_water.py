@@ -1,9 +1,27 @@
 import pandas as pd
+import xarray as xr
+import matplotlib.pyplot as plt
 
 #Coordinates for the sites (lon, lat)
 coords = {'acacia': [101.49, 1.3],
           'forest': [101.4, 1.27],
           'rubber': [101.44, 1.39]}
+
+dcs = []
+fwis = []
+for year in [2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015]:
+    fwi_ds = xr.open_dataset('data/fwi_dc_riau_{0}.nc'.format(year))
+    fwi = fwi_ds['fwi'].where((fwi_ds['latitude']==1.25)&(fwi_ds['longitude']==101.5), drop=True)
+    dc = fwi_ds['dc'].where((fwi_ds['latitude']==1.25)&(fwi_ds['longitude']==101.5), drop=True)
+    dcs.append(dc)
+    fwis.append(fwi)
+
+ddc = xr.concat(dcs, dim='time')
+ffwi = xr.concat(fwis, dim='time')
+
+dfr = pd.read_pickle('data/forest_era5_ground_water')
+dfr['dtime'] = pd.to_datetime(dfr[['Year', 'Month', 'Day', 'Hour']])
+
 """
 fname = '/home/tadas/tofewsi/docs/groundwater_Riau.xlsx'
 gr = pd.read_excel(fname)
@@ -40,7 +58,6 @@ acacia.to_pickle('data/acacia_era5_ground_water')
 forest.to_pickle('data/forest_era5_ground_water')
 rubber.to_pickle('data/rubber_era5_ground_water')
 
-"""
 
 
 for year in [2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015]:
@@ -50,6 +67,8 @@ for year in [2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015]:
     rdfr = dfr.loc[dfr['lat'] == 1.5]
     adfr.to_csv('data/acacia_forest_{0}.csv'.format(year), index=False, float_format='%.2f')
     rdfr.to_csv('data/rubber_{0}.csv'.format(year), index=False, float_format='%.2f')
+
+"""
 
 
 

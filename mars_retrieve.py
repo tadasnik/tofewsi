@@ -194,6 +194,7 @@ if __name__ == '__main__':
     #Round Indonesia bb to get data for wider area
     bbox = [8.0, 93.0, -13.0, 143.0]
 
+    """
     #SEAS5
     data_path = '/mnt/data/SEAS5'
     years = [2008, 2009, 2010, 2011, 2012]
@@ -203,6 +204,7 @@ if __name__ == '__main__':
         mars = Marser(data_path, start_date, end_date, grid, bbox=bbox)
         mars.SEAS5_mars_dict()
         mars.call_mars()
+    """
 
 
 
@@ -243,19 +245,19 @@ if __name__ == '__main__':
     # invoke ERA5 dictionary filling method to retireve monthly mean 2m temperature
     #mars.ERA5_mars_dict(stream = "moda", param_list = ['167.128'], source_type = "an")
 
-    """
     #era5 hourly.
-    for year in [2009, 2010, 2011, 2012, 2013, 2014, 2015]:
-        start_date = datetime.datetime(year, 1, 1)
-        end_date = datetime.datetime(year, 12, 31)
-        # Instantiate Mars object with defined properties
-        mars = Marser(data_path, start_date, end_date, grid, bbox = bbox)
-        #first analysis fields:
-        times = list(range(24))
-        param_list = ['165.128', '166.128', '167.128', '168.128']
-        mars.ERA5_mars_dict(stream = "oper", param_list = param_list, times = times, source_type = "an")
-        mars.call_mars()
-    """
+    #for year in [2009, 2010, 2011, 2012, 2013, 2014, 2015]:
+    data_path = '.'
+    year = 2007
+    start_date = datetime.datetime(year, 1, 1)
+    end_date = datetime.datetime(year, 1, 3)
+    # Instantiate Mars object with defined properties
+    mars = Marser(data_path, start_date, end_date, grid, bbox = bbox)
+    #first analysis fields:
+    times = list(range(24))
+    param_list = ['165.128', '166.128', '167.128', '168.128']
+    mars.ERA5_mars_dict(stream = "oper", param_list = param_list, times = times, source_type = "an")
+    mars.call_mars()
         # call ecmwf to retrieve the data
         #mars.call_mars()
         #Total radiation downwards and precipitation
