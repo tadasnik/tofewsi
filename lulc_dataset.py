@@ -129,7 +129,7 @@ if __name__ == '__main__':
                  '/mnt/data/land_cover/peatlands/Peatland_plantations_2010.tif',
                  '/mnt/data/land_cover/peatlands/Peatland_plantations_2015.tif']
  
-    ds.lulc_tifs_to_netcdf(input_tifs)
+    #dts = ds.lulc_tifs_to_netcdf(input_tifs)
 
     """
     year = 2011
@@ -144,3 +144,12 @@ if __name__ == '__main__':
         ds.write_csv(dfr, 'era5_{0}_riau.csv'.format(year))
 
     """
+    dpath = '/mnt/data/land_cover/peatlands/Peatland_land_cover_0.05_deg.nc'
+    dts = ds.read_dataset(dpath)
+    for year in [1990, 2007, 2015]:
+        dfr = dts.sel(year=year).to_dataframe()
+        dfr.reset_index(inplace=True)
+        dfr.drop('year', axis=1, inplace=True)
+        ds.write_csv(dfr, '/mnt/data/land_cover/peatlands/Peatland_land_cover_{0}.csv'.format(year),
+                     fl_prec = '%.3f')
+
