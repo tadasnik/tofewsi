@@ -522,7 +522,8 @@ class FireObs(object):
                               'ignitions_yearly_sum_{0}.nc'.format(year)))
 
 if __name__ == '__main__':
-    data_path = '/mnt/data/frp'
+    data_path = '/mnt/data/'
+    ba_prod = '/mnt/data/ba/indonesia_ba'
     #data_path = '/mnt/data/area_burned_glob'
     #store_name = os.path.join(data_path, 'ba_store.h5')
     store_name = 'ba_tropics_store.h5'
@@ -530,11 +531,17 @@ if __name__ == '__main__':
     fo = FireObs(data_path, os.path.join(data_path, store_name))
     bbox = [3, -2, 99, 104]
     riau_inner = [1,  -0.4, 101, 103.5]
+    ba = pd.read_parquet(ba_prod)
+    ba15 = ba[ba['date'].dt.year == 2015]
     for year in range(2002, 2016, 1):
+        pass
+
+        """
         dfr = pd.read_csv(os.path.join(data_path, 'M6_{0}.csv'.format(year)), sep = ',')
         dfr = dfr.rename(columns={"latitude": "lat", "longitude": "lon"})
         dfr.to_parquet(os.path.join(data_path, 'M6_{0}.parquet'.format(year)))
         dfr['date'] = pd.to_datetime(dfr['acq_date'])
+        """
     #dur = 16
     #dfr.loc[:, 'day_since_tmp'] = dfr['day_since'] * (self.eps / dur)
     ##labs16 = cluster_euc(dfr[['x', 'y', 'z', 'day_since_tmp']].values, self.eps, min_samples=2)
