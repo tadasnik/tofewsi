@@ -4,7 +4,7 @@ import sys
 import copy
 import errno
 import datetime
-from ecmwfapi import ECMWFService
+from ecmwfapi import ECMWFService, ECMWFDataServer
 from dateutil.relativedelta import relativedelta
 
 def create_directory(directory):
@@ -138,6 +138,18 @@ class Marser(object):
         self.mars_dict["type"] = "fc"
         self.mars_dict["step"] = join_values(list(range(0, 5161, 6)))
 
+    def GFAS_mars_dict(self, param_list, times):
+        self.mars_dict["class"] = "mc"
+        self.mars_dict["dataset"] = "cams_gfas"
+        self.mars_dict["date"] = mars_date_range(self.start_date, self.end_date)
+        self.mars_dict["expver"] = "0001"
+        self.mars_dict["levtype"] = "sfc"
+        self.mars_dict["param"] = join_values(param_list)
+        self.mars_dict["step"] = "0-24"
+        self.mars_dict["stream"] = "gfas"
+        self.mars_dict["time"] = "00:00:00"
+        self.mars_dict["type"] = "ga"
+
     def ERA5_mars_dict(self, stream, param_list, times, source_type):
         """
         Add items to mars_dict specific to ERA5
@@ -247,6 +259,7 @@ if __name__ == '__main__':
 
     #era5 hourly.
     #for year in [2009, 2010, 2011, 2012, 2013, 2014, 2015]:
+    """
     data_path = '.'
     year = 2007
     start_date = datetime.datetime(year, 1, 1)
@@ -258,6 +271,7 @@ if __name__ == '__main__':
     param_list = ['165.128', '166.128', '167.128', '168.128']
     mars.ERA5_mars_dict(stream = "oper", param_list = param_list, times = times, source_type = "an")
     mars.call_mars()
+    """
         # call ecmwf to retrieve the data
         #mars.call_mars()
         #Total radiation downwards and precipitation
@@ -271,3 +285,13 @@ if __name__ == '__main__':
         # If it looks reasonable, 
         # call ecmwf to retrieve the data
 
+    data_path = '/mnt/data/frp/gfas'
+    for year in range(2003, 2016, 1):
+        start_date = datetime.datetime(year, 1, 1)
+        end_date = datetime.datetime(year, 12, 31)
+    # Instantiate Mars object with defined properties
+        mars = Marser(data_path, start_date, end_date, grid, bbox = bbox)
+        times = list(range(24))
+        param_list = ['99.210']
+        mars.GFAS_mars_dict(param_list = param_list, times = times)
+        mars.call_mars()

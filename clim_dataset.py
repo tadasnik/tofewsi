@@ -135,18 +135,19 @@ if __name__ == '__main__':
     #data_path = '/home/tadas/tofewsi/data/'
     #fname = '2013-12-31_to_2014-12-31_169.128_228.128_0.25deg.nc'
     #data_path = '/mnt/data/SEAS5/20110501'
-    #data_path = '/mnt/data/era5/indonesia'
-    data_path = '.'
+    data_path = '/mnt/data/era5/indonesia'
+    #data_path = '.'
     #fname = '23_tt_6hourly.nc'
     #fname1 = '24_tt_6hourly.nc'
 
     # Riau bbox
     #bbox = [3, -2, 99, 104]
-    bbox = [1, -.4, 101, 103.5]
-    ds = Climdata(data_path, bbox=bbox, hour=None)
+    #bbox = [1, -.4, 101, 103.5]
+    ds = Climdata(data_path, bbox=None, hour=None)
     dcs = []
     fwis = []
     for year in [2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015]:
+        """
         #fwi_ds = xr.open_dataset('data/fwi_dc_riau_{0}.nc'.format(year))
         fwi_ds = ds.read_dataset('data/fwi_dc_riau_{0}.nc'.format(year))
         #fwi = fwi_ds['fwi'].where((fwi_ds['latitude']==1.25)&(fwi_ds['longitude']==101.5), drop=True)
@@ -155,7 +156,6 @@ if __name__ == '__main__':
         fwis.append(fwi_ds['fwi'])
     fwi = xr.concat(fwis, dim = 'time')
     dc = xr.concat(dcs, dim = 'time')
-
     """
         print(year)
         an_fname = '{0}-01-01_{0}-12-31_165.128_166.128_167.128_168.128_0.25deg.nc'.format(year)
@@ -166,4 +166,3 @@ if __name__ == '__main__':
         #dfr = ds.prepare_dataframe_era5(an_fname, fc_fname)
         #dfr.to_pickle('/home/tadas/tofewsi/data/era5_ecosys_{0}'.format(year))
         #ds.write_csv(dfr, 'era5_{0}_riau.csv'.format(year))
-    """

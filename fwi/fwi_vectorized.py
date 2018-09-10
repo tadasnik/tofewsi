@@ -247,7 +247,7 @@ if __name__ == '__main__':
             coords={'latitude': lats,
                     'longitude': lons,
                     'time': times})
-        dataset.to_netcdf('../data/fwi_dc_riau_{0}.nc'.format(year))
+        dataset.to_netcdf('../data/fwi_dc_indonesia{0}.nc'.format(year))
 
 
     """
