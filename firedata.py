@@ -11,6 +11,29 @@ from multiprocessing import Pool, cpu_count
 #from gridding import Gridder
 #from pyhdf import SD
 from envdata import Envdata
+import matplotlib.pyplot as plt
+
+def spatial_subset(dataset, bbox):
+    """
+    Selects data within spatial bbox. bbox coords must be given as
+    positive values for the Northern hemisphere, and negative for
+    Southern. West and East both positive - Note - the method is
+    naive and will only work for bboxes fully fitting in the Eastern hemisphere!!!
+    Args:
+        dataset - xarray dataset
+        bbox - (list) [North, South, West, East]
+    Returns:
+        xarray dataset
+    """
+    lat_name = [x for x in list(dataset.coords) if 'lat' in x]
+    lon_name = [x for x in list(dataset.coords) if 'lon' in x]
+    print(lat_name, bbox)
+    dataset = dataset.where((dataset[lat_name[0]] < bbox[0]) &
+                            (dataset[lat_name[0]] > bbox[1]), drop=True)
+    dataset = dataset.where((dataset[lon_name[0]] > bbox[2]) &
+                            (dataset[lon_name[0]] < bbox[3]), drop=True)
+    return dataset
+
 
 def spatial_subset_dfr(dfr, bbox):
     """
@@ -83,9 +106,8 @@ def add_xyz(dfr):
     return dfr
 
 class FireObs(object):
-    def __init__(self, data_path, store_name, bbox=None, hour=None):
+    def __init__(self, data_path, bbox=None, hour=None):
         self.data_path = data_path
-        self.store_name =  store_name
         self.bbox = bbox
         self.hour = hour
         self.tile_size = 1111950 # height and width of MODIS tile in the projection plane (m)
@@ -521,24 +543,342 @@ class FireObs(object):
             an_mean.to_netcdf(os.path.join(self.data_path,
                               'ignitions_yearly_sum_{0}.nc'.format(year)))
 
+
+
+def ds_monthly_means_2d(darray, land_mask):
+    darray_m = darray.groupby('time.month').mean('time') 
+    darray_masked = darray_m.where(land_mask.values)
+    return darray_masked
+
+def ds_monthly_means(darray, land_mask):
+    darray_m = darray.groupby('time.month').mean() 
+    darray_masked = darray_m.where(land_mask.values)
+    return darray_masked
+
+
+def dfr_monthly_counts(dfr):
+    dfr_m = dfr.day_since.groupby([dfr.date.dt.year, 
+                                   dfr.date.dt.month]).count().mean(level=1)
+    return dfr_m 
+
+
+def plot_comp_gfas(fwi, gfas, bboxes, land_mask, y2_label):
+    fig = plt.figure(figsize=(19,10))
+
+    fwi15 = fwi.sel(time = '2015')
+    ba15 = gfas.sel(time = '2015')
+
+    fwi = fwi.sel(time = fwi['time.year'] < 2015)
+    ba = gfas.sel(time = gfas['time.year'] < 2015)
+
+    fwi_m = ds_monthly_means(spatial_subset(fwi, bboxes['Indonesia']), land_mask)
+    ba_m = ds_monthly_means(spatial_subset(ba, bboxes['Indonesia']), land_mask)
+    ax1 = plt.subplot2grid((2, 4), (0, 0), colspan=1)
+    months = list(range(1, 13, 1))
+    ax1.plot(months, fwi_m.values, 'b-')
+    ax1.set_xlabel('Month')
+    # Make the y-axis label, ticks and tick labels match the line color.
+    ax1.set_ylabel('Mean FWI 2008 - 2014' , color='b')
+    ax1.tick_params('y', colors='b')
+    ax12 = ax1.twinx()
+    ax12.set_ylabel('Mean ' + y2_label + ' 2008 - 2014', color='r')
+    print(ba_m)
+    ax12.bar(months, ba_m, color='r', alpha=.6)
+    ax12.tick_params('y', colors='r')
+    ax1.set_title(list(bboxes.keys())[0])
+
+    ax2 = plt.subplot2grid((2, 4), (0, 1), colspan=1)
+    fwi_m = ds_monthly_means(spatial_subset(fwi, bboxes['Kalimantan']), land_mask)
+    ba_m = ds_monthly_means(spatial_subset(ba, bboxes['Kalimantan']), land_mask)
+    print(bboxes['Kalimantan'])
+    ax2.plot(months, fwi_m.values, 'b-')
+    ax2.set_xlabel('Month')
+    # Make the y-axis label, ticks and tick labels match the line color.
+    ax2.set_ylabel('Mean FWI 2008 - 2014', color='b')
+    ax2.tick_params('y', colors='b')
+    ax22 = ax2.twinx()
+    ax22.bar(months, ba_m, color='r', alpha=.6)
+    ax22.set_ylabel('Mean ' + y2_label + ' 2008 - 2014', color='r')
+    ax22.tick_params('y', colors='r')
+    ax2.set_title(list(bboxes.keys())[1])
+
+
+    ax3 = plt.subplot2grid((2, 4), (0, 2), colspan=1)
+    fwi_m = ds_monthly_means(spatial_subset(fwi, bboxes['South Sumatra']), land_mask)
+    ba_m = ds_monthly_means(spatial_subset(ba, bboxes['South Sumatra']), land_mask)
+    print(bboxes['South Sumatra'])
+    ax3.plot(months, fwi_m.values, 'b-')
+    ax3.set_xlabel('Month')
+    # Make the y-axis label, ticks and tick labels match the line color.
+    ax3.set_ylabel('Mean FWI 2008 - 2014', color='b')
+    ax3.tick_params('y', colors='b')
+    ax32 = ax3.twinx()
+    ax32.bar(months, ba_m, color='r', alpha=.6)
+    ax32.set_ylabel('Mean ' + y2_label+ ' 2008 - 2014', color='r')
+    ax32.tick_params('y', colors='r')
+    ax3.set_title(list(bboxes.keys())[2])
+
+    ax4 = plt.subplot2grid((2, 4), (0, 3), colspan=1)
+    fwi_m = ds_monthly_means(spatial_subset(fwi, bboxes['Inner Riau']), land_mask)
+    ba_m = ds_monthly_means(spatial_subset(ba, bboxes['Inner Riau']), land_mask)
+    ax4.plot(months, fwi_m.values, 'b-')
+    ax4.set_xlabel('Month')
+    # Make the y-axis label, ticks and tick labels match the line color.
+    ax4.set_ylabel('Mean FWI 2008 - 2014', color='b')
+    ax4.tick_params('y', colors='b')
+    ax42 = ax4.twinx()
+    ax42.bar(months, ba_m, color='r', alpha=.6)
+    ax42.set_ylabel('Mean ' + y2_label+ ' 2008 - 2014', color='r')
+    ax42.tick_params('y', colors='r')
+    ax4.set_title(list(bboxes.keys())[3])
+
+    #2015
+    fwi_m = ds_monthly_means(spatial_subset(fwi15, bboxes['Indonesia']), land_mask)
+    ba_m = ds_monthly_means(spatial_subset(ba15, bboxes['Indonesia']), land_mask)
+    ax11 = plt.subplot2grid((2, 4), (1, 0), colspan=1)
+    months = list(range(1, 13, 1))
+    ax11.plot(months, fwi_m.values, 'b-')
+    ax11.set_xlabel('Month')
+    # Make the y-ax1is label, ticks and tick labels match the line color.
+    ax11.set_ylabel('Mean FWI 2015', color='b')
+    ax11.tick_params('y', colors='b')
+    ax112 = ax11.twinx()
+    ax112.set_ylabel(y2_label + ' 2015', color='r')
+    ax112.bar(months, ba_m, color='r', alpha=.6)
+    ax112.tick_params('y', colors='r')
+    ax11.set_title(list(bboxes.keys())[0])
+
+    ax12 = plt.subplot2grid((2, 4), (1, 1), colspan=1)
+    fwi_m = ds_monthly_means(spatial_subset(fwi15, bboxes['Kalimantan']), land_mask)
+    ba_m = ds_monthly_means(spatial_subset(ba15, bboxes['Kalimantan']), land_mask)
+    print(bboxes['Kalimantan'])
+    ax12.plot(months, fwi_m.values, 'b-')
+    ax12.set_xlabel('Month')
+    # Make the y-ax1is label, ticks and tick labels match the line color.
+    ax12.set_ylabel('Mean FWI 2015', color='b')
+    ax12.tick_params('y', colors='b')
+    ax122 = ax12.twinx()
+    ax122.bar(months, ba_m, color='r', alpha=.6)
+    ax122.set_ylabel(y2_label + ' 2015', color='r')
+    ax122.tick_params('y', colors='r')
+    ax12.set_title(list(bboxes.keys())[1])
+
+
+    ax13 = plt.subplot2grid((2, 4), (1, 2), colspan=1)
+    fwi_m = ds_monthly_means(spatial_subset(fwi15, bboxes['South Sumatra']), land_mask)
+    ba_m = ds_monthly_means(spatial_subset(ba15, bboxes['South Sumatra']), land_mask)
+    print(bboxes['South Sumatra'])
+    ax13.plot(months, fwi_m.values, 'b-')
+    ax13.set_xlabel('Month')
+    # Make the y-ax1is label, ticks and tick labels match the line color.
+    ax13.set_ylabel('Mean FWI 2015', color='b')
+    ax13.tick_params('y', colors='b')
+    ax132 = ax13.twinx()
+    ax132.bar(months, ba_m, color='r', alpha=.6)
+    ax132.set_ylabel(y2_label + ' 2015', color='r')
+    ax132.tick_params('y', colors='r')
+    ax13.set_title(list(bboxes.keys())[2])
+
+    ax14 = plt.subplot2grid((2, 4), (1, 3), colspan=1)
+    fwi_m = ds_monthly_means(spatial_subset(fwi15, bboxes['Inner Riau']), land_mask)
+    ba_m = ds_monthly_means(spatial_subset(ba15, bboxes['Inner Riau']), land_mask)
+    ax14.plot(months, fwi_m.values, 'b-')
+    ax14.set_xlabel('Month')
+    # Make the y-ax1is label, ticks and tick labels match the line color.
+    ax14.set_ylabel('Mean FWI 2015', color='b')
+    ax14.tick_params('y', colors='b')
+    ax142 = ax14.twinx()
+    ax142.bar(months, ba_m, color='r', alpha=.6)
+    ax142.set_ylabel(y2_label + ' 2015', color='r')
+    ax142.tick_params('y', colors='r')
+    ax14.set_title(list(bboxes.keys())[3])
+
+
+    #fig.suptitle('GFAS FRP density', size=16)
+    fig.suptitle('ESA-CCI BA', size=16)
+    fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.savefig('ESA_CCI_BA.png', res=300)
+    plt.show()
+
+
+def plot_comp(fwi, ba, frp, gfas, bboxes, land_mask, y2_label):
+    fig = plt.figure(figsize=(19,10))
+
+    fwi15 = fwi.sel(time = '2015')
+    ba15 = ba[ba.date.dt.year == 2015]
+
+    fwi = fwi.sel(time = fwi['time.year'] < 2015)
+    ba = ba[ba.date.dt.year < 2015]
+
+    fwi_m = ds_monthly_means(spatial_subset(fwi, bboxes['Indonesia']), land_mask)
+    ba_m = dfr_monthly_counts(spatial_subset_dfr(ba, bboxes['Indonesia']))
+    ax1 = plt.subplot2grid((2, 4), (0, 0), colspan=1)
+    months = list(range(1, 13, 1))
+    ax1.plot(months, fwi_m.values, 'b-')
+    ax1.set_xlabel('Month')
+    # Make the y-axis label, ticks and tick labels match the line color.
+    ax1.set_ylabel('Mean FWI 2008 - 2014' , color='b')
+    ax1.tick_params('y', colors='b')
+    ax12 = ax1.twinx()
+    ax12.set_ylabel('Mean ' + y2_label + ' 2008 - 2014', color='r')
+    ax12.bar(ba_m.index.values, ba_m, color='r', alpha=.6)
+    ax12.tick_params('y', colors='r')
+    ax1.set_title(list(bboxes.keys())[0])
+
+    ax2 = plt.subplot2grid((2, 4), (0, 1), colspan=1)
+    fwi_m = ds_monthly_means(spatial_subset(fwi, bboxes['Kalimantan']), land_mask)
+    ba_m = dfr_monthly_counts(spatial_subset_dfr(ba, bboxes['Kalimantan']))
+    print(bboxes['Kalimantan'])
+    ax2.plot(months, fwi_m.values, 'b-')
+    ax2.set_xlabel('Month')
+    # Make the y-axis label, ticks and tick labels match the line color.
+    ax2.set_ylabel('Mean FWI 2008 - 2014', color='b')
+    ax2.tick_params('y', colors='b')
+    ax22 = ax2.twinx()
+    ax22.bar(ba_m.index.values, ba_m, color='r', alpha=.6)
+    ax22.set_ylabel('Mean ' + y2_label + ' 2008 - 2014', color='r')
+    ax22.tick_params('y', colors='r')
+    ax2.set_title(list(bboxes.keys())[1])
+
+
+    ax3 = plt.subplot2grid((2, 4), (0, 2), colspan=1)
+    fwi_m = ds_monthly_means(spatial_subset(fwi, bboxes['South Sumatra']), land_mask)
+    ba_m = dfr_monthly_counts(spatial_subset_dfr(ba, bboxes['South Sumatra']))
+    print(bboxes['South Sumatra'])
+    ax3.plot(months, fwi_m.values, 'b-')
+    ax3.set_xlabel('Month')
+    # Make the y-axis label, ticks and tick labels match the line color.
+    ax3.set_ylabel('Mean FWI 2008 - 2014', color='b')
+    ax3.tick_params('y', colors='b')
+    ax32 = ax3.twinx()
+    ax32.bar(ba_m.index.values, ba_m, color='r', alpha=.6)
+    ax32.set_ylabel('Mean ' + y2_label+ ' 2008 - 2014', color='r')
+    ax32.tick_params('y', colors='r')
+    ax3.set_title(list(bboxes.keys())[2])
+
+    ax4 = plt.subplot2grid((2, 4), (0, 3), colspan=1)
+    fwi_m = ds_monthly_means(spatial_subset(fwi, bboxes['Inner Riau']), land_mask)
+    ba_m = dfr_monthly_counts(spatial_subset_dfr(ba, bboxes['Inner Riau']))
+    ax4.plot(months, fwi_m.values, 'b-')
+    ax4.set_xlabel('Month')
+    # Make the y-axis label, ticks and tick labels match the line color.
+    ax4.set_ylabel('Mean FWI 2008 - 2014', color='b')
+    ax4.tick_params('y', colors='b')
+    ax42 = ax4.twinx()
+    ax42.bar(ba_m.index.values, ba_m, color='r', alpha=.6)
+    ax42.set_ylabel('Mean ' + y2_label+ ' 2008 - 2014', color='r')
+    ax42.tick_params('y', colors='r')
+    ax4.set_title(list(bboxes.keys())[3])
+
+    #2015
+    fwi_m = ds_monthly_means(spatial_subset(fwi15, bboxes['Indonesia']), land_mask)
+    ba_m = dfr_monthly_counts(spatial_subset_dfr(ba15, bboxes['Indonesia']))
+    ax11 = plt.subplot2grid((2, 4), (1, 0), colspan=1)
+    months = list(range(1, 13, 1))
+    ax11.plot(months, fwi_m.values, 'b-')
+    ax11.set_xlabel('Month')
+    # Make the y-ax1is label, ticks and tick labels match the line color.
+    ax11.set_ylabel('Mean FWI 2015', color='b')
+    ax11.tick_params('y', colors='b')
+    ax112 = ax11.twinx()
+    ax112.set_ylabel(y2_label + ' 2015', color='r')
+    ax112.bar(ba_m.index.values, ba_m, color='r', alpha=.6)
+    ax112.tick_params('y', colors='r')
+    ax11.set_title(list(bboxes.keys())[0])
+
+    ax12 = plt.subplot2grid((2, 4), (1, 1), colspan=1)
+    fwi_m = ds_monthly_means(spatial_subset(fwi15, bboxes['Kalimantan']), land_mask)
+    ba_m = dfr_monthly_counts(spatial_subset_dfr(ba15, bboxes['Kalimantan']))
+    print(bboxes['Kalimantan'])
+    ax12.plot(months, fwi_m.values, 'b-')
+    ax12.set_xlabel('Month')
+    # Make the y-ax1is label, ticks and tick labels match the line color.
+    ax12.set_ylabel('Mean FWI 2015', color='b')
+    ax12.tick_params('y', colors='b')
+    ax122 = ax12.twinx()
+    ax122.bar(ba_m.index.values, ba_m, color='r', alpha=.6)
+    ax122.set_ylabel(y2_label + ' 2015', color='r')
+    ax122.tick_params('y', colors='r')
+    ax12.set_title(list(bboxes.keys())[1])
+
+
+    ax13 = plt.subplot2grid((2, 4), (1, 2), colspan=1)
+    fwi_m = ds_monthly_means(spatial_subset(fwi15, bboxes['South Sumatra']), land_mask)
+    ba_m = dfr_monthly_counts(spatial_subset_dfr(ba15, bboxes['South Sumatra']))
+    print(bboxes['South Sumatra'])
+    ax13.plot(months, fwi_m.values, 'b-')
+    ax13.set_xlabel('Month')
+    # Make the y-ax1is label, ticks and tick labels match the line color.
+    ax13.set_ylabel('Mean FWI 2015', color='b')
+    ax13.tick_params('y', colors='b')
+    ax132 = ax13.twinx()
+    ax132.bar(ba_m.index.values, ba_m, color='r', alpha=.6)
+    ax132.set_ylabel(y2_label + ' 2015', color='r')
+    ax132.tick_params('y', colors='r')
+    ax13.set_title(list(bboxes.keys())[2])
+
+    ax14 = plt.subplot2grid((2, 4), (1, 3), colspan=1)
+    fwi_m = ds_monthly_means(spatial_subset(fwi15, bboxes['Inner Riau']), land_mask)
+    ba_m = dfr_monthly_counts(spatial_subset_dfr(ba15, bboxes['Inner Riau']))
+    ax14.plot(months, fwi_m.values, 'b-')
+    ax14.set_xlabel('Month')
+    # Make the y-ax1is label, ticks and tick labels match the line color.
+    ax14.set_ylabel('Mean FWI 2015', color='b')
+    ax14.tick_params('y', colors='b')
+    ax142 = ax14.twinx()
+    ax142.bar(ba_m.index.values, ba_m, color='r', alpha=.6)
+    ax142.set_ylabel(y2_label + ' 2015', color='r')
+    ax142.tick_params('y', colors='r')
+    ax14.set_title(list(bboxes.keys())[3])
+
+
+    fig.suptitle('MCD64A1 Collection 6 BA', size=16)
+    #fig.suptitle('MODIS FRP Collection 6', size=16)
+    fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.savefig('MCD64_BA.png', res=300)
+    plt.show()
+
+
+
+
 if __name__ == '__main__':
-    data_path = '/mnt/data/'
-    ba_prod = '/mnt/data/ba/indonesia_ba'
-    #data_path = '/mnt/data/area_burned_glob'
-    #store_name = os.path.join(data_path, 'ba_store.h5')
-    store_name = 'ba_tropics_store.h5'
-    #tropics_store = 'ba_tropics_store.h5'
-    fo = FireObs(data_path, os.path.join(data_path, store_name))
-    indonesia_bbox = [8.0, -13.0, 93.0, 143.0]
-    bbox = [3, -2, 99, 104]
+    indonesia_bbox = [7.0, -11.0, 93.0, 143.0]
+    kalimantan = [7.0, -4.5, 108.0, 119]
+    sumatra_south = [3, -6, 98, 106]
     riau_inner = [1,  -0.4, 101, 103.5]
+    bboxes = {'Indonesia': indonesia_bbox,
+              'Kalimantan': kalimantan,
+              'South Sumatra': sumatra_south,
+              'Inner Riau': riau_inner}
+
+
+    pass
+"""
+    data_path = '~/data/'
+    land_mask = '~/data/land_mask/land_mask_indonesia.nc'
+    fwi_ds = '~/data/fwi/fwi_dc_indonesia.nc'
+    ba_prod = '~/data/ba/indonesia_ba.parquet'
+
+
+    fo = FireObs(data_path)
+    #orig_indonesia_bbox = [8.0, -13.0, 93.0, 143.0]
+    indonesia_bbox = [7.0, -11.0, 93.0, 143.0]
+    kalimantan = [7.0, -4.5, 108.0, 119]
+    sumatra_south = [3, -6, 98, 106]
+    riau_inner = [1,  -0.4, 101, 103.5]
+    bboxes = {'Indonesia': indonesia_bbox,
+              'Kalimantan': kalimantan,
+              'South Sumatra': sumatra_south,
+              'Inner Riau': riau_inner}
+
+    land_mask = xr.open_dataset(land_mask)
     ba = pd.read_parquet(ba_prod)
+    ba = ba[ba.date.dt.year >= 2008]
     ba15 = ba[ba['date'].dt.year == 2015]
-    for year in range(2002, 2016, 1):
-        dfr.to_parquet(os.path.join(data_path, 'M6_{0}.parquet'.format(year)))
-        dfr = pd.read_parquet(os.path.join(data_path, 'M6_{0}.parquet'.format(year)))
-        dfr = spatial_subset_dfr(dfr, indonesia_bbox)
-        dfr[['lat', 'lon', 'frp', 'date']].to_parquet(os.path.join(data_path, 'M6_{0}_indonesia.parquet'.format(year)))
+
+    fwi = xr.open_dataset('~/data/fwi/fwi_dc_indonesia.nc')
+    fwi_m = ff['fwi'].groupby('time.month').mean('time') 
+    fwi_m_m = fwi_m.where(land_mask)
     #dur = 16
     #dfr.loc[:, 'day_since_tmp'] = dfr['day_since'] * (self.eps / dur)
     ##labs16 = cluster_euc(dfr[['x', 'y', 'z', 'day_since_tmp']].values, self.eps, min_samples=2)
@@ -547,3 +887,14 @@ if __name__ == '__main__':
     #ba.cluster_store(store_name, ['Af_tr', 'Am_tr', 'As_tr'])
     #ba.populate_store_tropics(tropics_store)
     #ba.populate_store()
+dss = []
+for year in range(2008, 2016, 1):
+    print(year)
+    ffs = glob.glob('/home/tadas/data/cci_ba/{0}/*.*'.format(year))
+    for fname in ffs:
+        ds = xr.open_dataset(fname)
+        print(list(ds.coords))
+        ds = spatial_subset(ds['burned_area'], bboxes['Indonesia'])
+        dss.append(ds)
+        
+    """
