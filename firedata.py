@@ -842,6 +842,10 @@ def plot_comp(fwi, ba, frp, gfas, bboxes, land_mask, y2_label):
 
 
 if __name__ == '__main__':
+    #TODO
+    #plot 2008 - 2015 and 2015 for
+    #indonesia and amazon
+    #FWI and DC vs BA, FRP, GFED4, GFED4.1
     indonesia_bbox = [7.0, -11.0, 93.0, 143.0]
     kalimantan = [7.0, -4.5, 108.0, 119]
     sumatra_south = [3, -6, 98, 106]
@@ -887,7 +891,6 @@ if __name__ == '__main__':
     #ba.cluster_store(store_name, ['Af_tr', 'Am_tr', 'As_tr'])
     #ba.populate_store_tropics(tropics_store)
     #ba.populate_store()
-"""
 dss = []
 for year in range(2008, 2016, 1):
     print(year)
@@ -897,4 +900,8 @@ for year in range(2008, 2016, 1):
         print(list(ds.coords))
         ds = spatial_subset(ds['burned_area'], bboxes['Indonesia'])
         dss.append(ds)
+"""
+data_path = '/home/tadas/data/gfed/'
+fnames = glob.glob(data_path + '*.*')
+
         
