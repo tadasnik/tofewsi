@@ -694,10 +694,10 @@ def plot_comp_gfas(fwi, gfas, bboxes, land_mask, y2_label):
     ax14.set_title(list(bboxes.keys())[3])
 
 
-    #fig.suptitle('GFAS FRP density', size=16)
-    fig.suptitle('ESA-CCI BA', size=16)
+    fig.suptitle('GFAS FRP density', size=16)
+    #fig.suptitle('MODIS FRP Collection 6', size=16)
     fig.tight_layout(rect=[0, 0.03, 1, 0.95])
-    plt.savefig('ESA_CCI_BA.png', res=300)
+    plt.savefig('GFAS_FRP_density.png', res=300)
     plt.show()
 
 
@@ -887,6 +887,7 @@ if __name__ == '__main__':
     #ba.cluster_store(store_name, ['Af_tr', 'Am_tr', 'As_tr'])
     #ba.populate_store_tropics(tropics_store)
     #ba.populate_store()
+"""
 dss = []
 for year in range(2008, 2016, 1):
     print(year)
@@ -897,4 +898,3 @@ for year in range(2008, 2016, 1):
         ds = spatial_subset(ds['burned_area'], bboxes['Indonesia'])
         dss.append(ds)
         
-    """
