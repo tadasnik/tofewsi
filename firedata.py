@@ -53,6 +53,47 @@ def spatial_subset_dfr(dfr, bbox):
                             (dfr['lon'] < bbox[3])]
     return dfr
 
+
+def spatial_subset(dataset, bbox):
+    """
+    Selects data within spatial bbox. bbox coords must be given as
+    positive values for the Northern hemisphere, and negative for
+    Southern. West and East both positive - Note - the method is
+    naive and will only work for bboxes fully fitting in the Eastern hemisphere!!!
+    Args:
+        dataset - xarray dataset
+        bbox - (list) [North, South, West, East]
+    Returns:
+        xarray dataset
+    """
+    lat_name = [x for x in list(dataset.coords) if 'lat' in x]
+    lon_name = [x for x in list(dataset.coords) if 'lon' in x]
+    print(lat_name, bbox)
+    dataset = dataset.where((dataset[lat_name[0]] < bbox[0]) &
+                            (dataset[lat_name[0]] > bbox[1]), drop=True)
+    dataset = dataset.where((dataset[lon_name[0]] > bbox[2]) &
+                            (dataset[lon_name[0]] < bbox[3]), drop=True)
+    return dataset
+
+
+def spatial_subset_dfr(dfr, bbox):
+    """
+    Selects data within spatial bbox. bbox coords must be given as
+    positive values for the Northern hemisphere, and negative for
+    Southern. West and East both positive - Note - the method is
+    naive and will only work for bboxes fully fitting in the Eastern hemisphere!!!
+    Args:
+        dfr - pandas dataframe
+        bbox - (list) [North, South, West, East]
+    Returns:
+        pandas dataframe
+    """
+    dfr = dfr[(dfr['lat'] < bbox[0]) &
+                            (dfr['lat'] > bbox[1])]
+    dfr = dfr[(dfr['lon'] > bbox[2]) &
+                            (dfr['lon'] < bbox[3])]
+    return dfr
+
 def cluster_haversine(dfr):
     db = DBSCAN(eps=0.8/6371., min_samples=2, algorithm='ball_tree',
             metric='haversine', n_jobs=-1).fit(np.radians(dfr[['lat', 'lon']]))
@@ -701,7 +742,7 @@ def plot_comp_gfas(fwi, gfas, bboxes, land_mask, y2_label):
     plt.show()
 
 
-def plot_comp(fwi, ba, frp, gfas, bboxes, land_mask, y2_label):
+def plot_comp(fwi, ba, bboxes, land_mask, y2_label):
     fig = plt.figure(figsize=(19,10))
 
     fwi15 = fwi.sel(time = '2015')
@@ -857,13 +898,9 @@ if __name__ == '__main__':
 
 
     pass
-"""
-    data_path = '~/data/'
     land_mask = '~/data/land_mask/land_mask_indonesia.nc'
     fwi_ds = '~/data/fwi/fwi_dc_indonesia.nc'
     ba_prod = '~/data/ba/indonesia_ba.parquet'
-
-
     fo = FireObs(data_path)
     #orig_indonesia_bbox = [8.0, -13.0, 93.0, 143.0]
     indonesia_bbox = [7.0, -11.0, 93.0, 143.0]
@@ -874,7 +911,6 @@ if __name__ == '__main__':
               'Kalimantan': kalimantan,
               'South Sumatra': sumatra_south,
               'Inner Riau': riau_inner}
-
     land_mask = xr.open_dataset(land_mask)
     ba = pd.read_parquet(ba_prod)
     ba = ba[ba.date.dt.year >= 2008]
@@ -891,17 +927,7 @@ if __name__ == '__main__':
     #ba.cluster_store(store_name, ['Af_tr', 'Am_tr', 'As_tr'])
     #ba.populate_store_tropics(tropics_store)
     #ba.populate_store()
-dss = []
-for year in range(2008, 2016, 1):
-    print(year)
-    ffs = glob.glob('/home/tadas/data/cci_ba/{0}/*.*'.format(year))
-    for fname in ffs:
-        ds = xr.open_dataset(fname)
-        print(list(ds.coords))
-        ds = spatial_subset(ds['burned_area'], bboxes['Indonesia'])
-        dss.append(ds)
-"""
-data_path = '/home/tadas/data/gfed/'
-fnames = glob.glob(data_path + '*.*')
+    data_path = '/home/tadas/data/gfed/'
+    fnames = glob.glob(data_path + '*.*')
 
         
