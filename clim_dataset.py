@@ -135,7 +135,7 @@ if __name__ == '__main__':
     #data_path = '/home/tadas/tofewsi/data/'
     #fname = '2013-12-31_to_2014-12-31_169.128_228.128_0.25deg.nc'
     #data_path = '/mnt/data/SEAS5/20110501'
-    data_path = '/mnt/data/era5/indonesia'
+    data_path = '/mnt/data/era5/amazon'
     #data_path = '.'
     #fname = '23_tt_6hourly.nc'
     #fname1 = '24_tt_6hourly.nc'
@@ -161,7 +161,7 @@ if __name__ == '__main__':
         an_fname = '{0}-01-01_{0}-12-31_165.128_166.128_167.128_168.128_0.25deg.nc'.format(year)
         fc_fname = '{0}-01-01_{0}-12-31_169.128_228.128_0.25deg.nc'.format(year)
         fwi_darray = ds.prepare_xarray_fwi(an_fname, fc_fname)
-        fwi_name = 'rh_temp_wind_prcp_{0}.nc'.format(year)
+        fwi_name = 'rh_temp_wind_prcp_amazon_{0}.nc'.format(year)
         fwi_darray.to_netcdf(os.path.join('data', fwi_name))
         #dfr = ds.prepare_dataframe_era5(an_fname, fc_fname)
         #dfr.to_pickle('/home/tadas/tofewsi/data/era5_ecosys_{0}'.format(year))

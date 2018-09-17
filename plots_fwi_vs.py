@@ -1,3 +1,5 @@
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import os
@@ -196,7 +198,49 @@ def plot_comp_nc(fwi, dataset, bboxes, land_mask, suptitle, y2_label, figname):
     plt.show()
 
 
-def plot_comp_gen(ds, ba, bboxes, land_mask, ds_label, suptitle, y2_label, fig_name):
+def plot_comp_gen_ds(fwi, ba, bboxes, year_of_interest, land_mask, ds_label, suptitle, y2_label, fig_name):
+    fwi = fwi[ds_label]
+    plot_nr = len(bboxes)
+    months = np.array(list(range(1, 13, 1)))
+    bar_width = 0.45
+    fig = plt.figure(figsize = (4.8 * plot_nr, 5))
+    fwi15 = fwi.sel(time = str(year_of_interest))
+    print(fwi15)
+    ba15 = ba.sel(time = str(year_of_interest))
+    bbox_names = list(bboxes.keys())
+    for nr, (key, bbox) in enumerate(bboxes.items()):
+        land_mask = spatial_subset(land_mask, bbox)
+        ax1 = plt.subplot2grid((1, plot_nr), (0, nr), colspan=1)
+        fwi_m = ds_monthly_means(spatial_subset(fwi, bbox), land_mask)
+        fwi15_m = ds_monthly_means(spatial_subset(fwi15, bbox), land_mask)
+        ba_m = ds_monthly_means(spatial_subset(ba, bbox), land_mask)
+        line = ax1.plot(months, fwi_m.values, 'b--')
+        print(fwi_m)
+        print(fwi15_m)
+        line15 = ax1.plot(months, fwi15_m.values, 'r-')
+        ax1.set_xlabel('Month')
+        ax1.set_ylabel(ds_label.upper())
+        ba_m = ds_monthly_means(spatial_subset(ba, bbox), land_mask)
+        ba15_m = ds_monthly_means(spatial_subset(ba15, bbox), land_mask)
+        ax12 = ax1.twinx()
+        ax12.set_ylabel(y2_label)
+        bars_m = ax12.bar(ba_m.month.values, ba_m, bar_width, color='b', alpha=.4)
+        bars15_m = ax12.bar(ba15_m.month.values + bar_width, ba15_m, bar_width, color='r', alpha=.6)
+        ax12.tick_params('y', colors='r')
+        ax1.set_title(key)
+        ax1.set_xticks(months + bar_width / 2)
+        ax1.set_xticklabels(months)
+        custom_objs = [Line2D([0], [0], color='b'), Line2D([0], [0], color='r'), bars_m, bars15_m]
+        ax1.legend((custom_objs),
+                   ('Mean {0} 2008 - 2015'.format(ds_label), '{0} {1}'.format(ds_label, year_of_interest),
+                    'Mean {0} 2008 - 2015'.format(y2_label), '{0} {1}'.format(y2_label, year_of_interest)))
+        #fig.suptitle('MODIS FRP Collection 6', size=16)
+    fig.suptitle(suptitle, size=16)
+    fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.savefig(fig_name, res=300)
+    #plt.show()
+
+def plot_comp_gen(fwi, ba, bboxes, land_mask, ds_label, suptitle, y2_label, fig_name):
     plot_nr = len(bboxes)
     months = np.array(list(range(1, 13, 1)))
     bar_width = 0.45
@@ -377,43 +421,34 @@ def plot_comp(fwi, ba, bboxes, land_mask, suptitle, y2_label, fig_name):
 #plot 2008 - 2015 and 2015 for
 #indonesia and amazon
 #FWI and DC vs BA, FRP, GFED4, GFED4.1
-"""
 indonesia_bbox = [7.0, -11.0, 93.0, 143.0]
 kalimantan = [7.0, -4.5, 108.0, 119]
 sumatra_south = [3, -6, 98, 106]
 riau_inner = [1,  -0.4, 101, 103.5]
-bboxes = {'Indonesia': indonesia_bbox,
-          'Kalimantan': kalimantan,
-          'South Sumatra': sumatra_south,
-          'Inner Riau': riau_inner}
+#bboxes = {'Indonesia': indonesia_bbox,
+#          'Kalimantan': kalimantan,
+#          'South Sumatra': sumatra_south,
+#          'Inner Riau': riau_inner}
 
+amazon = [12, -12, 280, 320]
+bboxes = {'Amazon': amazon}
 
-land_mask = '~/data/land_mask/land_mask_indonesia.nc'
-fwi_ds = '~/data/fwi/fwi_dc_indonesia.nc'
-ba_prod = '~/data/ba/indonesia_ba.parquet'
-frp_prod = '~/data/frp/M6_indonesia.parquet'
-
-#orig_indonesia_bbox = [8.0, -13.0, 93.0, 143.0]
-indonesia_bbox = [7.0, -11.0, 93.0, 143.0]
-kalimantan = [7.0, -4.5, 108.0, 119]
-sumatra_south = [3, -6, 98, 106]
-riau_inner = [1,  -0.4, 101, 103.5]
-bboxes = {'Indonesia': indonesia_bbox,
-          'Kalimantan': kalimantan,
-          'South Sumatra': sumatra_south,
-          'Inner Riau': riau_inner}
+land_mask = 'data/era_land_mask.nc'
+#fwi_ds = 'data/fwi_dc_indonesia.nc'
+fwi_ds = 'data/fwi_dc_amazon.nc'
+#ba_prod = '~/data/ba/indonesia_ba.parquet'
+#frp_prod = '~/data/frp/M6_indonesia.parquet'
+gfed_prod = 'data/gfed4s_monthly_ba_m2.nc'
 
 land_mask = xr.open_dataset(land_mask)
-ba = pd.read_parquet(ba_prod)
-frp = pd.read_parquet(frp_prod)
+#ba = pd.read_parquet(ba_prod)
+#frp = pd.read_parquet(frp_prod)
 
-fwi = xr.open_dataset('~/data/fwi/fwi_dc_indonesia.nc')
-"""
+fwi = xr.open_dataset(fwi_ds)
+gfed = xr.open_dataset(gfed_prod)
 
 #def plot_comp(fwi, ba, bboxes, land_mask, suptitle, y2_label, fig_name):
 """
-plot_comp_gen(fwi['fwi'], ba, bboxes, land_mask, 'MCD64A1_BA', 'MCD64A1 ba pixel count', 'MCD64A1_indonesia.png')
-plot_comp_gen(fwi, ba, bboxes, land_mask, 'FWI', 'MCD64A1 BA', 'MCD64A1 BA count', 'MCD64A1_BA_indonesia.png')
-def plot_comp_gen(fwi, ba, bboxes, land_mask, ds_label, suptitle, y2_label, fig_name):
+plot_comp_gen_ds(fwi, gfed['gfed4s_ba'], bboxes, 2010, land_mask, 'fwi', 'GFED ba m^2', 'GFED4.1 ba', 'FWI_GFED4.1_amazon.png')
 """
 

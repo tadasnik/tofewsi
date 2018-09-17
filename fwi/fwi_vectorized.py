@@ -206,7 +206,7 @@ class FWICalc:
 
 if __name__ == '__main__':
     for year in [2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015]:
-        fwi_arr = xr.open_dataset('~/tofewsi/data/rh_temp_wind_prcp_{0}.nc'.format(year))
+        fwi_arr = xr.open_dataset('~/tofewsi/data/rh_temp_wind_prcp_amazon_{0}.nc'.format(year))
         arr_shape = [fwi_arr.dims[x] for x in ['latitude', 'longitude']]
         lats = fwi_arr.latitude.values
         lons = fwi_arr.longitude.values
@@ -247,7 +247,7 @@ if __name__ == '__main__':
             coords={'latitude': lats,
                     'longitude': lons,
                     'time': times})
-        dataset.to_netcdf('../data/fwi_dc_indonesia{0}.nc'.format(year))
+        dataset.to_netcdf('../data/fwi_dc_amazon{0}.nc'.format(year))
 
 
     """
