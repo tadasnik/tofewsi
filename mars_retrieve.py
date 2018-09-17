@@ -204,7 +204,10 @@ if __name__ == '__main__':
     #MARS coordinates format 'area: North/West/South/East'
     #Indonesia bounding box = [5.47982086834, 95.2930261576, -10.3599874813, 141.03385176]
     #Round Indonesia bb to get data for wider area
-    bbox = [8.0, 93.0, -13.0, 143.0]
+    #bbox = [8.0, 93.0, -13.0, 143.0]
+
+    #amazon
+    bbox = [12, -80, -12, -40]
 
     """
     #SEAS5
@@ -258,33 +261,29 @@ if __name__ == '__main__':
     #mars.ERA5_mars_dict(stream = "moda", param_list = ['167.128'], source_type = "an")
 
     #era5 hourly.
-    #for year in [2009, 2010, 2011, 2012, 2013, 2014, 2015]:
-    """
-    data_path = '.'
-    year = 2007
-    start_date = datetime.datetime(year, 1, 1)
-    end_date = datetime.datetime(year, 1, 3)
-    # Instantiate Mars object with defined properties
-    mars = Marser(data_path, start_date, end_date, grid, bbox = bbox)
-    #first analysis fields:
-    times = list(range(24))
-    param_list = ['165.128', '166.128', '167.128', '168.128']
-    mars.ERA5_mars_dict(stream = "oper", param_list = param_list, times = times, source_type = "an")
-    mars.call_mars()
-    """
-        # call ecmwf to retrieve the data
-        #mars.call_mars()
+    data_path = '/mnt/data/era5/amazon'
+    for year in range(2008, 2016, 1):
+        start_date = datetime.datetime(year, 1, 1)
+        end_date = datetime.datetime(year, 12, 31)
+        # Instantiate Mars object with defined properties
+        mars = Marser(data_path, start_date, end_date, grid, bbox = bbox)
+        #first analysis fields:
+        times = list(range(24))
+        param_list = ['165.128', '166.128', '167.128', '168.128']
+        mars.ERA5_mars_dict(stream = "oper", param_list = param_list, times = times, source_type = "an")
+        mars.call_mars()
         #Total radiation downwards and precipitation
         #are stored as forecasts, hence separate retrieval.
-        #times = [6, 18]
-        #mars.ERA5_mars_dict(stream = "oper", param_list = ['169.128', '228.128'], times=times, source_type = "fc")
-        #mars.call_mars()
+        times = [6, 18]
+        mars.ERA5_mars_dict(stream = "oper", param_list = ['169.128', '228.128'], times=times, source_type = "fc")
+        mars.call_mars()
 
         # we can check what mars dictionary looks like:
         #print(mars.mars_dict)
         # If it looks reasonable, 
         # call ecmwf to retrieve the data
 
+    """
     data_path = '/mnt/data/frp/gfas'
     for year in range(2003, 2016, 1):
         start_date = datetime.datetime(year, 1, 1)
@@ -295,3 +294,4 @@ if __name__ == '__main__':
         param_list = ['99.210']
         mars.GFAS_mars_dict(param_list = param_list, times = times)
         mars.call_mars()
+    """

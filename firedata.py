@@ -10,6 +10,7 @@ import pandas as pd
 from multiprocessing import Pool, cpu_count
 #from gridding import Gridder
 #from pyhdf import SD
+import h5py
 from envdata import Envdata
 import matplotlib.pyplot as plt
 
@@ -887,6 +888,7 @@ if __name__ == '__main__':
     #plot 2008 - 2015 and 2015 for
     #indonesia and amazon
     #FWI and DC vs BA, FRP, GFED4, GFED4.1
+    """
     indonesia_bbox = [7.0, -11.0, 93.0, 143.0]
     kalimantan = [7.0, -4.5, 108.0, 119]
     sumatra_south = [3, -6, 98, 106]
@@ -927,7 +929,26 @@ if __name__ == '__main__':
     #ba.cluster_store(store_name, ['Af_tr', 'Am_tr', 'As_tr'])
     #ba.populate_store_tropics(tropics_store)
     #ba.populate_store()
-    data_path = '/home/tadas/data/gfed/'
-    fnames = glob.glob(data_path + '*.*')
+    """
+    data_path = '/mnt/data/gfed/'
+    fo = FireObs(data_path)
+    dts = []
+    for year in range(2008, 2016, 1):
+        ds_name = os.path.join(data_path, 'GFED4.1s_{0}.hdf5'.format(year))
+        ds = h5py.File(ds_name, 'r')
+        lon = ds['lon'].value
+        lat = ds['lat'].value
+        grid_size = ds['ancill/grid_cell_area'].value
+        bas = []
+        for month in range(1, 13, 1):
+            ba = ds['burned_area/{:02}/burned_fraction'.format(month)].value
+            bas.append(ba * grid_size)
+        dates = [datetime.datetime(year, x, 1) for x in range(1, 13, 1)]
+        dt = xr.Dataset({'gfed4s_ba': (('time', 'lat', 'lon'), np.array(bas))},
+                         coords = {'time': dates,
+                                   'lat': lat[:, 0],
+                                   'lon': lon[0, :]})
+        dts.append(dt)
+    ds = xr.concat(dts, dim = 'time')
 
-        
+
