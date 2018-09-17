@@ -1,5 +1,3 @@
-import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import os
@@ -203,7 +201,7 @@ def plot_comp_gen_ds(fwi, ba, bboxes, year_of_interest, land_mask, ds_label, sup
     plot_nr = len(bboxes)
     months = np.array(list(range(1, 13, 1)))
     bar_width = 0.45
-    fig = plt.figure(figsize = (4.8 * plot_nr, 5))
+    fig = plt.figure(figsize = (6.8 * plot_nr, 5))
     fwi15 = fwi.sel(time = str(year_of_interest))
     print(fwi15)
     ba15 = ba.sel(time = str(year_of_interest))
@@ -237,19 +235,20 @@ def plot_comp_gen_ds(fwi, ba, bboxes, year_of_interest, land_mask, ds_label, sup
         #fig.suptitle('MODIS FRP Collection 6', size=16)
     fig.suptitle(suptitle, size=16)
     fig.tight_layout(rect=[0, 0.03, 1, 0.95])
-    plt.savefig(fig_name, res=300)
+    plt.savefig(os.path.join('./figures', fig_name), res=300)
     #plt.show()
 
-def plot_comp_gen(fwi, ba, bboxes, land_mask, ds_label, suptitle, y2_label, fig_name):
+def plot_comp_gen(fwi, ba, bboxes, year_of_interest, land_mask, ds_label, suptitle, y2_label, fig_name):
+    fwi = fwi[ds_label]
     plot_nr = len(bboxes)
     months = np.array(list(range(1, 13, 1)))
     bar_width = 0.45
-    fig = plt.figure(figsize = (4.8 * plot_nr, 5))
-    fwi = ds[ds_label]
-    fwi15 = fwi.sel(time = '2015')
-    ba15 = ba[ba.date.dt.year == 2015]
+    fig = plt.figure(figsize = (6.8 * plot_nr, 5))
+    fwi15 = fwi.sel(time = str(year_of_interest))
+    ba15 = ba[ba.date.dt.year == year_of_interest]
     bbox_names = list(bboxes.keys())
     for nr, (key, bbox) in enumerate(bboxes.items()):
+        land_mask = spatial_subset(land_mask, bbox)
         ax1 = plt.subplot2grid((1, plot_nr), (0, nr), colspan=1)
         fwi_m = ds_monthly_means(spatial_subset(fwi, bbox), land_mask)
         fwi15_m = ds_monthly_means(spatial_subset(fwi15, bbox), land_mask)
@@ -269,8 +268,8 @@ def plot_comp_gen(fwi, ba, bboxes, land_mask, ds_label, suptitle, y2_label, fig_
         ax1.set_xticklabels(months)
         custom_objs = [Line2D([0], [0], color='b'), Line2D([0], [0], color='r'), bars_m, bars15_m]
         ax1.legend((custom_objs),
-                   ('Mean {0} 2008 - 2015'.format(ds_label), '{0} 2015'.format(ds_label),
-                    'Mean {0} 2008 - 2015'.format(y2_label), '{0} 2015'.format(y2_label)))
+                   ('Mean {0} 2008 - 2015'.format(ds_label), '{0} {1}'.format(ds_label, year_of_interest),
+                    'Mean {0} 2008 - 2015'.format(y2_label), '{0} {1}'.format(y2_label, year_of_interest)))
         #fig.suptitle('MODIS FRP Collection 6', size=16)
     fig.suptitle(suptitle, size=16)
     fig.tight_layout(rect=[0, 0.03, 1, 0.95])
@@ -431,21 +430,32 @@ riau_inner = [1,  -0.4, 101, 103.5]
 #          'Inner Riau': riau_inner}
 
 amazon = [12, -12, 280, 320]
-bboxes = {'Amazon': amazon}
+bboxes = {'Amazon whole': amazon,
+        'Amazon NW': [8, -2, 282, 300],
+        'Amazon South': [-2, -12, 290, 310]}
 
 land_mask = 'data/era_land_mask.nc'
 #fwi_ds = 'data/fwi_dc_indonesia.nc'
 fwi_ds = 'data/fwi_dc_amazon.nc'
-#ba_prod = '~/data/ba/indonesia_ba.parquet'
+ba_prod = 'data/amazon_ba.parquet'
 #frp_prod = '~/data/frp/M6_indonesia.parquet'
-gfed_prod = 'data/gfed4s_monthly_ba_m2.nc'
+#frp_prod = 'data/M6_amazon.parquet'
+#gfed_prod = 'data/gfed4s_monthly_ba_m2.nc'
 
 land_mask = xr.open_dataset(land_mask)
-#ba = pd.read_parquet(ba_prod)
+ba = pd.read_parquet(ba_prod)
 #frp = pd.read_parquet(frp_prod)
+lons = ba.lon.values
+lons[lons < 0] += 360
+ba['lon'] = lons
+
 
 fwi = xr.open_dataset(fwi_ds)
-gfed = xr.open_dataset(gfed_prod)
+#gfed = xr.open_dataset(gfed_prod)
+
+#lons = gfed.lon.values
+#lons[lons < 0] += 360
+#gf = gfed['gfed4s_ba'].assign_coords(lon = lons)
 
 #def plot_comp(fwi, ba, bboxes, land_mask, suptitle, y2_label, fig_name):
 """
