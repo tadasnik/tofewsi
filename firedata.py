@@ -929,7 +929,6 @@ if __name__ == '__main__':
     #ba.cluster_store(store_name, ['Af_tr', 'Am_tr', 'As_tr'])
     #ba.populate_store_tropics(tropics_store)
     #ba.populate_store()
-    """
     data_path = '/mnt/data/gfed/'
     fo = FireObs(data_path)
     dts = []
@@ -951,4 +950,19 @@ if __name__ == '__main__':
         dts.append(dt)
     ds = xr.concat(dts, dim = 'time')
 
-
+    bbox = [12, -12, -80, -40]
+    data_path = '/mnt/data/frp/'
+    fo = FireObs(data_path)
+    dts = []
+    for year in range(2008, 2016, 1):
+        ds = fo.read_dfr_from_parquet('M6_{0}'.format(year))
+        am = spatial_subset_dfr(ds, bbox)
+        dts.append(am)
+    #ds = dfr.concat(dts, dim = 'time')
+    """
+    bbox = [12, -12, -80, -40]
+    data_path = '/home/tadas/fireobs/data'
+    fo = FireObs(data_path)
+    ds = fo.read_dfr_from_parquet('Am_tr')
+    am = spatial_subset_dfr(ds, bbox)
+ 
