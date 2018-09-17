@@ -2,6 +2,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
+import os
 import numpy as np
 import pandas as pd
 import xarray as xr
@@ -244,6 +245,7 @@ def plot_comp_gen(fwi, ba, bboxes, land_mask, ds_label, suptitle, y2_label, fig_
     months = np.array(list(range(1, 13, 1)))
     bar_width = 0.45
     fig = plt.figure(figsize = (4.8 * plot_nr, 5))
+    fwi = ds[ds_label]
     fwi15 = fwi.sel(time = '2015')
     ba15 = ba[ba.date.dt.year == 2015]
     bbox_names = list(bboxes.keys())
@@ -255,14 +257,13 @@ def plot_comp_gen(fwi, ba, bboxes, land_mask, ds_label, suptitle, y2_label, fig_
         line = ax1.plot(months, fwi_m.values, 'b--')
         line15 = ax1.plot(months, fwi15_m.values, 'r-')
         ax1.set_xlabel('Month')
-        ax1.set_ylabel(ds_label)
+        ax1.set_ylabel(ds_label.upper())
         ba_m = dfr_monthly_counts(spatial_subset_dfr(ba, bbox))
         ba15_m = dfr_monthly_counts(spatial_subset_dfr(ba15, bbox))
         ax12 = ax1.twinx()
         ax12.set_ylabel(y2_label)
         bars_m = ax12.bar(ba_m.index.values, ba_m, bar_width, color='b', alpha=.4)
         bars15_m = ax12.bar(ba15_m.index.values + bar_width, ba15_m, bar_width, color='r', alpha=.6)
-        ax12.tick_params('y', colors='r')
         ax1.set_title(key)
         ax1.set_xticks(months + bar_width / 2)
         ax1.set_xticklabels(months)
@@ -273,7 +274,7 @@ def plot_comp_gen(fwi, ba, bboxes, land_mask, ds_label, suptitle, y2_label, fig_
         #fig.suptitle('MODIS FRP Collection 6', size=16)
     fig.suptitle(suptitle, size=16)
     fig.tight_layout(rect=[0, 0.03, 1, 0.95])
-    #plt.savefig(fig_name, res=300)
+    plt.savefig(os.path.join('./figures', fig_name), res=300)
     plt.show()
 
 
