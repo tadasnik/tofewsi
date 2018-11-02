@@ -4,6 +4,7 @@ import sys
 import copy
 import errno
 import datetime
+import pandas as pd
 from ecmwfapi import ECMWFService, ECMWFDataServer
 from dateutil.relativedelta import relativedelta
 
@@ -118,7 +119,7 @@ class Marser(object):
                          "solarrad": 169.128,
                           "totprep": 228.128 }
 
-    def SEAS5_mars_dict(self):
+    def SEAS5_mars_dict(self, steps=None):
         """
         Add items to mars_dict specific to SEAS5
         """
@@ -136,7 +137,10 @@ class Marser(object):
         self.mars_dict["system"] = "5"
         self.mars_dict["time"] = "00:00:00"
         self.mars_dict["type"] = "fc"
-        self.mars_dict["step"] = join_values(list(range(0, 5161, 6)))
+        if steps:
+            self.mars_dict["step"] = steps
+        else:
+            self.mars_dict["step"] = join_values(list(range(0, 5161, 6)))
 
     def GFAS_mars_dict(self, param_list, times):
         self.mars_dict["class"] = "mc"
@@ -207,7 +211,7 @@ if __name__ == '__main__':
     #bbox = [8.0, 93.0, -13.0, 143.0]
 
     #amazon
-    bbox = [12, -80, -12, -40]
+    #bbox = [12, -80, -12, -40]
 
     """
     #SEAS5
@@ -229,18 +233,26 @@ if __name__ == '__main__':
     #bbox = [-16, 133, -38, 151]
 
     #(113.338953078, -43.6345972634, 153.569469029, -10.6681857235)),
-    Australia = [-10, 113, -44, 154]
+    data_path = '/mnt/data/SEAS5/australia'
+    australia = [-10, 113, -44, 154]
     #TODO
+    d_range = pd.date_range('2009-09-01', periods=14, freq=pd.offsets.MonthBegin())
     #starting date
     #pr = pd.date_range('2010-01-01', '2011-12-31', freq='M')
-    #for start_date in start_dates:
+    for date in d_range:
         #do
+        start_date = date - pd.DateOffset(months = 3)
+        end_date = date + pd.DateOffset(months = 1)
+        dif = (date - start_date).total_seconds() / 60 / 60
+        dif_e = (end_date - start_date).total_seconds() / 60 / 60
         #how to add 3 and 4 months to starting 
         #6 hour steps where diff is difference between two dates in seconds
         #dif = (dt -dt1).total_seconds()
-        #(dif.total_seconds() / 60 / 60) / 6
-        #steps = list(range(dif1, dif2, 6)
-
+        steps = list(range(int(dif), int(dif_e) + 5, 6))
+        mars = Marser(data_path, start_date, start_date, grid, bbox=australia)
+        mars.SEAS5_mars_dict(steps=steps)
+        #mars.call_mars()
+ 
 
     #MARS parameters
     # surface solar radiation downwards: 169.128
@@ -274,6 +286,7 @@ if __name__ == '__main__':
 
 
     #era5 hourly.
+    """
     data_path = '/mnt/data/era5/australia'
     for year in range(2008, 2018, 1):
         start_date = datetime.datetime(year, 1, 1)
@@ -296,6 +309,7 @@ if __name__ == '__main__':
         # If it looks reasonable, 
         # call ecmwf to retrieve the data
 
+    """
     """
     data_path = '/mnt/data/frp/gfas'
     for year in range(2003, 2016, 1):
