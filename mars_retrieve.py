@@ -228,6 +228,8 @@ if __name__ == '__main__':
     #Allan's 1 deg grid
     #bbox = [-16, 133, -38, 151]
 
+    #(113.338953078, -43.6345972634, 153.569469029, -10.6681857235)),
+    Australia = [-10, 113, -44, 154]
     #TODO
     #starting date
     #pr = pd.date_range('2010-01-01', '2011-12-31', freq='M')
@@ -271,14 +273,13 @@ if __name__ == '__main__':
     #mars.ERA5_mars_dict(stream = "moda", param_list = ['167.128'], source_type = "an")
 
 
-    """
     #era5 hourly.
-    data_path = '/mnt/data/era5/amazon'
-    for year in range(2008, 2016, 1):
+    data_path = '/mnt/data/era5/australia'
+    for year in range(2008, 2018, 1):
         start_date = datetime.datetime(year, 1, 1)
         end_date = datetime.datetime(year, 12, 31)
         # Instantiate Mars object with defined properties
-        mars = Marser(data_path, start_date, end_date, grid, bbox = bbox)
+        mars = Marser(data_path, start_date, end_date, grid, bbox = australia)
         #first analysis fields:
         times = list(range(24))
         param_list = ['165.128', '166.128', '167.128', '168.128']
@@ -294,7 +295,6 @@ if __name__ == '__main__':
         #print(mars.mars_dict)
         # If it looks reasonable, 
         # call ecmwf to retrieve the data
-    """
 
     """
     data_path = '/mnt/data/frp/gfas'
