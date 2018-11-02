@@ -228,6 +228,16 @@ if __name__ == '__main__':
     #Allan's 1 deg grid
     #bbox = [-16, 133, -38, 151]
 
+    #TODO
+    #starting date
+    #pr = pd.date_range('2010-01-01', '2011-12-31', freq='M')
+    #for start_date in start_dates:
+        #do
+        #how to add 3 and 4 months to starting 
+        #6 hour steps where diff is difference between two dates in seconds
+        #dif = (dt -dt1).total_seconds()
+        #(dif.total_seconds() / 60 / 60) / 6
+        #steps = list(range(dif1, dif2, 6)
 
 
     #MARS parameters
@@ -260,6 +270,8 @@ if __name__ == '__main__':
     # invoke ERA5 dictionary filling method to retireve monthly mean 2m temperature
     #mars.ERA5_mars_dict(stream = "moda", param_list = ['167.128'], source_type = "an")
 
+
+    """
     #era5 hourly.
     data_path = '/mnt/data/era5/amazon'
     for year in range(2008, 2016, 1):
@@ -282,6 +294,7 @@ if __name__ == '__main__':
         #print(mars.mars_dict)
         # If it looks reasonable, 
         # call ecmwf to retrieve the data
+    """
 
     """
     data_path = '/mnt/data/frp/gfas'
