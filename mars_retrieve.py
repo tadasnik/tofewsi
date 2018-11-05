@@ -236,7 +236,7 @@ if __name__ == '__main__':
     data_path = '/mnt/data/SEAS5/australia'
     australia = [-10, 113, -44, 154]
     #TODO
-    d_range = pd.date_range('2009-09-01', periods=14, freq=pd.offsets.MonthBegin())
+    d_range = pd.date_range('2016-09-01', periods=14, freq=pd.offsets.MonthBegin())
     #starting date
     #pr = pd.date_range('2010-01-01', '2011-12-31', freq='M')
     for date in d_range:
@@ -251,8 +251,7 @@ if __name__ == '__main__':
         steps = list(range(int(dif), int(dif_e) + 5, 6))
         mars = Marser(data_path, start_date, start_date, grid, bbox=australia)
         mars.SEAS5_mars_dict(steps=steps)
-        #mars.call_mars()
- 
+        mars.call_mars()
 
     #MARS parameters
     # surface solar radiation downwards: 169.128
