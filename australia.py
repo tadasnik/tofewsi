@@ -2,6 +2,9 @@ import glob
 import pandas as pd
 import numpy as np
 import xarray as xr
+import matplotlib.pyplot as plt
+import cartopy
+import cartopy.crs as ccrs
 from envdata import *
 
 def spatial_subset(dataset, bbox):
@@ -104,7 +107,7 @@ def read_monthly_means():
     return t2m, t2max, tpm
 
 
-def seas5_mean(dt):
+def seas5_make_means(dt):
     year = dt.year
     month = dt.month
     dt = dt - pd.DateOffset(months = 3)
@@ -116,6 +119,14 @@ def seas5_mean(dt):
     stp.to_netcdf('data/aust_s5_tp_mm_{0}_{1}.nc'.format(year, month))
     #return st2m, stp
 
+def seas5_means(dt):
+    year = dt.year
+    month = dt.month
+    dt = dt - pd.DateOffset(months = 3)
+    t2m = xr.open_dataset('data/aust_s5_t2m_mm_{0}_{1}.nc'.format(year, month))
+    tp = xr.open_dataset('data/aust_s5_tp_mm_{0}_{1}.nc'.format(year, month))
+    return t2m, tp
+ 
 def era5_mean(dt):
     year = dt.year
     month = dt.month
@@ -128,13 +139,37 @@ def era5_mean(dt):
     tpm = tpm.sel(month=month)
     return t2m, t2max, tpm
 
-def do_plots(dt, t2m, t2max, tpm):
-    year = dt.year
-    month = dt.month
-    et2m, et2max, etpm = era5_mean(dt)
-    st2m, stpm = seas5_mean(dt)
+def do_plots(dates, t2m, t2max, tpm, land_mask):
+    plot_nr = len(dates)
+    fig = plt.figure(figsize = (10, 4 * plot_nr))
+    for nr, dt in enumerate(dates):
+        year = dt.year
+        month = dt.month
+        et2m, et2max, etpm = era5_mean(dt)
+        st2m, stpm = seas5_means(dt)
+        at2m = et2m - t2m.sel(month=month)
+        ast2m = st2m - t2m.sel(month=month)
+        atpm = etpm - tpm.sel(month=month)
+        astpm = stpm - tpm.sel(month=month)
+        print(at2m)
+        for pn, item in enumerate([at2m['t2m'], ast2m['t2m']]):#, atpm['tp'], astpm['tp']]):
+            ax1 = plt.subplot2grid((plot_nr, 2), (nr, pn), projection=ccrs.PlateCarree())
+            #item.plot()
+            item.plot.pcolormesh(ax=ax1, transform=ccrs.PlateCarree(),
+                                   x = 'longitude', y='latitude', add_colorbar=False)
+            #ax1.add_feature(cartopy.feature.OCEAN)
+            ax1.add_feature(cartopy.feature.COASTLINE)
+            if (pn==0):
+                ax1.set_title('ERA5 mean t anomaly {0}/{1}'.format(year, month))
+            elif (pn==1):
+                ax1.set_title('SEA5 mean t anomaly 3 month lead {0}/{1}'.format(year, month))
+            if pn == 0:
+                ax1.set_ylabel('{0} {1}'.format(year, month))
+    plt.savefig('aust_t2m.png', dpi=80)
+ 
 
 
+ 
 
 land_mask = 'data/era_land_mask.nc'
 land_mask = xr.open_dataset(land_mask)
@@ -143,5 +178,6 @@ land_mask = spatial_subset(land_mask, australia)
 data_path = '/mnt/data/SEAS5/australia'
 t2m, t2max, tpm = read_monthly_means()
 dates = pd.date_range('2009-09-01', periods=14, freq=pd.offsets.MonthBegin())
+do_plots(dates, t2m, t2max, tpm, land_mask)
 
 
