@@ -1,6 +1,7 @@
 import os
 import datetime
 import numpy as np
+import pandas as pd
 import xarray as xr
 
 class Climdata(object):
@@ -38,12 +39,8 @@ class Climdata(object):
         Returns:
             xarray dataset
         """
-        lat_name = [x for x in list(dataset.coords) if 'lat' in x]
-        lon_name = [x for x in list(dataset.coords) if 'lon' in x]
-        dataset = dataset.where((dataset[lat_name[0]] <= bbox[0]) &
-                                (dataset[lat_name[0]] >= bbox[1]), drop=True)
-        dataset = dataset.where((dataset[lon_name[0]] >= bbox[2]) &
-                                (dataset[lon_name[0]] <= bbox[3]), drop=True)
+        dataset = dataset.sel(longitude = slice(bbox[2], bbox[3]))
+        dataset = dataset.sel(latitude = slice(bbox[0], bbox[1]))
         return dataset
 
     def time_subset(self, dataset, hour=None, start_date=None, end_date=None):
@@ -96,6 +93,46 @@ class Climdata(object):
         fwi_darray = xr.merge([an_dataset[['t2m', 'w10', 'h2m']], preci[:-1]])
         return fwi_darray
 
+    def era5_dataset(self, an_fname, fc_fname):
+        """
+        Read era5 analysis (an_fname) and forecast (fc_fname)
+        datasets, derive wind_speed, rel_hum, merge and return
+        dataset with ['t2m', 'w10', 'h2m', 'ssrd' and 'tp']
+        variables
+        """
+        an_dataset = self.read_dataset(an_fname)
+        an_dataset = self.wind_speed(an_dataset)
+        an_dataset = self.relative_humidity(an_dataset)
+        fc_dataset = self.read_dataset(fc_fname)
+        dataset = xr.merge([an_dataset[['t2m', 'w10', 'h2m']],
+                            fc_dataset[['ssrd', 'tp']]])
+        return dataset
+
+    def prepare_dataframe_era5_chirps(self, dataset):
+        dfr = dataset.to_dataframe()
+        dfr.reset_index(inplace=True)
+        dfr.loc[:, 'Day'] = dfr['time'].dt.day
+        dfr.loc[:, 'Hour'] = dfr['time'].dt.hour
+        dfr.loc[:, 'Month'] = dfr['time'].dt.month
+        dfr.loc[:, 'Year'] = dfr['time'].dt.year
+        dfr.drop('time', axis=1, inplace=True)
+        dfr = dfr[['latitude', 'longitude', 'Day', 'Hour',
+                             'Month', 'Year', 'ssrd', 't2m', 'w10', 'h2m', 'tp']]
+        dfr['ssrd'] = dfr['ssrd'].astype(int)
+        cols = ['lat', 'long', 'Day', 'Hour', 'Month', 'Year',
+                'Incident Shortwave Radiation', 'Air Temperature',
+                'Windspeed', 'Humidity', 'Precipitation']
+        dfr.columns = cols
+        dfr = dfr.round({'lat': 3,
+                         'long': 3,
+                         'Air Temperature': 1,
+                         'Windspeed': 1,
+                         'Humidity': 1,
+                         'Precipitation': 1})
+        return dfr
+
+
+
     def prepare_dataframe_era5(self, an_fname, fc_fname):
         an_dataset = self.read_dataset(an_fname)
         an_dataset = self.wind_speed(an_dataset)
@@ -127,7 +164,7 @@ class Climdata(object):
 
     def write_csv(self, dfr, fname):
         print('writing dataframe to csv file {0}'.format(fname))
-        dfr.to_csv(fname, index=False, float_format='%.2f')
+        dfr.to_csv(fname, index=False, compression = 'gzip')
         print('finished writing')
 
 
@@ -135,18 +172,45 @@ if __name__ == '__main__':
     #data_path = '/home/tadas/tofewsi/data/'
     #fname = '2013-12-31_to_2014-12-31_169.128_228.128_0.25deg.nc'
     #data_path = '/mnt/data/SEAS5/20110501'
-    data_path = '/mnt/data/era5/amazon'
+    #data_path = '/mnt/data/era5/amazon'
+    data_path = '/mnt/data/era5/riau'
+    chirps_path = '/mnt/data/chirps'
     #data_path = '.'
     #fname = '23_tt_6hourly.nc'
     #fname1 = '24_tt_6hourly.nc'
 
     # Riau bbox
-    #bbox = [3, -2, 99, 104]
+    bbox = [3, -2, 99, 104]
     #bbox = [1, -.4, 101, 103.5]
-    ds = Climdata(data_path, bbox=None, hour=None)
-    dcs = []
-    fwis = []
-    for year in [2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015]:
+    cl = Climdata(data_path, bbox=None, hour=None)
+    #dcs = []
+    #fwis = []
+    for year in range(2009, 2016, 1):
+        print(year)
+        ds = xr.open_dataset(os.path.join('/mnt/data/era5/indonesia', 'era5_ecosys_{0}.nc'.format(year)))
+        ds = cl.spatial_subset(ds, bbox)
+        ds['ssrd'][:7, :, :] = ds['ssrd'][24:31, :, :].values
+        ds['tp'][:7, :, :] = ds['tp'][24:31, :, :].values
+        ds = ds.sel(time=ds['time.year'] == year)
+        ch = xr.open_dataset(os.path.join(chirps_path, 'chirps-v2.0.{0}.days_p05.nc'.format(year)))
+        ch = cl.spatial_subset(ch, [bbox[1], bbox[0], bbox[2], bbox[3]])
+        ch = ch.sortby('latitude', ascending=False)
+        ch /= 24.
+        dt = ch['time'][-1] + pd.Timedelta('23H')
+        darr = xr.DataArray(ch.isel(time=[-1])['precip'].values,
+                            coords=[[dt.values], ch.latitude.values, ch.longitude.values],
+                            dims=['time', 'latitude', 'longitude'])
+        da = darr.to_dataset(name = 'precip')
+        ch = xr.concat([ch, da], dim = 'time')
+        hc = ch.resample(time="1H", closed='left').ffill()
+        #hc = hc.where(hc>=0)
+        ds = ds[['t2m', 'w10', 'h2m', 'ssrd']]
+        ds = ds.interp_like(hc)
+        ds = ds.assign({'tp': hc['precip']})
+        ds.to_netcdf(os.path.join('/mnt/data/era5/riau', 'era5_chirps_5km_{0}.nc'.format(year)))
+        dfr = cl.prepare_dataframe_era5_chirps(ds)
+        cl.write_csv(dfr, os.path.join('/mnt/data/era5/riau', 'era5_chirps_5km_{0}.csv.gz'.format(year)))
+
         """
         #fwi_ds = xr.open_dataset('data/fwi_dc_riau_{0}.nc'.format(year))
         fwi_ds = ds.read_dataset('data/fwi_dc_riau_{0}.nc'.format(year))
@@ -154,15 +218,17 @@ if __name__ == '__main__':
         #dc = fwi_ds['dc'].where((fwi_ds['latitude']==1.25)&(fwi_ds['longitude']==101.5), drop=True)
         dcs.append(fwi_ds['dc'])
         fwis.append(fwi_ds['fwi'])
-    fwi = xr.concat(fwis, dim = 'time')
-    dc = xr.concat(dcs, dim = 'time')
-    """
+        fwi = xr.concat(fwis, dim = 'time')
+        dc = xr.concat(dcs, dim = 'time')
         print(year)
         an_fname = '{0}-01-01_{0}-12-31_165.128_166.128_167.128_168.128_0.25deg.nc'.format(year)
         fc_fname = '{0}-01-01_{0}-12-31_169.128_228.128_0.25deg.nc'.format(year)
-        fwi_darray = ds.prepare_xarray_fwi(an_fname, fc_fname)
-        fwi_name = 'rh_temp_wind_prcp_amazon_{0}.nc'.format(year)
-        fwi_darray.to_netcdf(os.path.join('data', fwi_name))
+        ds = cl.era5_dataset(an_fname, fc_fname)
+        ds.to_netcdf(os.path.join(data_path, 'era5_ecosys_{0}.nc'.format(year)))
+        """
+        #fwi_darray = ds.prepare_xarray_fwi(an_fname, fc_fname)
+        #fwi_name = 'rh_temp_wind_prcp_amazon_{0}.nc'.format(year)
+        #fwi_darray.to_netcdf(os.path.join('data', fwi_name))
         #dfr = ds.prepare_dataframe_era5(an_fname, fc_fname)
         #dfr.to_pickle('/home/tadas/tofewsi/data/era5_ecosys_{0}'.format(year))
         #ds.write_csv(dfr, 'era5_{0}_riau.csv'.format(year))

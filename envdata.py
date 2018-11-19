@@ -73,10 +73,10 @@ class Envdata(metaclass=abc.ABCMeta):
         """
         lat_name = [x for x in list(dataset.coords) if 'lat' in x]
         lon_name = [x for x in list(dataset.coords) if 'lon' in x]
-        dataset = dataset.where((dataset[lat_name[0]] < bbox[0]) &
-                                (dataset[lat_name[0]] > bbox[1]), drop=True)
-        dataset = dataset.where((dataset[lon_name[0]] > bbox[2]) &
-                                (dataset[lon_name[0]] < bbox[3]), drop=True)
+        dataset = dataset.where((dataset[lat_name[0]] <= bbox[0]) &
+                                (dataset[lat_name[0]] >= bbox[1]), drop=True)
+        dataset = dataset.where((dataset[lon_name[0]] >= bbox[2]) &
+                                (dataset[lon_name[0]] <= bbox[3]), drop=True)
         return dataset
 
     def time_subset(self, dataset, hour=None, start_date=None, end_date=None):

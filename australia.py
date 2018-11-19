@@ -95,9 +95,9 @@ def get_era5_climatology(data_path):
         fname = glob.glob(os.path.join(data_path, '{0}*228.128*'.format(year)))[0]
         dsp = xr.open_dataset(fname)
         dsp = dsp['tp']
-        dm = dsp.groupby('time.month').sum('time')
-        dm.to_netcdf('data/aust_era5_{0}_tp_mm.nc'.format(dsp.time.dt.year[0].values))
-        #dps.append(dsp)
+        #dm = dsp.groupby('time.month').sum('time')
+        #dm.to_netcdf('data/aust_era5_{0}_tp_mm.nc'.format(dsp.time.dt.year[0].values))
+        dps.append(dsp)
     return dps
 
 def read_monthly_means():
@@ -106,18 +106,48 @@ def read_monthly_means():
     tpm = xr.open_dataset('data/aust_sum_mean_monthly_tp.nc')
     return t2m, t2max, tpm
 
-
 def seas5_make_means(dt):
     year = dt.year
     month = dt.month
     dt = dt - pd.DateOffset(months = 3)
+    print(dt)
+    data_path = '/mnt/data/SEAS5/australia'
     fnames = glob.glob(os.path.join(data_path, '{0}*.*'.format(dt.date())))
     ds = xr.open_dataset(fnames[0])
-    st2m = ds['t2m'].mean(['number', 'time'])
+    stp = ds['t2m'].median('number')
+    st2m = stp.mean('time')
     st2m.to_netcdf('data/aust_s5_t2m_mm_{0}_{1}.nc'.format(year, month))
-    stp = ds['tp'].mean(['number', 'time'])
-    stp.to_netcdf('data/aust_s5_tp_mm_{0}_{1}.nc'.format(year, month))
+    #stp = ds['tp'].median('number')
+    #stp = ds['tp'].mean('number')
+    #stp = stp[-1,:,:] - stp[0,:,:]
+    #stp_day = stp.groupby('time.day').sum('time')
+    #st2m = ds['t2m'].mean(['number', 'time'])
+    #st2m.to_netcdf('data/aust_s5_t2m_mm_{0}_{1}.nc'.format(year, month))
+    #stp.to_netcdf('data/aust_s5_tp_mm_{0}_{1}.nc'.format(year, month))
     #return st2m, stp
+
+def era5_make_means(dt):
+    d
+    dps = []
+    for year in range(2008, 2018, 1):
+        """
+        fname = glob.glob(os.path.join(data_path, '{0}*165.128*'.format(year)))[0]
+        ds = xr.open_dataset(fname)
+        ds = ds['t2m'][::6, :, :]
+        dm = ds.groupby('time.month').mean('time')
+        dm.to_netcdf('data/aust_era5_{0}_t2m_mm.nc'.format(ds.time.dt.year[0].values))
+        dm = ds.groupby('time.month').max('time')
+        dm.to_netcdf('data/aust_era5_{0}_t2m_mmax.nc'.format(ds.time.dt.year[0].values))
+        #dps.append(ds)
+        """
+        fname = glob.glob(os.path.join(data_path, '{0}*228.128*'.format(year)))[0]
+        dsp = xr.open_dataset(fname)
+        dsp = dsp['tp']
+        #dm = dsp.groupby('time.month').sum('time')
+        #dm.to_netcdf('data/aust_era5_{0}_tp_mm.nc'.format(dsp.time.dt.year[0].values))
+        dps.append(dsp)
+    return dps
+
 
 def seas5_means(dt):
     year = dt.year
@@ -126,7 +156,7 @@ def seas5_means(dt):
     t2m = xr.open_dataset('data/aust_s5_t2m_mm_{0}_{1}.nc'.format(year, month))
     tp = xr.open_dataset('data/aust_s5_tp_mm_{0}_{1}.nc'.format(year, month))
     return t2m, tp
- 
+
 def era5_mean(dt):
     year = dt.year
     month = dt.month
@@ -139,9 +169,13 @@ def era5_mean(dt):
     tpm = tpm.sel(month=month)
     return t2m, t2max, tpm
 
+def mask_ocean(dar, land_mask):
+    dar = dar.where(land_mask['lsm'][0, :, :].values)
+    return dar
+
 def do_plots(dates, t2m, t2max, tpm, land_mask):
     plot_nr = len(dates)
-    fig = plt.figure(figsize = (10, 4 * plot_nr))
+    fig = plt.figure(figsize = (25, 3.5 * plot_nr))
     for nr, dt in enumerate(dates):
         year = dt.year
         month = dt.month
@@ -149,35 +183,51 @@ def do_plots(dates, t2m, t2max, tpm, land_mask):
         st2m, stpm = seas5_means(dt)
         at2m = et2m - t2m.sel(month=month)
         ast2m = st2m - t2m.sel(month=month)
-        atpm = etpm - tpm.sel(month=month)
-        astpm = stpm - tpm.sel(month=month)
-        print(at2m)
-        for pn, item in enumerate([at2m['t2m'], ast2m['t2m']]):#, atpm['tp'], astpm['tp']]):
-            ax1 = plt.subplot2grid((plot_nr, 2), (nr, pn), projection=ccrs.PlateCarree())
+        atpm = tpm.sel(month=month) - etpm
+        astpm = tpm.sel(month=month) - stpm
+        for pn, item in enumerate([mask_ocean(at2m['t2m'], land_mask),
+                                   mask_ocean(ast2m['t2m'], land_mask),
+                                   mask_ocean(atpm['tp'], land_mask),
+                                   mask_ocean(astpm['tp'], land_mask)]):
+            ax1 = plt.subplot2grid((plot_nr, 4), (nr, pn), projection=ccrs.PlateCarree())
             #item.plot()
+            if pn < 2:
+                vmin = -4.5
+                vmax = 4.5
+            if pn > 1:
+                vmin = -.1
+                vmax = .1
             item.plot.pcolormesh(ax=ax1, transform=ccrs.PlateCarree(),
-                                   x = 'longitude', y='latitude', add_colorbar=False)
+                                   x = 'longitude', y='latitude', cmap='seismic', vmin=vmin, vmax=vmax, add_colorbar=True)
             #ax1.add_feature(cartopy.feature.OCEAN)
             ax1.add_feature(cartopy.feature.COASTLINE)
             if (pn==0):
-                ax1.set_title('ERA5 mean t anomaly {0}/{1}'.format(year, month))
+                ax1.set_title('ERA5 mean temp anomaly {0}/{1}'.format(year, month))
             elif (pn==1):
-                ax1.set_title('SEA5 mean t anomaly 3 month lead {0}/{1}'.format(year, month))
+                ax1.set_title('SEA5 mean temp anomaly 3 month lead {0}/{1}'.format(year, month))
+            elif (pn==2):
+                ax1.set_title('ERA5 precipitation anomaly {0}/{1}'.format(year, month))
+            elif (pn==3):
+                ax1.set_title('SEAS5 precipitation anomaly 3 month lead {0}/{1}'.format(year, month))
             if pn == 0:
                 ax1.set_ylabel('{0} {1}'.format(year, month))
-    plt.savefig('aust_t2m.png', dpi=80)
- 
+    #plt.tight_layout()
+    fig.suptitle('2009-09 to 2010-10', fontsize=32)
+    plt.savefig('aust_t2m_mm_2009.png', dpi=80)
 
 
- 
 
 land_mask = 'data/era_land_mask.nc'
 land_mask = xr.open_dataset(land_mask)
 australia = [-10, -44, 113, 154]
 land_mask = spatial_subset(land_mask, australia)
-data_path = '/mnt/data/SEAS5/australia'
+#data_path = '/mnt/data/SEAS5/australia'
+data_path = '/mnt/data/era5/australia'
 t2m, t2max, tpm = read_monthly_means()
 dates = pd.date_range('2009-09-01', periods=14, freq=pd.offsets.MonthBegin())
 do_plots(dates, t2m, t2max, tpm, land_mask)
+#for dt in dates:
+#    seas5_make_means(dt)
+
 
 

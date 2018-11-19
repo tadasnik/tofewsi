@@ -233,23 +233,25 @@ if __name__ == '__main__':
     #bbox = [-16, 133, -38, 151]
 
     #(113.338953078, -43.6345972634, 153.569469029, -10.6681857235)),
-    data_path = '/mnt/data/SEAS5/australia'
+    data_path = '/mnt/data/SEAS5/australia_2l'
     australia = [-10, 113, -44, 154]
     #TODO
-    d_range = pd.date_range('2016-09-01', periods=14, freq=pd.offsets.MonthBegin())
+    d_range = pd.date_range('2009-08-01', periods=12, freq=pd.offsets.MonthBegin())
     #starting date
     #pr = pd.date_range('2010-01-01', '2011-12-31', freq='M')
     for date in d_range:
         #do
-        start_date = date - pd.DateOffset(months = 3)
-        end_date = date + pd.DateOffset(months = 1)
-        dif = (date - start_date).total_seconds() / 60 / 60
-        dif_e = (end_date - start_date).total_seconds() / 60 / 60
+        #start_date = date - pd.DateOffset(months = 3)
+        start_date = date + pd.DateOffset(months = 2)
+        end_date = date + pd.DateOffset(months = 4)
+        #end_date = date + pd.DateOffset(months = 1)
+        dif = (start_date - date).total_seconds() / 60 / 60
+        dif_e = (end_date - date).total_seconds() / 60 / 60
         #how to add 3 and 4 months to starting 
         #6 hour steps where diff is difference between two dates in seconds
         #dif = (dt -dt1).total_seconds()
         steps = list(range(int(dif), int(dif_e) + 5, 6))
-        mars = Marser(data_path, start_date, start_date, grid, bbox=australia)
+        mars = Marser(data_path, date, date, grid, bbox=australia)
         mars.SEAS5_mars_dict(steps=steps)
         mars.call_mars()
 
