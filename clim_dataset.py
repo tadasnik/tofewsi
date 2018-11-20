@@ -185,6 +185,12 @@ if __name__ == '__main__':
     cl = Climdata(data_path, bbox=None, hour=None)
     #dcs = []
     #fwis = []
+    year = 2008
+    ds = xr.open_dataset(os.path.join('/mnt/data/era5/indonesia', 'era5_ecosys_{0}.nc'.format(year)))
+    ds = cl.spatial_subset(ds, bbox)
+    ch = xr.open_dataset(os.path.join(chirps_path, 'chirps-v2.0.{0}.days_p05.nc'.format(year)))
+    ch = cl.spatial_subset(ch, [bbox[1], bbox[0], bbox[2], bbox[3]])
+    """
     for year in range(2009, 2016, 1):
         print(year)
         ds = xr.open_dataset(os.path.join('/mnt/data/era5/indonesia', 'era5_ecosys_{0}.nc'.format(year)))
@@ -211,7 +217,8 @@ if __name__ == '__main__':
         dfr = cl.prepare_dataframe_era5_chirps(ds)
         cl.write_csv(dfr, os.path.join('/mnt/data/era5/riau', 'era5_chirps_5km_{0}.csv.gz'.format(year)))
 
-        """
+    """
+    """
         #fwi_ds = xr.open_dataset('data/fwi_dc_riau_{0}.nc'.format(year))
         fwi_ds = ds.read_dataset('data/fwi_dc_riau_{0}.nc'.format(year))
         #fwi = fwi_ds['fwi'].where((fwi_ds['latitude']==1.25)&(fwi_ds['longitude']==101.5), drop=True)

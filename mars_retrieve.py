@@ -236,7 +236,7 @@ if __name__ == '__main__':
     data_path = '/mnt/data/SEAS5/australia_2l'
     australia = [-10, 113, -44, 154]
     #TODO
-    d_range = pd.date_range('2009-08-01', periods=12, freq=pd.offsets.MonthBegin())
+    d_range = pd.date_range('2010-04-01', periods=4, freq=pd.offsets.MonthBegin())
     #starting date
     #pr = pd.date_range('2010-01-01', '2011-12-31', freq='M')
     for date in d_range:

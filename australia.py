@@ -106,47 +106,56 @@ def read_monthly_means():
     tpm = xr.open_dataset('data/aust_sum_mean_monthly_tp.nc')
     return t2m, t2max, tpm
 
-def seas5_make_means(dt):
-    year = dt.year
-    month = dt.month
-    dt = dt - pd.DateOffset(months = 3)
-    print(dt)
-    data_path = '/mnt/data/SEAS5/australia'
-    fnames = glob.glob(os.path.join(data_path, '{0}*.*'.format(dt.date())))
-    ds = xr.open_dataset(fnames[0])
-    stp = ds['t2m'].median('number')
-    st2m = stp.mean('time')
-    st2m.to_netcdf('data/aust_s5_t2m_mm_{0}_{1}.nc'.format(year, month))
-    #stp = ds['tp'].median('number')
-    #stp = ds['tp'].mean('number')
-    #stp = stp[-1,:,:] - stp[0,:,:]
-    #stp_day = stp.groupby('time.day').sum('time')
-    #st2m = ds['t2m'].mean(['number', 'time'])
-    #st2m.to_netcdf('data/aust_s5_t2m_mm_{0}_{1}.nc'.format(year, month))
-    #stp.to_netcdf('data/aust_s5_tp_mm_{0}_{1}.nc'.format(year, month))
-    #return st2m, stp
+def create_monthly_stats(year, month_leads):
+    ds_list = []
+    era5_t2m, era5_tp = era5_make_means(year)
+    era5_t2m = era5_t2m.to_dataset(name = 'e5_t2m')
+    era5_tp = era5_tp.to_dataset(name = 'e5_tp')
+    ds_list.extend([era5_t2m, era5_tp])
+    month_dates = pd.date_range('{0}-01-01'.format(year),
+                                periods = 12, freq = pd.offsets.MonthBegin())
+    for month_date in month_dates:
+        for lead in month_leads:
+            s5_t2m, s5_tp = seas5_make_means(month_date, lead)
+            s5_t2m_name = 's5_t2m_{}'.format(lead)
+            s5_t2m = xr.Dataset({s5_t2m_name: (('month', 'latitude', 'longitude'),
+                                 np.expand_dims(s5_t2m.values, 0))},
+                                 coords = {'month': [month_date.month],
+                                           'latitude': s5_t2m.latitude,
+                                           'longitude': s5_t2m.longitude})
+            s5_tp_name = 's5_tp_{}'.format(lead)
+            s5_tp = xr.Dataset({s5_tp_name: (('month', 'latitude', 'longitude'),
+                                 np.expand_dims(s5_tp.values, 0))},
+                                 coords = {'month': [month_date.month],
+                                           'latitude': s5_tp.latitude,
+                                           'longitude': s5_tp.longitude})
+            ds_list.extend([s5_t2m, s5_tp])
+    ds_all = xr.merge(ds_list)
+    return ds_all
 
-def era5_make_means(dt):
-    d
-    dps = []
-    for year in range(2008, 2018, 1):
-        """
-        fname = glob.glob(os.path.join(data_path, '{0}*165.128*'.format(year)))[0]
-        ds = xr.open_dataset(fname)
-        ds = ds['t2m'][::6, :, :]
-        dm = ds.groupby('time.month').mean('time')
-        dm.to_netcdf('data/aust_era5_{0}_t2m_mm.nc'.format(ds.time.dt.year[0].values))
-        dm = ds.groupby('time.month').max('time')
-        dm.to_netcdf('data/aust_era5_{0}_t2m_mmax.nc'.format(ds.time.dt.year[0].values))
-        #dps.append(ds)
-        """
-        fname = glob.glob(os.path.join(data_path, '{0}*228.128*'.format(year)))[0]
-        dsp = xr.open_dataset(fname)
-        dsp = dsp['tp']
-        #dm = dsp.groupby('time.month').sum('time')
-        #dm.to_netcdf('data/aust_era5_{0}_tp_mm.nc'.format(dsp.time.dt.year[0].values))
-        dps.append(dsp)
-    return dps
+def seas5_make_means(month_date, month_lead):
+    year = month_date.year
+    month = month_date.month
+    data_path = '/mnt/data/SEAS5/australia_2l'
+    file_date = month_date - pd.DateOffset(months = month_lead)
+    fname = glob.glob(os.path.join(data_path, '{0}*.*'.format(file_date.date())))[0]
+    ds = xr.open_dataset(fname)
+    ds = ds[['t2m', 'tp']]
+    ds = ds.sel(time = ds['time.month'] == month_date.month)
+    ensamble_median = ds.median('number')
+    t2m_mean = ensamble_median['t2m'].mean('time')
+    tp_sum = ensamble_median['tp'][-1, :, :] - ensamble_median['tp'][0, :, :]
+    return t2m_mean, tp_sum
+
+def era5_make_means(year):
+    fname = glob.glob(os.path.join(data_path, '{0}*165.128*'.format(year)))[0]
+    ds = xr.open_dataset(fname)
+    ds = ds['t2m'][::6, :, :]
+    t2m_mean = ds.groupby('time.month').mean('time')
+    fname = glob.glob(os.path.join(data_path, '{0}*228.128*'.format(year)))[0]
+    dsp = xr.open_dataset(fname)
+    tp = dsp['tp'].groupby('time.month').sum('time')
+    return t2m_mean, tp
 
 
 def seas5_means(dt):
@@ -217,17 +226,18 @@ def do_plots(dates, t2m, t2max, tpm, land_mask):
 
 
 
+#TODO
+#for year make plots: era5 t anomaly
 land_mask = 'data/era_land_mask.nc'
 land_mask = xr.open_dataset(land_mask)
 australia = [-10, -44, 113, 154]
 land_mask = spatial_subset(land_mask, australia)
 #data_path = '/mnt/data/SEAS5/australia'
 data_path = '/mnt/data/era5/australia'
-t2m, t2max, tpm = read_monthly_means()
-dates = pd.date_range('2009-09-01', periods=14, freq=pd.offsets.MonthBegin())
-do_plots(dates, t2m, t2max, tpm, land_mask)
+ds = create_monthly_stats(2009, [2,3])
+#t2m, t2max, tpm = read_monthly_means()
+#dates = pd.date_range('2009-09-01', periods=14, freq=pd.offsets.MonthBegin())
+#do_plots(dates, t2m, t2max, tpm, land_mask)
 #for dt in dates:
 #    seas5_make_means(dt)
-
-
 
