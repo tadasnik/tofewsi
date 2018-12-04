@@ -4,9 +4,31 @@ import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
 import cartopy
-import cartopy.crs as ccrs
 from envdata import *
+import cartopy.crs as ccrs
+from cartopy.mpl.geoaxes import GeoAxes
+from cartopy.feature import ShapelyFeature
+import cartopy.io.shapereader as shapereader
+from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
+from mpl_toolkits.axes_grid1 import AxesGrid
 
+def austr_states():
+    #peat_path = '/home/tadas/tofewsi/data/peat_atlas'
+    #peat_fname = 'WI_PeatAtlas_SumatraKalimantan_MERGED_DTRV120914_without_legend_hapus2.shp'
+    peat_path = 'data/borders'
+    peat_fname = 'ne_10m_admin_1_states_provinces.shp'
+    peat_shp = os.path.join(peat_path, peat_fname)
+    peat_shapes = shapereader.Reader(peat_shp)
+    geoms = peat_shapes.geometries()
+    countries = peat_shapes.records()
+    aust = [x[1] for x in zip(countries, geoms) if x[0].attributes['admin'] == 'Australia']
+    austr_state_borders = ShapelyFeature(aust,
+                               ccrs.PlateCarree(),
+                               facecolor='none',
+                               edgecolor='black',
+                               alpha = 0.5)
+    return austr_state_borders
+ 
 def spatial_subset(dataset, bbox):
     """
     Selects data within spatial bbox. bbox coords must be given as
@@ -185,6 +207,7 @@ def mask_ocean(dar, land_mask):
 def do_plots(dates, t2m, t2max, tpm, land_mask):
     plot_nr = len(dates)
     fig = plt.figure(figsize = (25, 3.5 * plot_nr))
+    fig.subplots_adjust(hspace=0.4, wspace=0.4)
     for nr, dt in enumerate(dates):
         year = dt.year
         month = dt.month
@@ -224,6 +247,99 @@ def do_plots(dates, t2m, t2max, tpm, land_mask):
     fig.suptitle('2009-09 to 2010-10', fontsize=32)
     plt.savefig('aust_t2m_mm_2009.png', dpi=80)
 
+def do_plots_year(year, lead, t2m, t2max, tpm, land_mask, borders):
+    ds = xr.open_dataset('data/aust_mm_{0}.nc'.format(year))
+    projection = ccrs.PlateCarree() 
+    axes_class = (GeoAxes, 
+                  dict(map_projection=projection)) 
+    fig = plt.figure(figsize=(33,40)) 
+    axgr = AxesGrid(fig, 111, axes_class=axes_class, 
+                    nrows_ncols=(12, 6), 
+                    axes_pad=.3, 
+                    cbar_mode='edge', 
+                    cbar_location='bottom',
+                    cbar_pad=0.5, 
+                    cbar_size='3%', 
+                    label_mode='')    
+    for month, row in enumerate(axgr.axes_row, 1):
+        et2m = ds['e5_t2m'].sel(month = month)
+        etpm = ds['e5_tp'].sel(month = month)
+        st2m2 = ds['s5_t2m_2'].sel(month = month)
+        st2m3 = ds['s5_t2m_3'].sel(month = month)
+        stpm2 = ds['s5_tp_2'].sel(month = month)
+        stpm3 = ds['s5_tp_3'].sel(month = month)
+
+        at2m = et2m - t2m.sel(month=month)
+        ast2m2 = st2m2 - t2m.sel(month=month)
+        ast2m3 = st2m3 - t2m.sel(month=month)
+        atpm = tpm.sel(month=month) - etpm
+        astpm2 = tpm.sel(month=month) - stpm2
+        astpm3 = tpm.sel(month=month) - stpm3
+        for pn, item in enumerate([mask_ocean(at2m['t2m'], land_mask),
+                                   mask_ocean(ast2m2['t2m'], land_mask),
+                                   mask_ocean(ast2m3['t2m'], land_mask),
+                                   mask_ocean(atpm['tp'], land_mask),
+                                   mask_ocean(astpm2['tp'], land_mask),
+                                   mask_ocean(astpm3['tp'], land_mask)]):
+            ax1 = row[pn]
+            if (month==1) and pn==0:
+                ax1.set_title('ERA5 t2m anomaly')
+            elif (month==1) and pn==1:
+                ax1.set_title('SEAS5 t2m anomaly 2m lead')
+            elif (month==1) and pn==2:
+                ax1.set_title('SEAS5 t2m anomaly 3m lead')
+            elif (month==1) and pn==3:
+                ax1.set_title('ERA5 tp anomaly')
+            elif (month==1) and pn==4:
+                ax1.set_title('SEAS5 tp anomaly 2m lead')
+            elif (month==1) and pn==5:
+                ax1.set_title('SEAS5 tp anomaly 3m lead')
+            else:
+                ax1.set_title('')
+            if pn < 3:
+                vmin = -5
+                vmax = 5
+                img = item.plot.pcolormesh(ax=ax1, transform=ccrs.PlateCarree(),
+                                       x = 'longitude', y='latitude',
+                                       cmap='seismic', vmin=vmin, vmax=vmax,
+                                       add_colorbar=False, add_labels=False)
+                ax1.add_feature(cartopy.feature.COASTLINE)
+            else:
+                vmin = -.4
+                vmax = .4
+                img2 = item.plot.pcolormesh(ax=ax1, transform=ccrs.PlateCarree(),
+                                       x = 'longitude', y='latitude',
+                                       cmap='seismic', vmin=vmin, vmax=vmax,
+                                       add_colorbar=False, add_labels=False)
+                ax1.add_feature(cartopy.feature.COASTLINE)
+
+            if pn == 0:
+                ax1.set_ylabel('{0}/{1}'.format(year, month))
+                ax1.set_yticks([-30], crs=projection)
+                ax1.set_yticklabels([""])
+                """
+                if (pn==0):
+                    ax1.set_title('ERA5 t2m anomaly)
+                elif (pn==1):
+                    ax1.set_title('SEA5 mean temp anomaly 3 month lead {0}/{1}'.format(year, month))
+                elif (pn==2):
+                    ax1.set_title('ERA5 precipitation anomaly {0}/{1}'.format(year, month))
+                elif (pn==3):
+                    ax1.set_title('SEAS5 precipitation anomaly 3 month lead {0}/{1}'.format(year, month))
+                if pn == 0:
+                    ax1.set_ylabel('{0} {1}'.format(year, month))
+                """
+            ax1.add_feature(borders)
+        axgr.cbar_axes[0].colorbar(img)
+        axgr.cbar_axes[1].colorbar(img)
+        axgr.cbar_axes[2].colorbar(img)
+        axgr.cbar_axes[3].colorbar(img2)
+        axgr.cbar_axes[4].colorbar(img2)
+        axgr.cbar_axes[5].colorbar(img2)
+    tit = fig.suptitle('Year {0}'.format(year), y=.9, fontsize=32)
+    plt.savefig('Australia_{0}_state_borders.png'.format(year), dpi=80, bbox_inches='tight', bbox_extra_artists=[tit])
+
+
 
 
 #TODO
@@ -234,9 +350,12 @@ australia = [-10, -44, 113, 154]
 land_mask = spatial_subset(land_mask, australia)
 #data_path = '/mnt/data/SEAS5/australia'
 data_path = '/mnt/data/era5/australia'
-ds = create_monthly_stats(2009, [2,3])
-#t2m, t2max, tpm = read_monthly_means()
+#ds = create_monthly_stats(2009, [2,3])
+t2m, t2max, tpm = read_monthly_means()
 #dates = pd.date_range('2009-09-01', periods=14, freq=pd.offsets.MonthBegin())
+#for year in range(2009, 2012, 1):
+borders = austr_states()
+do_plots_year(2009, 2, t2m, t2max, tpm/10, land_mask, borders)
 #do_plots(dates, t2m, t2max, tpm, land_mask)
 #for dt in dates:
 #    seas5_make_means(dt)
