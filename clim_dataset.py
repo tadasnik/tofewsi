@@ -3,6 +3,8 @@ import datetime
 import numpy as np
 import pandas as pd
 import xarray as xr
+import dask as ds
+from dask.distributed import Client
 
 class Climdata(object):
 
@@ -171,14 +173,19 @@ class Climdata(object):
 if __name__ == '__main__':
     #data_path = '/home/tadas/tofewsi/data/'
     #fname = '2013-12-31_to_2014-12-31_169.128_228.128_0.25deg.nc'
-    #data_path = '/mnt/data/SEAS5/20110501'
+    data_path = '/mnt/data/SEAS5'
     #data_path = '/mnt/data/era5/amazon'
-    data_path = '/mnt/data/era5/riau'
-    chirps_path = '/mnt/data/chirps'
+    #data_path = '/mnt/data/era5/riau'
+    #chirps_path = '/mnt/data/chirps'
     #data_path = '.'
     #fname = '23_tt_6hourly.nc'
     #fname1 = '24_tt_6hourly.nc'
-
+    ds_name = os.path.join(data_path, '2018_11_seas5.nc')
+    # indonesia bbox
+    #bbox = [8.0, 93.0, -13.0, 143.0]
+    bbox = [8.0, -13.0, 93.0, 143.0]
+    cl = Climdata(data_path, bbox=bbox, hour=None)
+    """
     # Riau bbox
     bbox = [3, -2, 99, 104]
     #bbox = [1, -.4, 101, 103.5]
@@ -190,6 +197,7 @@ if __name__ == '__main__':
     ds = cl.spatial_subset(ds, bbox)
     ch = xr.open_dataset(os.path.join(chirps_path, 'chirps-v2.0.{0}.days_p05.nc'.format(year)))
     ch = cl.spatial_subset(ch, [bbox[1], bbox[0], bbox[2], bbox[3]])
+    """
     """
     for year in range(2009, 2016, 1):
         print(year)

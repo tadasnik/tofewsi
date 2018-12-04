@@ -99,9 +99,9 @@ class Marser(object):
         #MARS dictionary with items which are shared between all retrievals:
         self.mars_dict = { "date": self.date_range,
                          "expver": "1",
-                        "levtype": "sfc",
-                           "grid": join_values([grid, grid]),
-                         "format": "netcdf"}
+                        "levtype": "sfc"}
+                         #  "grid": join_values([grid, grid]),}
+                         #"format": "netcdf"}
         if bbox:
             self.bbox = join_values(bbox)
             self.mars_dict["area"] = self.bbox
@@ -181,9 +181,21 @@ class Marser(object):
         """
         print('Calling MARS with dictionary:\n {0}'.format(self.mars_dict))
         server = ECMWFService("mars")
-        data_file_name = self.get_file_name()
+        #data_file_name = self.get_file_name()
+        data_file_name = self.get_file_name_grib()
         create_directory(self.data_path)
         server.execute(self.mars_dict, data_file_name)
+
+    def get_file_name_grib(self):
+        """
+        Returns absolute path file name for mars data.
+        """
+        data_file_name= os.path.join(self.data_path, "{0}_{1}.grib".format(
+                                     '_'.join([self.mars_dict['date'].split('/')[0],
+                                              self.mars_dict['date'].split('/')[-1]]),
+                                     '_'.join(self.mars_dict['param'].split('/'))))
+        return data_file_name
+
 
     def get_file_name(self):
         """
@@ -201,29 +213,27 @@ if __name__ == '__main__':
     # How to setup ECMWF data access:
     # https://software.ecmwf.int/wiki/display/WEBAPI/Accessing+ECMWF+data+servers+in+batch
     #grid spacing in degrees
-    grid = 0.25
+    grid = 0.4
     #grid = 1
 
     # Change these as needed
     #MARS coordinates format 'area: North/West/South/East'
     #Indonesia bounding box = [5.47982086834, 95.2930261576, -10.3599874813, 141.03385176]
     #Round Indonesia bb to get data for wider area
-    #bbox = [8.0, 93.0, -13.0, 143.0]
+    bbox = [8.0, 93.0, -13.0, 143.0]
 
     #amazon
     #bbox = [12, -80, -12, -40]
 
-    """
     #SEAS5
     data_path = '/mnt/data/SEAS5'
-    years = [2008, 2009, 2010, 2011, 2012]
-    for year in years:
+    #years = [2013, 2014, 2015, 2016, 2017]
+    for year in range(2002, 2007, 1):
         start_date = datetime.datetime(year, 5, 1)
         end_date = datetime.datetime(year, 5, 1)
         mars = Marser(data_path, start_date, end_date, grid, bbox=bbox)
         mars.SEAS5_mars_dict()
         mars.call_mars()
-    """
 
 
 
@@ -232,11 +242,12 @@ if __name__ == '__main__':
     #Allan's 1 deg grid
     #bbox = [-16, 133, -38, 151]
 
+    """
     #(113.338953078, -43.6345972634, 153.569469029, -10.6681857235)),
     data_path = '/mnt/data/SEAS5/australia_2l'
     australia = [-10, 113, -44, 154]
     #TODO
-    d_range = pd.date_range('2010-04-01', periods=4, freq=pd.offsets.MonthBegin())
+    d_range = pd.date_range('2010-06-01', periods=4, freq=pd.offsets.MonthBegin())
     #starting date
     #pr = pd.date_range('2010-01-01', '2011-12-31', freq='M')
     for date in d_range:
@@ -254,6 +265,7 @@ if __name__ == '__main__':
         mars = Marser(data_path, date, date, grid, bbox=australia)
         mars.SEAS5_mars_dict(steps=steps)
         mars.call_mars()
+    """
 
     #MARS parameters
     # surface solar radiation downwards: 169.128
