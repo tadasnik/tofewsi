@@ -67,16 +67,12 @@ class Envdata(metaclass=abc.ABCMeta):
         naive and will only work for bboxes fully fitting in the Eastern hemisphere!!!
         Args:
             dataset - xarray dataset
-            bbox - (list) [North, South, West, East]
+            bbox - (list) [North, West, South, East]
         Returns:
             xarray dataset
         """
-        lat_name = [x for x in list(dataset.coords) if 'lat' in x]
-        lon_name = [x for x in list(dataset.coords) if 'lon' in x]
-        dataset = dataset.where((dataset[lat_name[0]] <= bbox[0]) &
-                                (dataset[lat_name[0]] >= bbox[1]), drop=True)
-        dataset = dataset.where((dataset[lon_name[0]] >= bbox[2]) &
-                                (dataset[lon_name[0]] <= bbox[3]), drop=True)
+        dataset = dataset.sel(longitude = slice(bbox[1], bbox[3]))
+        dataset = dataset.sel(latitude = slice(bbox[0], bbox[2]))
         return dataset
 
     def time_subset(self, dataset, hour=None, start_date=None, end_date=None):
@@ -98,6 +94,5 @@ class Envdata(metaclass=abc.ABCMeta):
         print('finished writing')
 
 if __name__ == '__main__':
-    data_path = '/mnt/data/SEAS5'
-    store_name = os.path.join(data_path, '2013-05-01_164.128_165.128_166.128_167.128_168.128_169.128_228.128_0.25deg.nc')
-    fo = Envdata(data_path, os.path.join(data_path, store_name))
+    pass
+

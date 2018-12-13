@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import xarray as xr
-from fwi import FWICalc_pixel
+#from fwi import FWICalc_pixel
 
 def pixel_wise(fwi_sel):
     ffmc0 = 85.0
@@ -58,7 +58,7 @@ def compare_vector_pixel(temp, rhum, wind, prcp, mth, day):
     print('vect', ffmc[0][0], dmc[0][0], dc[0][0], fwi[0][0])
     #print('{0:.1f} {1:.1f} {2:.1f} {3:.1f} {4:.1f} {5:.1f}'.format(ffmc, dmc, dc, isi, bui, fwi))
 
-class FWICalc:
+class FWI:
     def __init__(self, temp, rhum, wind, prcp):
         self.rhum = rhum
         self.temp = temp
@@ -87,7 +87,7 @@ class FWICalc:
                 mo_mask = prcp_mask & (mo < 150.0)
                 mo[mo_mask] = (mo[mo_mask] + 42.5 * rf[mo_mask] *
                                 np.exp(-100.0 / (251.0 - mo[mo_mask])) *
-                                (1.0 - np.exp(-6.93 / rf[mo_mask])))                   #*Eq. 3a*#
+                                (1.0 - np.exp(-6.93 / rf[mo_mask])))        #*Eq. 3a*#
         mo[mo > 250.0] = 250.0
         ed = 0.942 * self.rhum**0.679 + (11.0 * np.exp((self.rhum - 100.0) / 10.0)) \
             + 0.18 * (21.1 - self.temp) * (1.0 - 1.0 / np.exp(0.1150 * self.rhum)) #*Eq. 4*#
@@ -139,6 +139,7 @@ class FWICalc:
                 dmc0_mask = (dmc0 > 33.0) & (dmc0 <= 65.0)
                 bb[dmc0_mask] = 14.0 - 1.3 * np.log(dmc0[dmc0_mask])
             if np.any(dmc0 > 65.0):
+                dmc0_mask = dmc0 <= 65.0
                 bb[dmc0_mask] = 6.2 * np.log(dmc0[dmc0_mask]) - 17.2
             wmr = wmi + (1000 * rw) / (48.77 + bb[prcp_mask] * rw)
             pr[prcp_mask] = 43.43 * (5.6348 - np.log(wmr - 20.0))
@@ -226,10 +227,10 @@ if __name__ == '__main__':
             print(tt)
             fwi_sel = fwi_arr.sel(time = tt)
             mth, day = fwi_sel['time.month'].values, fwi_sel['time.day'].values
-            fs = FWICalc(fwi_sel['t2m'].values,
-                                fwi_sel['h2m'].values,
-                                fwi_sel['w10'].values,
-                                fwi_sel['tp'].values)
+            fs = FWI(fwi_sel['t2m'].values,
+                     fwi_sel['h2m'].values,
+                     fwi_sel['w10'].values,
+                     fwi_sel['tp'].values)
             ffmc = fs.FFMCcalc(ffmc0)
             dmc = fs.DMCcalc(dmc0, mth)
             dc = fs.DCcalc(dc0, mth)
