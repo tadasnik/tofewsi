@@ -2,6 +2,35 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
+def calc_index_dfr(dfr):
+    ffmc0 = 85.0
+    dmc0 = 6.0
+    dc0 = 15.0
+    fwis = []
+    dcs = []
+    ffmcs = []
+    for name, row in dfr.iterrows():
+        print(row)
+        mth, temp, rhum, wind, prcp = row[['month', 't2m', 'h2m', 'w10', 'tp']]
+        fw = FWICalc_pixel(temp, rhum, wind, prcp)
+        if rhum > 100.0:
+            rhum = 100.0
+        mth = int(mth)
+        ffmc = fw.FFMCcalc(ffmc0)
+        dmc = fw.DMCcalc(dmc0, mth)
+        dc = fw.DCcalc(dc0, mth)
+        isi = fw.ISIcalc(ffmc)
+        bui = fw.BUIcalc(dmc, dc)
+        fwi = fw.FWIcalc(isi, bui)
+        ffmc0 = ffmc
+        dmc0 = dmc
+        dc0 = dc
+        fwis.append(fwi)
+        ffmcs.append(ffmc)
+        dcs.append(dc)
+    return fwis, ffmcs, dcs
+
+
 class FWICalc_pixel:
     def __init__(self, temp, rhum, wind, prcp):
         self.rhum = rhum
@@ -77,6 +106,26 @@ class FWICalc_pixel:
 
     def DCcalc(self, dc0, mth):
         fl = [-1.6, -1.6, -1.6, 0.9, 3.8, 5.8, 6.4, 5.0, 2.4, 0.4, -1.6, -1.6]
+        if self.prcp > 2.8:
+            rw = 0.83 * self.prcp - 1.27 #*Eq. 18*# 
+            smi = 800.0 * np.exp(-dc0 / 400.0)                              #*Eq. 19*#
+            smr = smi + 3.937 * rw
+            dr = 400.0 * np.log(800.0 / smr)
+            if dr > 0.0:
+                dc0 = dr
+            else:
+                dc0 = 0.0
+        if self.temp < -2.8:
+            v = fl[mth - 1]
+        else:
+            v = (0.36 * (self.temp + 2.8) + fl[mth - 1])
+        if v <= 0.0:
+            v = 0.0 #*Eq. 22*#
+        dc = dc0 + 0.5 * v
+        return dc
+
+    def old_DCcalc(self, dc0, mth):
+        fl = [-1.6, -1.6, -1.6, 0.9, 3.8, 5.8, 6.4, 5.0, 2.4, 0.4, -1.6, -1.6]
         if self.temp < -2.8:
             self.temp = -2.8
         pe = (0.36 * (self.temp + 2.8) + fl[mth - 1]) / 2
@@ -120,6 +169,7 @@ class FWICalc_pixel:
 
 if __name__ == '__main__':
     #testing
+    """
     ffmc0 = 85.0
     dmc0 = 6.0
     dc0 = 15.0
@@ -141,5 +191,5 @@ if __name__ == '__main__':
         ffmc0 = ffmc
         dmc0 = dmc
         dc0 = dc
-
+    """
 

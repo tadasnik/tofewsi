@@ -4,8 +4,11 @@ import numpy as np
 import xarray as xr
 from netCDF4 import Dataset
 #import geopandas as gpd
+import cartopy
 import cartopy.crs as ccrs
+from cartopy.mpl.geoaxes import GeoAxes
 import cartopy.io.shapereader as shapereader
+from mpl_toolkits.axes_grid1 import AxesGrid
 from cartopy.feature import ShapelyFeature
 from cartopy import feature
 import matplotlib
@@ -113,7 +116,6 @@ def plot_indonesia_discrete():
         gl.xlabels_top = gl.ylabels_right = False
         #ax.set_title(lc_name)
             #plt.colorbar(im, ax=ax, shrink=.62, orientation='horizontal')
-     
         #ax = fig.add_subplot(111, projection=ccrs.PlateCarree())
         #dataset.plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(),
         #                       x = 'longitude', y='latitude', add_colorbar=False)
@@ -133,7 +135,7 @@ def plot_peatlands(dataset):
         ax.add_feature(borders)
         #ax.add_feature(feature.BORDERS, linestyle='-')
         #ax.add_feature(feature.COASTLINE)
- 
+
 def plot_dataset(dataset):
     fig = plt.figure(figsize=(18,6))
     #select hour
@@ -160,7 +162,7 @@ def plot_dataset(dataset):
         ax.add_feature(borders)
         ax.set_title(lc_name)
         #plt.colorbar(im, ax=ax, shrink=.62, orientation='horizontal')
- 
+
     """
     ax = fig.add_subplot(111, projection=ccrs.PlateCarree())
     dataset.plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(),
@@ -172,4 +174,71 @@ def plot_dataset(dataset):
     plt.tight_layout(pad=2, w_pad=3, h_pad=7.0)
     #plt.savefig('lulc_2010_riau.png', dpi = 80)
     plt.show()
+
+def mask_ocean(dar, land_mask):
+    dar = dar.where(land_mask['lsm'][0, :, :].values)
+    return dar
+
+def spatial_subset(dataset, bbox):
+    """
+    Selects data within spatial bbox. bbox coords must be given as
+    positive values for the Northern hemisphere, and negative for
+    Southern. West and East both positive - Note - the method is
+    naive and will only work for bboxes fully fitting in the Eastern hemisphere!!!
+    Args:
+        dataset - xarray dataset
+        bbox - (list) [North, West, South, East]
+    Returns:
+        xarray dataset
+    """
+    dataset = dataset.sel(longitude = slice(bbox[1], bbox[3]))
+    dataset = dataset.sel(latitude = slice(bbox[0], bbox[2]))
+    return dataset
+
+
+def make_seas5_fwi_plot(ds, bbox, prod):
+    land_mask = 'data/era_land_mask.nc'
+    land_mask = xr.open_dataset(land_mask)
+    land_mask = spatial_subset(land_mask, bbox)
+    land_mask = land_mask.interp_like(ds.isel(time=0))
+    ds = ds[prod]
+    projection = ccrs.PlateCarree()
+    axes_class = (GeoAxes,
+                  dict(map_projection=projection))
+    fig = plt.figure(figsize=(12,10))
+    axgr = AxesGrid(fig, 111, axes_class=axes_class,
+                    nrows_ncols=(3, 2),
+                    axes_pad=.3,
+                    cbar_mode='edge',
+                    cbar_location='bottom',
+                    cbar_pad=0.5,
+                    cbar_size='3%',
+                    label_mode='')
+    for nr, ax1 in enumerate(axgr, 0):
+        ds_sel = ds.isel(time=nr)
+        ds_sel = mask_ocean(ds_sel, land_mask)
+        #if (month==1) and pn==0:
+        #    ax1.set_title('ERA5 t2m anomaly')
+        #elif (month==1) and pn==1:
+        #    ax1.set_title('SEAS5 t2m anomaly 2m lead')
+        vmin = ds.min()
+        vmax = 200
+        img = ds_sel.plot.pcolormesh(ax=ax1, transform=ccrs.PlateCarree(),
+                               x = 'longitude', y='latitude',
+                               vmin=vmin, vmax=vmax,
+                               add_colorbar=False)#, add_labels=False)
+        ax1.add_feature(cartopy.feature.COASTLINE)
+        #    if pn == 0:
+        #        ax1.set_ylabel('{0}/{1}'.format(year, month))
+        #        ax1.set_yticks([-30], crs=projection)
+        #        ax1.set_yticklabels([""])
+        axgr.cbar_axes[0].colorbar(img)
+        axgr.cbar_axes[1].colorbar(img)
+        #axgr.cbar_axes[2].colorbar(img)
+        #axgr.cbar_axes[3].colorbar(img2)
+        #axgr.cbar_axes[4].colorbar(img2)
+        #axgr.cbar_axes[5].colorbar(img2)
+    tit = fig.suptitle('2018-11-01 mean monthly {0} forecast'.format(prod), y=.9, fontsize=18)
+    plt.savefig('figs/2018-11_s5_{0}_indonesia.png'.format(prod), dpi=80, bbox_inches='tight', bbox_extra_artists=[tit])
+
 

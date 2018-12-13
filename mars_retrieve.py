@@ -99,9 +99,9 @@ class Marser(object):
         #MARS dictionary with items which are shared between all retrievals:
         self.mars_dict = { "date": self.date_range,
                          "expver": "1",
-                        "levtype": "sfc"}
-                         #  "grid": join_values([grid, grid]),}
-                         #"format": "netcdf"}
+                        "levtype": "sfc",
+                        "grid": join_values([grid, grid]),
+                        "format": "netcdf"}
         if bbox:
             self.bbox = join_values(bbox)
             self.mars_dict["area"] = self.bbox
@@ -228,9 +228,9 @@ if __name__ == '__main__':
     #SEAS5
     data_path = '/mnt/data/SEAS5'
     #years = [2013, 2014, 2015, 2016, 2017]
-    for year in range(2002, 2007, 1):
-        start_date = datetime.datetime(year, 5, 1)
-        end_date = datetime.datetime(year, 5, 1)
+    for year in range(2000, 2018, 1):
+        start_date = datetime.datetime(year, 8, 1)
+        end_date = datetime.datetime(year, 8, 1)
         mars = Marser(data_path, start_date, end_date, grid, bbox=bbox)
         mars.SEAS5_mars_dict()
         mars.call_mars()
@@ -258,7 +258,7 @@ if __name__ == '__main__':
         #end_date = date + pd.DateOffset(months = 1)
         dif = (start_date - date).total_seconds() / 60 / 60
         dif_e = (end_date - date).total_seconds() / 60 / 60
-        #how to add 3 and 4 months to starting 
+        #how to add 3 and 4 months to starting
         #6 hour steps where diff is difference between two dates in seconds
         #dif = (dt -dt1).total_seconds()
         steps = list(range(int(dif), int(dif_e) + 5, 6))

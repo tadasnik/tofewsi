@@ -126,6 +126,10 @@ if __name__ == '__main__':
     #    ds = calc_fwi(fwi_arr.sel(number=num))
     #    dss.append(ds)
     fwi_arr = xr.open_dataset('/mnt/data/SEAS5/fwi/2018_11_fwi_dc_indonesia.nc')
+    land_mask = 'data/era_land_mask.nc'
+    land_mask = xr.open_dataset(land_mask)
+    land_mask = cl.spatial_subset(land_mask, bbox)
+#
 
 
 
