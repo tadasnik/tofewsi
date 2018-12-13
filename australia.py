@@ -263,18 +263,18 @@ def do_plots_year(year, lead, t2m, t2max, tpm, land_mask, borders):
                     label_mode='')    
     for month, row in enumerate(axgr.axes_row, 1):
         et2m = ds['e5_t2m'].sel(month = month)
-        etpm = ds['e5_tp'].sel(month = month)
+        etpm = ds['e5_tp'].sel(month = month) * 1000
         st2m2 = ds['s5_t2m_2'].sel(month = month)
         st2m3 = ds['s5_t2m_3'].sel(month = month)
-        stpm2 = ds['s5_tp_2'].sel(month = month)
-        stpm3 = ds['s5_tp_3'].sel(month = month)
+        stpm2 = ds['s5_tp_2'].sel(month = month) * 1000
+        stpm3 = ds['s5_tp_3'].sel(month = month) * 1000
 
         at2m = et2m - t2m.sel(month=month)
         ast2m2 = st2m2 - t2m.sel(month=month)
         ast2m3 = st2m3 - t2m.sel(month=month)
-        atpm = tpm.sel(month=month) - etpm
-        astpm2 = tpm.sel(month=month) - stpm2
-        astpm3 = tpm.sel(month=month) - stpm3
+        atpm = etpm - tpm.sel(month=month) * 1000
+        astpm2 = stpm2 - tpm.sel(month=month) * 1000
+        astpm3 = stpm3 - tpm.sel(month=month) * 1000
         for pn, item in enumerate([mask_ocean(at2m['t2m'], land_mask),
                                    mask_ocean(ast2m2['t2m'], land_mask),
                                    mask_ocean(ast2m3['t2m'], land_mask),
@@ -305,11 +305,11 @@ def do_plots_year(year, lead, t2m, t2max, tpm, land_mask, borders):
                                        add_colorbar=False, add_labels=False)
                 ax1.add_feature(cartopy.feature.COASTLINE)
             else:
-                vmin = -.4
-                vmax = .4
+                vmin = - 360
+                vmax = 360
                 img2 = item.plot.pcolormesh(ax=ax1, transform=ccrs.PlateCarree(),
                                        x = 'longitude', y='latitude',
-                                       cmap='seismic', vmin=vmin, vmax=vmax,
+                                       cmap='seismic_r', vmin=vmin, vmax=vmax,
                                        add_colorbar=False, add_labels=False)
                 ax1.add_feature(cartopy.feature.COASTLINE)
 
@@ -331,13 +331,19 @@ def do_plots_year(year, lead, t2m, t2max, tpm, land_mask, borders):
                 """
             ax1.add_feature(borders)
         axgr.cbar_axes[0].colorbar(img)
+        axgr.cbar_axes[0].set_title('Degrees C')
         axgr.cbar_axes[1].colorbar(img)
+        axgr.cbar_axes[1].set_title('Degrees C')
         axgr.cbar_axes[2].colorbar(img)
+        axgr.cbar_axes[2].set_title('Degrees C')
         axgr.cbar_axes[3].colorbar(img2)
+        axgr.cbar_axes[3].set_title('mm')
         axgr.cbar_axes[4].colorbar(img2)
+        axgr.cbar_axes[4].set_title('mm')
         axgr.cbar_axes[5].colorbar(img2)
+        axgr.cbar_axes[5].set_title('mm')
     tit = fig.suptitle('Year {0}'.format(year), y=.9, fontsize=32)
-    plt.savefig('Australia_{0}_state_borders.png'.format(year), dpi=80, bbox_inches='tight', bbox_extra_artists=[tit])
+    plt.savefig('Australia_{0}_state_borders_r.png'.format(year), dpi=80, bbox_inches='tight', bbox_extra_artists=[tit])
 
 
 
@@ -355,7 +361,7 @@ t2m, t2max, tpm = read_monthly_means()
 #dates = pd.date_range('2009-09-01', periods=14, freq=pd.offsets.MonthBegin())
 #for year in range(2009, 2012, 1):
 borders = austr_states()
-do_plots_year(2009, 2, t2m, t2max, tpm/10, land_mask, borders)
+do_plots_year(2011, 2, t2m, t2max, tpm/10, land_mask, borders)
 #do_plots(dates, t2m, t2max, tpm, land_mask)
 #for dt in dates:
 #    seas5_make_means(dt)
