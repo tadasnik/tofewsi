@@ -1,7 +1,40 @@
 import numpy as np
 import pandas as pd
 import xarray as xr
-#from fwi import FWICalc_pixel
+from fwi.fwi import FWICalc_pixel
+
+def day_length(day_of_year, lat):
+    """Computes the length of the day (the time between sunrise and
+    sunset) given the day of the year and latitude of the location.
+    Function uses the Brock model for the computations.
+    For more information see, for example,
+    Forsythe et al., "A model comparison for daylength as a
+    function of latitude and day of year", Ecological Modelling,
+    1995.
+    Parameters
+    ----------
+    day_of_year : int
+        The day of the year. 1 corresponds to 1st of January
+        and 365 to 31st December (on a non-leap year).
+    lat : array-like, float
+        Latitudes of the locations in degrees. Positive values
+        for north and negative for south.
+    Returns
+    -------
+    d : float
+        Daylength in hours.
+    """
+    day_hours = np.deg2rad(lat)
+    declination = 23.45 * np.sin(np.deg2rad(360.0 * (283.0 + day_of_year) / 365.0))
+    const_day = -np.tan(day_hours) * np.tan(np.deg2rad(declination)) <= -1.0
+    day_hours[const_day] = 24.0
+    const_night = -np.tan(day_hours) * np.tan(np.deg2rad(declination)) >= 1.0
+    day_hours[const_night] = 0.0
+    day_night = ~((const_day) | (const_night))
+    hour_angle = np.rad2deg(np.arccos(-np.tan(day_hours[day_night]) *
+                                       np.tan(np.deg2rad(declination))))
+    day_hours[day_night] = (hour_angle / 7.5)
+    return day_hours
 
 def pixel_wise(fwi_sel):
     ffmc0 = 85.0
@@ -47,7 +80,7 @@ def compare_vector_pixel(temp, rhum, wind, prcp, mth, day):
     ffmc0 = np.full(arr_shape, 85.0)
     dmc0 = np.full(arr_shape, 6.0)
     dc0 = np.full(arr_shape, 15.0)
-    fs = FWICalc(np.full(arr_shape,temp), np.full(arr_shape,rhum),
+    fs = FWI(np.full(arr_shape,temp), np.full(arr_shape,rhum),
                         np.full(arr_shape, wind), np.full(arr_shape,prcp))
     ffmc = fs.FFMCcalc(ffmc0)
     dmc = fs.DMCcalc(dmc0, mth)
@@ -59,7 +92,35 @@ def compare_vector_pixel(temp, rhum, wind, prcp, mth, day):
     #print('{0:.1f} {1:.1f} {2:.1f} {3:.1f} {4:.1f} {5:.1f}'.format(ffmc, dmc, dc, isi, bui, fwi))
 
 class FWI:
-    def __init__(self, temp, rhum, wind, prcp):
+    def __init__(self, latitudes):
+        self.days_of_year = pd.date_range('2000-01-15', '2000-12-15', 12).dayofyear
+        self.Leff = self.create_Leff(latitudes)
+        self.Lf = self.create_Lf(latitudes)
+
+    def create_Leff(self, latitudes):
+        """
+        El_40 = np.array([6.5, 7.5, 9.0, 12.8, 13.9, 13.9, 12.4, 10.9, 9.4, 8.0, 7.0, 6.0])
+        El_20 = np.array([7.9, 8.4, 8.9, 9.5, 9.9, 10.2, 10.1, 9.7, 9.1, 8.6, 8.1, 7.8])
+        El_20s = np.array([10.1, 9.6, 9.1, 8.5, 8.1, 7.8, 7.9, 8.3, 8.9, 9.4, 9.9, 10.2])
+        El_40s = np.array([11.5, 10.5, 9.2, 7.9, 6.8, 6.2, 6.5, 7.4, 8.7, 10.0, 11.2, 11.8])
+        """
+        Leff = np.array([day_length(day, latitudes) for day in self.days_of_year])
+        Leff[Leff < 0] = 0
+        return Leff - 3
+
+    def create_Lf(self, latitudes):
+        #Fl_arr = np.array([-1.6, -1.6, -1.6, 0.9, 3.8, 5.8,
+        #                    6.4, 5.0, 2.4, 0.4, -1.6, -1.6])
+        Fl = np.full((12, latitudes.shape[0], latitudes.shape[1]), 1.4)
+        #Indonesia only, otherwise see Dowdy et al., 
+        #Fl[..., latitudes > 10] = Fl_arr[:, None]
+        #Fl[..., latitudes < -10] = np.roll(Fl_arr, 6)[:, None]
+        #Fl[..., (latitudes <= 10) & (latitudes >= -10)] = 1.4
+        #Lf = 1.43 * self.Leff - 4.25
+        #Lf[Lf < -1.6] = -1.6
+        return Fl
+
+    def set_weather(self, temp, rhum, wind, prcp):
         self.rhum = rhum
         self.temp = temp
         self.wind = wind
@@ -83,8 +144,8 @@ class FWI:
                               (1.0 - np.exp(-6.93 / rf[mo_mask]))) +
                               (0.0015 * (mo[mo_mask] - 150.0)**2) *
                               np.sqrt(rf[mo_mask])) #*Eq. 3b*# 
-            else:
-                mo_mask = prcp_mask & (mo < 150.0)
+            if np.any(mo[prcp_mask] <= 150.0):
+                mo_mask = prcp_mask & (mo <= 150.0)
                 mo[mo_mask] = (mo[mo_mask] + 42.5 * rf[mo_mask] *
                                 np.exp(-100.0 / (251.0 - mo[mo_mask])) *
                                 (1.0 - np.exp(-6.93 / rf[mo_mask])))        #*Eq. 3a*#
@@ -124,9 +185,9 @@ class FWI:
         return ffmc
 
     def DMCcalc(self, dmc0, mth):
-        el = [6.5, 7.5, 9.0, 12.8, 13.9, 13.9, 12.4, 10.9, 9.4, 8.0, 7.0, 6.0]
+        #el = [6.5, 7.5, 9.0, 12.8, 13.9, 13.9, 12.4, 10.9, 9.4, 8.0, 7.0, 6.0]
         self.temp[self.temp < -1.1] = -1.1
-        rk = 1.894 * (self.temp + 1.1) * (100.0 - self.rhum) * (el[mth - 1] * 0.0001)    #*Eqs. 16 and 17*#
+        rk = 1.894 * (self.temp + 1.1) * (100.0 - self.rhum) * (self.Leff[mth - 1] * 0.0001)    #*Eqs. 16 and 17*#
         pr = np.ones_like(dmc0)
         if np.any(self.prcp > 1.5):
             bb = np.ones_like(dmc0)
@@ -139,7 +200,7 @@ class FWI:
                 dmc0_mask = (dmc0 > 33.0) & (dmc0 <= 65.0)
                 bb[dmc0_mask] = 14.0 - 1.3 * np.log(dmc0[dmc0_mask])
             if np.any(dmc0 > 65.0):
-                dmc0_mask = dmc0 <= 65.0
+                dmc0_mask = dmc0 > 65.0
                 bb[dmc0_mask] = 6.2 * np.log(dmc0[dmc0_mask]) - 17.2
             wmr = wmi + (1000 * rw) / (48.77 + bb[prcp_mask] * rw)
             pr[prcp_mask] = 43.43 * (5.6348 - np.log(wmr - 20.0))
@@ -151,6 +212,25 @@ class FWI:
         return dmc
 
     def DCcalc(self, dc0, mth):
+        #Lf = [-1.6, -1.6, -1.6, 0.9, 3.8, 5.8, 6.4, 5.0, 2.4, 0.4, -1.6, -1.6]
+        #For latitudes between 10 and -10 Lf is constant (Lawson and Armitage 2008, apendix 3)
+        if np.any(self.prcp > 2.8):
+            prcp_mask = self.prcp > 2.8
+            rw = 0.83 * self.prcp[prcp_mask] - 1.27 #*Eq. 18*# 
+            smi = 800.0 * np.exp( -dc0[prcp_mask] / 400.0)                              #*Eq. 19*#
+            smr = smi + 3.937 * rw
+            dr = 400.0 * np.log(800.0 / smr)
+            dr[dr < 0.0] = 0.0
+            dc0[prcp_mask] = dr
+        V = np.zeros_like(dc0)
+        temp_mask = self.temp > -2.8
+        V[temp_mask] = 0.36 * (self.temp[temp_mask] + 2.8) + self.Lf[mth - 1][temp_mask]
+        V[~temp_mask] = self.Lf[mth - 1][~temp_mask]
+        V[V < 0] = 0
+        dc = dc0 + (0.5 * V)
+        return dc
+
+    def old_DCcalc(self, dc0, mth):
         fl = [-1.6, -1.6, -1.6, 0.9, 3.8, 5.8, 6.4, 5.0, 2.4, 0.4, -1.6, -1.6]
         self.temp[self.temp < -2.8] = -2.8
         pe = (0.36 * (self.temp + 2.8) + fl[mth - 1]) / 2
@@ -168,6 +248,7 @@ class FWI:
             prcp_less = self.prcp <= 2.8
             dc[prcp_less] = dc0[prcp_less] + pe[prcp_less]
         return dc
+
 
     def ISIcalc(self, ffmc):
         mo = 147.2 * (101.0 - ffmc) / (59.5 + ffmc)
@@ -206,6 +287,7 @@ class FWI:
         return fwi
 
 if __name__ == '__main__':
+    """
     for year in [2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015]:
         fwi_arr = xr.open_dataset('~/tofewsi/data/rh_temp_wind_prcp_amazon_{0}.nc'.format(year))
         arr_shape = [fwi_arr.dims[x] for x in ['latitude', 'longitude']]
@@ -213,12 +295,10 @@ if __name__ == '__main__':
         lons = fwi_arr.longitude.values
         times = fwi_arr.time
 
-
         #Arrays with initial conditions
         ffmc0 = np.full(arr_shape, 85.0)
         dmc0 = np.full(arr_shape, 6.0)
         dc0 = np.full(arr_shape, 15.0)
-
 
         dcs = []
         fwis = []
@@ -251,31 +331,12 @@ if __name__ == '__main__':
         dataset.to_netcdf('../data/fwi_dc_amazon{0}.nc'.format(year))
 
 
-    """
     #testing
     darrays = []
     ds = pd.read_csv('test_fwi.csv', sep = ',')
     ds = ds.iloc[:4, :]
     for name, row in ds.iterrows():
         mth, day, temp, rhum, wind, prcp = row[['Month', 'Day', 'Temp.', 'RH', 'Wind', 'Rain']]
-        print(mth, day)
-        if rhum > 100.0:
-            rhum = 100.0
-        mth = int(mth)
-        fs = FWICalc(np.full(arr_shape,temp), np.full(arr_shape,rhum),
-                            np.full(arr_shape, wind), np.full(arr_shape,prcp))
-        ffmc = fs.FFMCcalc(ffmc0)
-        dmc = fs.DMCcalc(dmc0, mth)
-        dc = fs.DCcalc(dc0, mth)
-        isi = fs.ISIcalc(ffmc)
-        bui = fs.BUIcalc(dmc, dc)
-        fwi = fs.FWIcalc(isi, bui)
-        print('ffmc0',ffmc0[0][0])
-        print('ffmc', ffmc[0][0])
-        print('fwi', fwi[0][0])
-        #print('{0:.1f} {1:.1f} {2:.1f} {3:.1f} {4:.1f} {5:.1f}'.format(ffmc, dmc, dc, isi, bui, fwi))
-        ffmc0 = ffmc
-        dmc0 = dmc
-        dc0 = dc
-    """
+        compare_vector_pixel(temp, rhum, wind, prcp, mth, day)
 
+    """

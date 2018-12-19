@@ -10,12 +10,13 @@ def calc_index_dfr(dfr):
     dcs = []
     ffmcs = []
     for name, row in dfr.iterrows():
-        print(row)
         mth, temp, rhum, wind, prcp = row[['month', 't2m', 'h2m', 'w10', 'tp']]
         fw = FWICalc_pixel(temp, rhum, wind, prcp)
         if rhum > 100.0:
             rhum = 100.0
         mth = int(mth)
+        print(temp, prcp)
+        print(dc0)
         ffmc = fw.FFMCcalc(ffmc0)
         dmc = fw.DMCcalc(dmc0, mth)
         dc = fw.DCcalc(dc0, mth)
@@ -25,13 +26,14 @@ def calc_index_dfr(dfr):
         ffmc0 = ffmc
         dmc0 = dmc
         dc0 = dc
+        print(ffmc, dmc, dc, fwi)
         fwis.append(fwi)
         ffmcs.append(ffmc)
         dcs.append(dc)
     return fwis, ffmcs, dcs
 
 
-class FWICalc_pixel:
+class FWICalc_pixel(object):
     def __init__(self, temp, rhum, wind, prcp):
         self.rhum = rhum
         self.temp = temp
@@ -79,7 +81,9 @@ class FWICalc_pixel:
         return ffmc
 
     def DMCcalc(self,dmc0,mth):
-        el = [6.5, 7.5, 9.0, 12.8, 13.9, 13.9, 12.4, 10.9, 9.4, 8.0, 7.0, 6.0]
+        #el = [6.5, 7.5, 9.0, 12.8, 13.9, 13.9, 12.4, 10.9, 9.4, 8.0, 7.0, 6.0]
+        #For latitudes between 10 and -10 el is constant (Lawson and Armitage 2008, apendix 3)
+        el = [9.0] * 12
         if self.temp < -1.1:
             self.temp = -1.1
         rk = 1.894 * (self.temp + 1.1) * (100.0 - self.rhum) * (el[mth - 1] * 0.0001)    #*Eqs. 16 and 17*#
@@ -105,7 +109,9 @@ class FWICalc_pixel:
         return dmc #*Eq. 11*##*Eq. 12*##*Eq. 13a*##*Eq. 13b*##*Eq. 13c*##*Eq. 14*##*Eq. 15*#
 
     def DCcalc(self, dc0, mth):
-        fl = [-1.6, -1.6, -1.6, 0.9, 3.8, 5.8, 6.4, 5.0, 2.4, 0.4, -1.6, -1.6]
+        #fl = [-1.6, -1.6, -1.6, 0.9, 3.8, 5.8, 6.4, 5.0, 2.4, 0.4, -1.6, -1.6]
+        #For latitudes between 10 and -10 fl is constant (Lawson and Armitage 2008, apendix 3)
+        fl = [1.4] * 12
         if self.prcp > 2.8:
             rw = 0.83 * self.prcp - 1.27 #*Eq. 18*# 
             smi = 800.0 * np.exp(-dc0 / 400.0)                              #*Eq. 19*#
@@ -174,7 +180,7 @@ if __name__ == '__main__':
     dmc0 = 6.0
     dc0 = 15.0
     ds = pd.read_csv('test_fwi.csv', sep = ',')
-    ds = ds.iloc[:4, :]
+    #ds = ds.iloc[:4, :]
     for name, row in ds.iterrows():
         mth, day, temp, rhum, wind, prcp = row[['Month', 'Day', 'Temp.', 'RH', 'Wind', 'Rain']]
         if rhum > 100.0:
@@ -187,9 +193,9 @@ if __name__ == '__main__':
         isi = fwisystem.ISIcalc(ffmc)
         bui = fwisystem.BUIcalc(dmc, dc)
         fwi = fwisystem.FWIcalc(isi, bui)
-        print('{0:.1f} {1:.1f} {2:.1f} {3:.1f} {4:.1f} {5:.1f}'.format(ffmc, dmc, dc, isi, bui, fwi))
+        print('{0:.1f} {1:.1f} {2:.1f} {3:.1f} {4:.1f} {5:.1f} {6:.1f} {7:.1f}'.format(prcp, 
+                                            rhum, ffmc, dmc, dc, isi, bui, fwi))
         ffmc0 = ffmc
         dmc0 = dmc
         dc0 = dc
     """
-
