@@ -1,7 +1,40 @@
+import os
 import numpy as np
 import xarray as xr
 import pandas as pd
 from envdata import Envdata
+from gridding import Gridder
+
+def spatial_subset_dfr(dfr, bbox):
+    """
+    Selects data within spatial bbox. bbox coords must be given as
+    positive values for the Northern hemisphere, and negative for
+    Southern. West and East both positive - Note - the method is
+    naive and will only work for bboxes fully fitting in the Eastern hemisphere!!!
+    Args:
+        dfr - pandas dataframe
+        bbox - (list) [North, West, South, East]
+    Returns:
+        pandas dataframe
+    """
+    dfr = dfr[(dfr['latitude'] < bbox[0]) &
+                            (dfr['latitude'] > bbox[2])]
+    dfr = dfr[(dfr['longitude'] > bbox[1]) &
+                            (dfr['longitude'] < bbox[3])]
+    return dfr
+
+def modis_frp_proc(data_path, years, lats, lons):
+    dfrs = []
+    gr = Gridder(lats, lons)
+    for year in years:
+        fname = os.path.join(data_path, 'frp', 'M6_{}.csv'.format(year))
+        dfr = pd.read_csv(fname, sep = ',')
+        dfr = dfr[['latitude', 'longitude', 'acq_date']]
+        dfr.rename({'acq_date': 'date'}, axis = 'columns', inplace = True)
+        dfr = spatial_subset_dfr(dfr, [x.values for x in gr.bbox])
+        dfrs.append(dfr)
+    dfr_all = pd.concat(dfrs, ignore_index = True)
+    return dfr_all
 
 class CompData(Envdata):
     def __init__(self, data_path, bbox=None, hour=None):
@@ -11,7 +44,7 @@ class CompData(Envdata):
     def read_land_mask(self):
         land_ds = xr.open_dataset('data/era_land_mask.nc')
         land_ds = self.spatial_subset(land_ds, self.region_bbox['indonesia'])
-        return land_ds
+        return np.squeeze(land_ds['lsm'].values)
 
     def set_frp_ds(self, frp):
         self.frp = frp
@@ -30,21 +63,34 @@ class CompData(Envdata):
                 fwi_sub = self.temporal_subset(self.fwi, self.frp)
                 self.set_fwi_ds(fwi_sub)
 
-            
     def temporal_subset(self, large, small):
         large = large.sel(time=slice(small.time[0], small.time[-1]))
         return large
 
-         
+    def compute_monthly(self):
+        self.fwi_m = self.fwi.resample(time = '1M', closed = 'right').mean(dim = 'time')
+        self.frp_m = self.frp.resample(time = '1M', closed = 'right').sum(dim = 'time')
+
+    def read_monthly(self):
+        self.fwi_m = xr.open_dataset(os.path.join(self.data_path, 'fwi', 'fwi_arr_m.nc'))
+        self.frp_m = xr.open_dataset(os.path.join(self.data_path, 'frp', 'frp_count_indonesia_m.nc'))
+
+    def get_pixel(self, lat, lon, fwi_ds):
+        frp_pix = self.frp_m['count'].sel(latitude = lat, longitude = lon)
+        fwi_pix = self.fwi_m[fwi_ds].sel(latitude = lat, longitude = lon)
+        return frp_pix, fwi_pix
 
 
 if __name__ == '__main__':
-    fwi = xr.open_dataset('/home/tadas/data/fwi/fwi_arr.nc')
-    frp = xr.open_dataset('/home/tadas/data/frp/frp_count_indonesia.nc')
-    cc = CompData('/home/tadas/data')
-    cc.set_frp_ds(frp)
-    cc.set_fwi_ds(fwi)
-    pass
+    data_path = '/mnt/data/'
+    cc = CompData(data_path)
+    #fwi = xr.open_dataset(os.path.join(data_path, 'fwi', 'fwi_arr.nc'))
+    #frp = xr.open_dataset(os.path.join(data_path, 'frp', 'frp_count_indonesia.nc'))
+    #cc.set_frp_ds(frp)
+    #cc.set_fwi_ds(fwi)
+    #cc.temporal_overlap()
+    cc.read_monthly()
+
 
 
 

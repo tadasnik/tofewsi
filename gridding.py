@@ -27,12 +27,12 @@ class Gridder(object):
         self.lon_min = lon_min - self.step * 0.5
         self.lat_max = lat_max + self.step * 0.5
         self.lon_max = lon_max + self.step * 0.5
-        return [lat_min, lon_min, lat_min, lat_max]
-        
+        return [self.lat_max, self.lon_min, self.lat_min, self.lon_max]
+
     def grid_bins(self):
         self.lon_bins = np.arange(self.lon_min, self.lon_max, self.step)
         self.lat_bins = np.arange(self.lat_min, self.lat_max, self.step)
- 
+
     def binning(self, lon, lat):
         """
         Get indices of the global grid bins for the longitudes and latitudes
@@ -54,7 +54,7 @@ class Gridder(object):
         return lonind, latind
 
     def to_grid(self, dfr):
-        lonind, latind = self.binning(dfr['lon'].values, dfr['lat'].values)
+        lonind, latind = self.binning(dfr['longitude'].values, dfr['latitude'].values)
         dfr.loc[:, 'lonind'] = lonind
         dfr.loc[:, 'latind'] = latind
         gridded = np.zeros((self.lat_bins.shape[0],
@@ -77,7 +77,7 @@ class Gridder(object):
 
     def grid_dfr(self, dfr):
         dates = pd.date_range(dfr.date.min(), dfr.date.max(), freq='D')
-        lonind, latind = self.binning(dfr['lon'].values, dfr['lat'].values)
+        lonind, latind = self.binning(dfr['longitude'].values, dfr['latitude'].values)
         dfr.loc[:, 'lonind'] = lonind
         dfr.loc[:, 'latind'] = latind
         dfa = pd.DataFrame({'count': dfr.groupby(['date', 'latind', 'lonind']).size()})
@@ -112,10 +112,8 @@ class Gridder(object):
                                     'ign_agg_16': {'dtype': 'int16', 'zlib': True}})
 
 if __name__ == '__main__':
-    """
-    fwi = xr.open_dataset('/home/tadas/data/fwi/fwi_arr.nc')
-    dfr = pd.read_parquet('/home/tadas/data/frp/M6_indonesia.parquet')
+    fwi = xr.open_dataset('fwi_arr.nc')
+    dfr = pd.read_parquet('/mnt/data/frp/M6_indonesia.parquet')
     gri = Gridder(fwi.latitude, fwi.longitude)
     ds = gri.grid_dfr(dfr)
-    """
 
