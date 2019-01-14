@@ -228,9 +228,9 @@ if __name__ == '__main__':
     #SEAS5
     data_path = '/mnt/data/SEAS5'
     #years = [2013, 2014, 2015, 2016, 2017]
-    for year in range(2000, 2018, 1):
-        start_date = datetime.datetime(year, 8, 1)
-        end_date = datetime.datetime(year, 8, 1)
+    for year in range(2004, 2018, 1):
+        start_date = datetime.datetime(year, 9, 1)
+        end_date = datetime.datetime(year, 9, 1)
         mars = Marser(data_path, start_date, end_date, grid, bbox=bbox)
         mars.SEAS5_mars_dict()
         mars.call_mars()

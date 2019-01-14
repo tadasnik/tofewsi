@@ -1,9 +1,10 @@
 import os
+import rasterio
 import numpy as np
 import xarray as xr
 import pandas as pd
 from envdata import Envdata
-from gridding import Gridder
+#from gridding import Gridder
 
 def spatial_subset_dfr(dfr, bbox):
     """
@@ -39,12 +40,12 @@ def modis_frp_proc(data_path, years, lats, lons):
 class CompData(Envdata):
     def __init__(self, data_path, bbox=None, hour=None):
         super().__init__(data_path, bbox=None, hour=None)
-        self.land_mask = self.read_land_mask()
+        self.land_mask, self.land_mask_array = self.read_land_mask()
 
     def read_land_mask(self):
         land_ds = xr.open_dataset('data/era_land_mask.nc')
         land_ds = self.spatial_subset(land_ds, self.region_bbox['indonesia'])
-        return np.squeeze(land_ds['lsm'].values)
+        return land_ds, np.squeeze(land_ds['lsm'].values)
 
     def set_frp_ds(self, frp):
         self.frp = frp
@@ -71,6 +72,20 @@ class CompData(Envdata):
         self.fwi_m = self.fwi.resample(time = '1M', closed = 'right').mean(dim = 'time')
         self.frp_m = self.frp.resample(time = '1M', closed = 'right').sum(dim = 'time')
 
+    def to_land_dfr(self, ds):
+        dfr = ds.to_dataframe()
+        dfr.reset_index(inplace = True)
+        land_dfr = self.land_mask.to_dataframe()
+        land_dfr = land_dfr[land_dfr['lsm'] == 1]
+        land_dfr.reset_index(inplace = True)
+        index1 = pd.MultiIndex.from_arrays([land_dfr[col] for col in ['latitude', 'longitude']])
+        index2 = pd.MultiIndex.from_arrays([dfr[col] for col in ['latitude', 'longitude']])
+        return dfr.loc[index2.isin(index1)]
+
+    def read_monthly_land_dfr(self):
+        self.dfr_m = pd.read_parquet(os.path.join(self.data_path,
+                                                  'fwi_frp_monthly_land.parquet'))
+
     def read_monthly(self):
         self.fwi_m = xr.open_dataset(os.path.join(self.data_path, 'fwi', 'fwi_arr_m.nc'))
         self.frp_m = xr.open_dataset(os.path.join(self.data_path, 'frp', 'frp_count_indonesia_m.nc'))
@@ -90,7 +105,6 @@ if __name__ == '__main__':
     #cc.set_fwi_ds(fwi)
     #cc.temporal_overlap()
     cc.read_monthly()
-
-
-
-
+    cc.read_monthly_land_dfr()
+    lulc = os.path.join(data_path, 'land_cover/peatlands/SEA_LC_2015_0.25.tif')
+    lulc = xr.open_rasterio(lulc)

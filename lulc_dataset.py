@@ -5,7 +5,7 @@ import subprocess
 import numpy as np
 import xarray as xr
 import pandas as pd
-#from osgeo import gdal, ogr
+from osgeo import gdal, ogr
 #from pyhdf.SD import SD
 from envdata import Envdata
 
@@ -33,7 +33,7 @@ class LulcData(Envdata):
         #image extents are shifted half cell to NE in order to align
         #with ERA5 grid.
         out_file = os.path.join(self.data_path,
-                                os.path.splitext(os.path.basename(input_shpfile))[0])
+                                os.path.splitext(os.path.basename(input_shpfile))[0] + '_' + str(resolution))
         in_shp = ogr.Open(input_shpfile)
         lyr = in_shp.GetLayer()
         lname = lyr.GetName()
@@ -49,9 +49,9 @@ class LulcData(Envdata):
                        bbox[3] - resolution / 2.,
                        bbox[0] - resolution / 2.]
         tres_str = ' -tr {0} {0}'.format(resolution)
-        gdal_string = ['gdal_rasterize -a {0} -l {1} -tap '.format(fname, lname),
-                       #+ ' '.join(str(x) for x in extents),
-                       tres_str, input_shpfile, out_file + '.tif']
+        tap_str = ' -tap ' + ' '.join(str(x) for x in extents)
+        gdal_string = ['gdal_rasterize -a {0} -l {1}'.format(fname, lname) +
+                       tres_str, ' -tap ', input_shpfile, out_file + '.tif']
         subprocess.run([' '.join(gdal_string)], shell=True)
         return out_file + '.tif'
 
@@ -109,12 +109,16 @@ if __name__ == '__main__':
     #fname = 'Per-humid_SEA_LC_2015_CRISP_Geotiff_indexed_colour.tif'
 
     # Riau bbox
-    bbox = [3, 99, -2, 104]
-    ds = LulcData(data_path, bbox=bbox, hour=None)
-    """
+    #bbox = [3, 99, -2, 104]
+
+    # Indonesia bbox
+    bbox = [8, 93, -13, 143]
+    lc = LulcData(data_path, bbox=bbox, hour=None)
     input_shps = ['/mnt/data/land_cover/peatlands/Peatland_land_cover_1990.shp',
                   '/mnt/data/land_cover/peatlands/Peatland_land_cover_2007.shp',
-                  '/mnt/data/land_cover/peatlands/Peatland_land_cover_2015.shp',
+                  '/mnt/data/land_cover/peatlands/Peatland_land_cover_2015.shp']
+
+    """
                   '/mnt/data/land_cover/peatlands/Peatland_plantations_1990.shp',
                   '/mnt/data/land_cover/peatlands/Peatland_plantations_2000.shp',
                   '/mnt/data/land_cover/peatlands/Peatland_plantations_2010.shp',
@@ -139,7 +143,6 @@ if __name__ == '__main__':
         dfr = ds.prepare_dataframe_era5(an_fname, fc_fname)
         ds.write_csv(dfr, 'era5_{0}_riau.csv'.format(year))
 
-    """
 
     fpath = '/mnt/data/land_cover/peatlands/Per-humid_SEA_LC_2015_CRISP_Geotiff_indexed_colour.tif'
     fpath = '/mnt/data/land_cover/peatlands/Per-humid_SEA_LC_2015_riau.tif'
@@ -149,7 +152,6 @@ if __name__ == '__main__':
     dpath = '/mnt/data/land_cover/peatlands/Peatland_land_cover_0.05_deg.nc'
     dts = ds.read_dataset(dpath)
     dts = ds.spatial_subset(dts, bbox)
-    """
     for year in [1990, 2007, 2015]:
         dfr = dts.sel(year=year).to_dataframe()
         dfr.reset_index(inplace=True)
@@ -157,4 +159,3 @@ if __name__ == '__main__':
         ds.write_csv(dfr, '/mnt/data/land_cover/peatlands/riau_Peatland_land_cover_{0}.csv'.format(year),
                      fl_prec = '%.3f')
     """
-
