@@ -45,7 +45,7 @@ class CompData(Envdata):
         lulc_path = os.path.join(self.data_path, 
                                  'land_cover/peatlands',
                                  'SEA_LC_2015_0.25_dataframe.parquet')
-        self.lulc_dfr = pd.read_parquet(lulc_path) 
+        #self.lulc_dfr = pd.read_parquet(lulc_path) 
 
     def read_land_mask(self):
         land_ds = xr.open_dataset('data/era_land_mask.nc')
@@ -104,8 +104,8 @@ class CompData(Envdata):
 
 
 if __name__ == '__main__':
-    #data_path = '/mnt/data/'
-    data_path = '/home/tadas/data/'
+    data_path = '/mnt/data/'
+    #data_path = '/home/tadas/data/'
     cc = CompData(data_path)
     cc.read_lulc()
     #fwi = xr.open_dataset(os.path.join(data_path, 'fwi', 'fwi_arr.nc'))
@@ -115,7 +115,7 @@ if __name__ == '__main__':
     #cc.temporal_overlap()
     cc.read_monthly()
     cc.read_monthly_land_dfr()
-    lulc = os.path.join(data_path, 'land_cover/peatlands/SEA_LC_2015_0.25.tif')
-    lulc = xr.open_rasterio(lulc)
-    lulc = xr.Dataset({'lulc': (['latitude', 'longitude'], np.squeeze(lulc.values))}, 
-            coords = {'latitude': cc.frp_m.latitude, 'longitude': cc.frp_m.longitude})
+    #lulc = os.path.join(data_path, 'land_cover/peatlands/SEA_LC_2015_0.25.tif')
+    #lulc = xr.open_rasterio(lulc)
+    #lulc = xr.Dataset({'lulc': (['latitude', 'longitude'], np.squeeze(lulc.values))},
+    #        coords = {'latitude': cc.frp_m.latitude, 'longitude': cc.frp_m.longitude})

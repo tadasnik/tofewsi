@@ -1,7 +1,6 @@
 import numpy as np
 import xarray as xr
 import pandas as pd
-
 def to_day_since(dtime_string):
     """
     Method returning day since the self base date. Takes string datetime in
@@ -9,6 +8,23 @@ def to_day_since(dtime_string):
     """
     dtime = pd.to_datetime(dtime_string, format='%Y-%m-%d')
     return (dtime - self.basedate).days
+
+def lat_lon_grid_points(bbox, step):
+    """
+    Returns two lists with latitude and longitude grid cell center coordinates
+    given the bbox and step.
+    """
+    lat_bbox = [bbox[0], bbox[2]]
+    lon_bbox = [bbox[1], bbox[3]]
+    latmin = lat_bbox[np.argmin(lat_bbox)]
+    latmax = lat_bbox[np.argmax(lat_bbox)]
+    lonmin = lon_bbox[np.argmin(lon_bbox)]
+    lonmax = lon_bbox[np.argmax(lon_bbox)]
+    numlat = int((latmax - latmin) / step) + 1
+    numlon = int((lonmax - lonmin) / step) + 1
+    lats = np.linspace(latmin, latmax, numlat, endpoint = True)
+    lons = np.linspace(lonmin, lonmax, numlon, endpoint = True)
+    return lats, lons
 
 class Gridder(object):
     def __init__(self, lats, lons):
@@ -18,7 +34,7 @@ class Gridder(object):
         self.grid_bins()
 
     def grid_step(self):
-        return (self.lons[1] - self.lons[0]).values
+        return (self.lons[1] - self.lons[0])
 
     def grid_bbox(self):
         lat_min, lat_max = self.lats.min(), self.lats.max()
@@ -112,8 +128,12 @@ class Gridder(object):
                                     'ign_agg_16': {'dtype': 'int16', 'zlib': True}})
 
 if __name__ == '__main__':
-    fwi = xr.open_dataset('fwi_arr.nc')
-    dfr = pd.read_parquet('/mnt/data/frp/M6_indonesia.parquet')
-    gri = Gridder(fwi.latitude, fwi.longitude)
-    ds = gri.grid_dfr(dfr)
+    bboxes = {'indonesia': [8.0, 93.0, -13.0, 143.0], 'riau': [3, -2, 99, 104]}
+    bbox = bboxes['indonesia']
+    lats, lons = lat_lon_grid_points(bbox, 0.05)
+    gri = Gridder(lats, lons)
+    #fwi = xr.open_dataset('fwi_arr.nc')
+    #dfr = pd.read_parquet('/mnt/data/frp/M6_indonesia.parquet')
+    #gri = Gridder(fwi.latitude, fwi.longitude)
+    #ds = gri.grid_dfr(dfr)
 
