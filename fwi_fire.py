@@ -1,5 +1,4 @@
 import os
-import rasterio
 import numpy as np
 import xarray as xr
 import pandas as pd
@@ -41,6 +40,12 @@ class CompData(Envdata):
     def __init__(self, data_path, bbox=None, hour=None):
         super().__init__(data_path, bbox=None, hour=None)
         self.land_mask, self.land_mask_array = self.read_land_mask()
+
+    def read_lulc(self):
+        lulc_path = os.path.join(self.data_path, 
+                                 'land_cover/peatlands',
+                                 'SEA_LC_2015_0.25_dataframe.parquet')
+        self.lulc_dfr = pd.read_parquet(lulc_path) 
 
     def read_land_mask(self):
         land_ds = xr.open_dataset('data/era_land_mask.nc')
@@ -93,12 +98,16 @@ class CompData(Envdata):
     def get_pixel(self, lat, lon, fwi_ds):
         frp_pix = self.frp_m['count'].sel(latitude = lat, longitude = lon)
         fwi_pix = self.fwi_m[fwi_ds].sel(latitude = lat, longitude = lon)
-        return frp_pix, fwi_pix
+        lulc = self.lulc_dfr[(self.lulc_dfr.latitude == lat) &
+                             (self.lulc_dfr.longitude == lon)]['lulc']
+        return frp_pix, fwi_pix, lulc
 
 
 if __name__ == '__main__':
-    data_path = '/mnt/data/'
+    #data_path = '/mnt/data/'
+    data_path = '/home/tadas/data/'
     cc = CompData(data_path)
+    cc.read_lulc()
     #fwi = xr.open_dataset(os.path.join(data_path, 'fwi', 'fwi_arr.nc'))
     #frp = xr.open_dataset(os.path.join(data_path, 'frp', 'frp_count_indonesia.nc'))
     #cc.set_frp_ds(frp)
@@ -108,3 +117,5 @@ if __name__ == '__main__':
     cc.read_monthly_land_dfr()
     lulc = os.path.join(data_path, 'land_cover/peatlands/SEA_LC_2015_0.25.tif')
     lulc = xr.open_rasterio(lulc)
+    lulc = xr.Dataset({'lulc': (['latitude', 'longitude'], np.squeeze(lulc.values))}, 
+            coords = {'latitude': cc.frp_m.latitude, 'longitude': cc.frp_m.longitude})
