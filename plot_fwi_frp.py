@@ -28,7 +28,7 @@ def violin_plot():
     plt.xticks(ticks = list(range(1,14,1)), labels = list(SEA_lulc.values())[1:], rotation = 'vertical')
     plt.tight_layout()
     plt.show()
-    
+
 def region_scatter(cc, lats, lons, name, fwi_ds):
     plot_y_size = len(lats) * 3
     plot_x_size = len(lons) * 3
@@ -96,12 +96,30 @@ def region_means(cc, regions):
                 dpi=80, bbox_inches='tight')
     plt.show()
 
+def get_pure_cell_values(cc, threshold, item, fwi_ds):
+    ds = cc.lulc[str(item)]
+    perc = ds / cc.lulc['total']
+    mask = ds.where(perc > threshold, drop = True)
+    dfr = mask.to_dataframe(name = item)
+    dfr.dropna(inplace = True)
+    dfr.reset_index(inplace = True)
+    frps = []
+    fwis = []
+    for nr, row in dfr.iterrows():
+        frp_pix, fwi_pix = cc.get_pixel(row['latitude'], row['longitude'], fwi_ds)
+        frps.extend(frp_pix.values)
+        fwis.extend(fwi_pix.values)
+    return frps, fwis
 
-data_path = '/home/tadas/data/'
+
+
+data_path = '/mnt/data/'
 cc = CompData(data_path)
 cc.read_lulc()
 cc.read_monthly()
 
+
+"""
 regions = {'South_East_Sumatra': [-3, 103, -4, 104],
            'Peatland_east_Riau': [1, 101.5, 0, 102.5],
            'South_Kalimantan': [-2.25, 112, -3.25, 113]}
@@ -110,4 +128,5 @@ for region in regions.keys():
     lats, lons = lat_lon_grid_points(regions[region], 0.25)
     for fwi_ds in ['fwi', 'dc']:#, 'ffmc']:
         region_scatter(cc, lats, lons, region, fwi_ds)
+"""
 

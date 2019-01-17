@@ -1,6 +1,26 @@
 import numpy as np
 import xarray as xr
 import pandas as pd
+
+def spatial_subset_dfr(dfr, bbox):
+    """
+    Selects data within spatial bbox. bbox coords must be given as
+    positive values for the Northern hemisphere, and negative for
+    Southern. West and East both positive - Note - the method is
+    naive and will only work for bboxes fully fitting in the Eastern hemisphere!!!
+    Args:
+        dfr - pandas dataframe
+        bbox - (list) [North, West, South, East]
+    Returns:
+        pandas dataframe
+    """
+    dfr = dfr[(dfr['latitude'] < bbox[0]) &
+                            (dfr['latitude'] > bbox[2])]
+    dfr = dfr[(dfr['longitude'] > bbox[1]) &
+                            (dfr['longitude'] < bbox[3])]
+    return dfr
+
+
 def to_day_since(dtime_string):
     """
     Method returning day since the self base date. Takes string datetime in
@@ -69,16 +89,42 @@ class Gridder(object):
         latind = np.digitize(lat, self.lat_bins) - 1
         return lonind, latind
 
-    def to_grid(self, dfr):
+    def add_grid_inds(self, dfr):
         lonind, latind = self.binning(dfr['longitude'].values, dfr['latitude'].values)
         dfr.loc[:, 'lonind'] = lonind
         dfr.loc[:, 'latind'] = latind
+        return dfr
+
+    def lulc_to_grid(self, dfr):
+        dfr = self.add_grid_inds(dfr)
+        grouped = dfr.groupby(['lonind', 'latind', 'lulc']).size().unstack(fill_value = 0)
+        grouped.loc[:, 'total'] = grouped.sum(axis = 1)
+        classes = grouped.columns.values
+        print(classes)
+        grouped.reset_index(inplace = True)
+        dss = []
+        for item in classes:
+            print(item)
+            gridded = self.dfr_to_grid(grouped[['lonind', 'latind', item]], item)
+            dataset = xr.Dataset({str(item): (['latitude', 'longitude'], np.flipud(gridded))},
+                                  coords={'latitude': self.lats,
+                                         'longitude': self.lons})
+            dss.append(dataset)
+        return xr.merge(dss)
+
+
+
+    def to_grid(self, dfr):
+        dfr = self.add_grid_inds(dfr)
+        grouped = pd.DataFrame({'count' : dfr.groupby(['lonind', 'latind']).size()}).reset_index()
+        gridded = self.dfr_to_grid(grouped, 'count')
+
+    def dfr_to_grid(self, dfr, column):
         gridded = np.zeros((self.lat_bins.shape[0],
                          self.lon_bins.shape[0]))
-        grouped = pd.DataFrame({'count' : dfr.groupby(['lonind', 'latind']).size()}).reset_index()
-        latinds = grouped['latind'].values.astype(int)
-        loninds = grouped['lonind'].values.astype(int)
-        gridded[latinds, loninds] = grouped['count'].astype(int)
+        latinds = dfr['latind'].values.astype(int)
+        loninds = dfr['lonind'].values.astype(int)
+        gridded[latinds, loninds] = dfr[column].astype(int)
         gridded = np.flipud(gridded)
         return gridded
 
@@ -130,8 +176,9 @@ class Gridder(object):
 if __name__ == '__main__':
     bboxes = {'indonesia': [8.0, 93.0, -13.0, 143.0], 'riau': [3, -2, 99, 104]}
     bbox = bboxes['indonesia']
-    lats, lons = lat_lon_grid_points(bbox, 0.05)
+    lats, lons = lat_lon_grid_points(bbox, 0.25)
     gri = Gridder(lats, lons)
+    fname = '/mnt/data/land_cover/peatlands/Per-humid_SEA_LC_2015_CRISP_Geotiff_indexed_colour.parquet'
     #fwi = xr.open_dataset('fwi_arr.nc')
     #dfr = pd.read_parquet('/mnt/data/frp/M6_indonesia.parquet')
     #gri = Gridder(fwi.latitude, fwi.longitude)

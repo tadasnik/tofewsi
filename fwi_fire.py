@@ -42,10 +42,10 @@ class CompData(Envdata):
         self.land_mask, self.land_mask_array = self.read_land_mask()
 
     def read_lulc(self):
-        lulc_path = os.path.join(self.data_path, 
+        lulc_path = os.path.join(self.data_path,
                                  'land_cover/peatlands',
-                                 'SEA_LC_2015_0.25_dataframe.parquet')
-        #self.lulc_dfr = pd.read_parquet(lulc_path) 
+                                 'Per-humid_SEA_LULC_0.25.nc')
+        self.lulc = xr.open_dataset(lulc_path) 
 
     def read_land_mask(self):
         land_ds = xr.open_dataset('data/era_land_mask.nc')
@@ -98,9 +98,7 @@ class CompData(Envdata):
     def get_pixel(self, lat, lon, fwi_ds):
         frp_pix = self.frp_m['count'].sel(latitude = lat, longitude = lon)
         fwi_pix = self.fwi_m[fwi_ds].sel(latitude = lat, longitude = lon)
-        lulc = self.lulc_dfr[(self.lulc_dfr.latitude == lat) &
-                             (self.lulc_dfr.longitude == lon)]['lulc']
-        return frp_pix, fwi_pix, lulc
+        return frp_pix, fwi_pix
 
 
 if __name__ == '__main__':

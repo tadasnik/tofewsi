@@ -5,10 +5,9 @@ import subprocess
 import numpy as np
 import xarray as xr
 import pandas as pd
-from osgeo import gdal, ogr
+#from osgeo import gdal, ogr
 #from pyhdf.SD import SD
 from envdata import Envdata
-
 
 class LulcData(Envdata):
     def __init__(self, data_path, bbox=None, hour=None):
@@ -28,6 +27,37 @@ class LulcData(Envdata):
                               coords={'latitude': lats,
                                      'longitude': lons})
         return dataset
+
+    def preporcess_geotiff_SEA_LULC(self, fname):
+        SEA_lulc = {0: 'No class',
+                    1: 'Water',
+                    2: 'Mangrove',
+                    3: 'Peatswamp forest',
+                    4: 'Lowland forest',
+                    5: 'Lower montane forest',
+                    6: 'Upper montane forest',
+                    7: 'Regrowth/plantation',
+                    8: 'Lowland mosaic',
+                    9: 'Montane mosaic',
+                    10: 'Lowland open',
+                    11: 'Lower montane forest',
+                    12: 'Urban',
+                    13: 'Large-scale palm'}
+        file_name, ext = os.path.splitext(fname)
+        out_name = file_name + '.parquet'
+        #gdal_string = ['gdal_translate -of netCDF -co "FORMAT=NC4" -a_nodata 0 {0} {1}'.format(fname,
+        #                                                                           out_name)]
+        #subprocess.run([' '.join(gdal_string)], shell=True)
+        ds = xr.open_rasterio(fname)
+        ds = ds.rename({'Band1': 'lulc', 'lon': 'longitude', 'lat': 'latitude'})
+        lulc = xr.Dataset({'lulc': (['latitude', 'longitude'], np.squeeze(ds.values))},
+                coords = {'latitude': ds.y.values, 'longitude': ds.x.values})
+        dfr = lulc.to_dataframe()
+        dfr = dfr[dfr.lulc != 0]
+        dfr.reset_index(inplace = True)
+        dfr.to_parquet(out_name)
+
+
 
     def rasterize(self, input_shpfile, resolution, bbox = None):
         #image extents are shifted half cell to NE in order to align
