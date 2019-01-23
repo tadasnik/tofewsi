@@ -1,4 +1,4 @@
-import os
+import os, glob
 import datetime
 #import rasterio
 import subprocess
@@ -8,10 +8,13 @@ import pandas as pd
 #from osgeo import gdal, ogr
 #from pyhdf.SD import SD
 from envdata import Envdata
+from gridding import Gridder
+from dask.diagnostics import ProgressBar
 
 class LulcData(Envdata):
     def __init__(self, data_path, bbox=None, hour=None):
-        super().__init__(data_path, bbox=None, hour=None)
+        self.bbox = bbox
+        super().__init__(data_path, bbox=self.bbox, hour=None)
 
     def read_land_cover(self, dataset_path, sp_res):
         lc_names = ['Majority_Land_Cover_Type_1',
@@ -130,10 +133,94 @@ class LulcData(Envdata):
         dataset.to_netcdf(os.path.join(self.data_path, ds_name + '_{0}_deg.nc'.format(sp_res)))
         return dataset
 
+    def preprocess_tiff_to_dfr(self, data_path, column):
+        fnames = glob.glob(os.path.join(data_path, '*.tif'))
+        dfrs = []
+        for fname in fnames:
+            print(fname)
+            file_name, ext = os.path.splitext(fname)
+            out_name = file_name + '.parquet'
+            ds = xr.open_rasterio(fname)
+            ds = ds.drop('band')
+            ds = ds.rename({'x': 'longitude', 'y': 'latitude'})
+            dfr = ds.to_dataframe(name=column)
+            dfr = dfr[dfr[column] > 0]
+            if dfr.empty:
+                print('is empty')
+                continue
+            dfr.reset_index(inplace=True)
+            dfr = dfr.drop('band', axis=1)
+            dfr = self.spatial_subset_dfr(dfr, self.bbox)
+            dfr.to_parquet(out_name)
+
+    def grid_dfrs(self, data_path, column, out_name):
+        fnames = glob.glob(os.path.join(data_path, '*.parquet'))
+        dfrs = []
+        for fname in fnames:
+            print(fname)
+            dfr = pd.read_parquet(fname)
+            gri = Gridder(bbox = self.bbox, step = 0.01)
+            dfr = gri.add_grid_inds(dfr)
+            grouped = dfr.groupby(['lonind', 'latind', column]).size().unstack(fill_value = 0)
+            grouped.loc[:, 'total'] = grouped.sum(axis = 1)
+            grouped.columns = grouped.columns.astype(str)
+            grouped.reset_index(inplace = True)
+            dfrs.append(grouped)
+        grouped = pd.concat(dfrs)
+        #return grouped
+        grouped.to_parquet(out_name)
+
+        """
+            gri = Gridder(bbox = self.bbox, step = 0.01)
+            dfr = gri.add_grid_inds(dfr)
+            grouped = dfr.groupby(['lonind', 'latind', 'primary']).size().unstack(fill_value = 0)
+            grouped.loc[:, 'total'] = grouped.sum(axis = 1)
+            dfrs.append(grouped)
+        grouped = pd.concat(dfrs)
+        classes = grouped.columns.values
+        print(classes)
+        grouped.reset_index(inplace = True)
+        dss = []
+        for item in classes:
+            print(item)
+            gridded = self.dfr_to_grid(grouped[['lonind', 'latind', item]], item)
+            dataset = xr.Dataset({str(item): (['latitude', 'longitude'], np.flipud(gridded))},
+                                  coords={'latitude': self.lats,
+                                         'longitude': self.lons})
+            dss.append(dataset)
+        return xr.merge(dss)
+        """
+
+    def combine_forest_dfrs(self):
+        prim = pd.read_parquet('/mnt/data/forest/primary/Indonesia_primary_1km.parquet')
+        gain = pd.read_parquet('/mnt/data/forest/gain/forest_gain_1km.parquet')
+        prim.loc[:, 'prim'] = 0
+        prim['prim'][(prim['2'] / prim['total'] > 0.5)] = 1
+        prim = prim[['lonind', 'latind', 'prim']]
+
+        loss = pd.read_parquet('/mnt/data/forest/loss/forest_loss_1km.parquet')
+
+        loss.loc[:, 'loss'] = 0
+        loss['loss'][(loss['total'] > 5)] = 1
+        loss = loss[['lonind', 'latind', 'loss']]
+
+        tt = pd.merge(prim, loss, on=['lonind', 'latind'])
+        tfrp = pd.merge(tt, grfrp, on=['lonind', 'latind'])
+
+        gain.loc[:, 'gain'] = 1
+        gain = gain[['lonind', 'latind', 'gain']]
+
+        mask = prim[['lonind', 'latind']].isin({'lonind': loss[loss['loss']==1]['lonind'].values,
+                                                'latind': loss[loss['loss']==1]['latind'].values}).all(axis=1)
+        mask = loss['loss'] == 1][['lonind', 'latind']].isin({'lonind': prim['lonind'].values,
+                                                'latind': prim['latind'].values}).all(axis=1)
+
+
 
 if __name__ == '__main__':
     #data_path = '/mnt/data/land_cover/mcd12c1'
-    data_path = '/mnt/data/land_cover/peatlands'
+    #data_path = '/mnt/data/land_cover/peatlands'
+    data_path = '/mnt/data/forest/loss'
     #fname = '23_tt_6hourly.nc'
     #fname = 'MCD12C1.A2010001.051.2012264191019.hdf'
     #fname = 'Per-humid_SEA_LC_2015_CRISP_Geotiff_indexed_colour.tif'
@@ -149,6 +236,10 @@ if __name__ == '__main__':
                   '/mnt/data/land_cover/peatlands/Peatland_land_cover_2015.shp']
 
     """
+    with ProgressBar():
+        #delayed = df[df['primary'] > 0]
+        delayed = df.to_parquet('/mnt/data/forest/primary_forest_2001.parquet')
+        results = delayed.compute()
                   '/mnt/data/land_cover/peatlands/Peatland_plantations_1990.shp',
                   '/mnt/data/land_cover/peatlands/Peatland_plantations_2000.shp',
                   '/mnt/data/land_cover/peatlands/Peatland_plantations_2010.shp',

@@ -45,7 +45,7 @@ class CompData(Envdata):
         lulc_path = os.path.join(self.data_path,
                                  'land_cover/peatlands',
                                  'Per-humid_SEA_LULC_0.25.nc')
-        self.lulc = xr.open_dataset(lulc_path) 
+        self.lulc = xr.open_dataset(lulc_path)
 
     def read_land_mask(self):
         land_ds = xr.open_dataset('data/era_land_mask.nc')

@@ -47,8 +47,14 @@ def lat_lon_grid_points(bbox, step):
     return lats, lons
 
 class Gridder(object):
-    def __init__(self, lats, lons):
-        self.lats, self.lons= lats, lons
+    def __init__(self, lats=None, lons=None, bbox=None, step=None):
+        if all(cord is not None for cord in [lats, lons]):
+            self.lats, self.lons = lats, lons
+        elif all(item is not None for item in [bbox, step]):
+            self.lats, self.lons = lat_lon_grid_points(bbox, step)
+        else:
+            print('Please provide either lats + lons or bbox + step')
+            return None
         self.step = self.grid_step()
         self.bbox = self.grid_bbox()
         self.grid_bins()
@@ -95,9 +101,9 @@ class Gridder(object):
         dfr.loc[:, 'latind'] = latind
         return dfr
 
-    def lulc_to_grid(self, dfr):
+    def primary_to_grid(self, dfr):
         dfr = self.add_grid_inds(dfr)
-        grouped = dfr.groupby(['lonind', 'latind', 'lulc']).size().unstack(fill_value = 0)
+        grouped = dfr.groupby(['lonind', 'latind', 'primary']).size().unstack(fill_value = 0)
         grouped.loc[:, 'total'] = grouped.sum(axis = 1)
         classes = grouped.columns.values
         print(classes)
@@ -107,6 +113,24 @@ class Gridder(object):
             print(item)
             gridded = self.dfr_to_grid(grouped[['lonind', 'latind', item]], item)
             dataset = xr.Dataset({str(item): (['latitude', 'longitude'], np.flipud(gridded))},
+                                  coords={'latitude': self.lats,
+                                         'longitude': self.lons})
+            dss.append(dataset)
+        return xr.merge(dss)
+
+
+    def lulc_to_grid(self, dfr):
+        dfr = self.add_grid_inds(dfr)
+        grouped = dfr.groupby(['lonind', 'latind', 'lulc']).size().unstack(fill_value = 0)
+        grouped.loc[:, 'total'] = grouped.sum(axis = 1)
+        classes = grouped.columns.values
+        print(classes)
+        grouped.reset_index(inplace = true)
+        dss = []
+        for item in classes:
+            print(item)
+            gridded = self.dfr_to_grid(grouped[['lonind', 'latind', item]], item)
+            dataset = xr.dataset({str(item): (['latitude', 'longitude'], np.flipud(gridded))},
                                   coords={'latitude': self.lats,
                                          'longitude': self.lons})
             dss.append(dataset)
@@ -176,9 +200,9 @@ class Gridder(object):
 if __name__ == '__main__':
     bboxes = {'indonesia': [8.0, 93.0, -13.0, 143.0], 'riau': [3, -2, 99, 104]}
     bbox = bboxes['indonesia']
-    lats, lons = lat_lon_grid_points(bbox, 0.25)
-    gri = Gridder(lats, lons)
-    fname = '/mnt/data/land_cover/peatlands/Per-humid_SEA_LC_2015_CRISP_Geotiff_indexed_colour.parquet'
+    lats, lons = lat_lon_grid_points(bbox, 0.01)
+    gri = Gridder(bbox=bbox, step=0.01)
+    #fname = '/mnt/data/land_cover/peatlands/Per-humid_SEA_LC_2015_CRISP_Geotiff_indexed_colour.parquet'
     #fwi = xr.open_dataset('fwi_arr.nc')
     #dfr = pd.read_parquet('/mnt/data/frp/M6_indonesia.parquet')
     #gri = Gridder(fwi.latitude, fwi.longitude)

@@ -1,8 +1,12 @@
+import os
+import salem
+from salem.utils import get_demo_file
 import pandas as pd
 import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
 from fwi_fire import CompData
+from scipy.stats import gaussian_kde
 
 SEA_lulc = {0: 'No class',
             1: 'Water',
@@ -111,15 +115,54 @@ def get_pure_cell_values(cc, threshold, item, fwi_ds):
         fwis.extend(fwi_pix.values)
     return frps, fwis
 
+def ind_states():
+    #peat_path = '/home/tadas/tofewsi/data/peat_atlas'
+    #peat_fname = 'WI_PeatAtlas_SumatraKalimantan_MERGED_DTRV120914_without_legend_hapus2.shp'
+    #ind_shp = 'data/borders/ne_10m_admin_1_states_provinces.shp'
+    ind_shp = 'data/borders/ne_110m_admin_0_countries.shp'
+    ind_shapes = shapereader.Reader(ind_shp)
+    geoms = ind_shapes.geometries()
+    countries = list(ind_shapes.records())
+    indo = [x for x in zip(countries, geoms) if 'Indonesia' in x[0].attributes['ADMIN']]
+    #indo = [x for x in zip(countries, geoms) if 'Indonesia' in x[0].attributes['admin']]
+    austr_state_borders = ShapelyFeature(aust,
+                               ccrs.PlateCarree(),
+                               facecolor='none',
+                               edgecolor='black',
+                               alpha = 0.5)
+    return austr_state_borders
 
+def plot_frp_fwi_per_lulc(cc, threshold, items, fwi_ds):
+    fig, axes  = plt.subplots(ncols=3, nrows=3, sharey=True, figsize = (15, 15))
+    fig.subplots_adjust(left=0.05, right=0.97, bottom=0.05, hspace=0.2, wspace=0.1)
+    for nr, ax in enumerate(axes.flatten()):
+        item = items[nr]
+        label = SEA_lulc[item]
+        frps, fwis = get_pure_cell_values(cc, threshold, item, fwi_ds)
+        frps = np.array(frps)
+        fwis = np.array(fwis)
+        number = int(len(frps)/192)
+        ax.scatter(fwis, frps, s = 10, alpha=0.3)
+        ax.set_xlabel('{0}'.format(fwi_ds))
+        ax.set_ylabel('FRP Count')
+        ax.set_title(label + ', {0} cells'.format(number))
+    #plt.suptitle('0.25 deg cells, {0} lulc fractional threshold'.format(threshold))
+    plt.tight_layout()
+    plt.show()
 
 data_path = '/mnt/data/'
 cc = CompData(data_path)
 cc.read_lulc()
 cc.read_monthly()
 
-
 """
+import cartopy.io.shapereader as shapereader
+shdf = salem.read_shapefile(get_demo_file('world_borders.shp'))
+ind = shdf[shdf['CNTRY_NAME'] == 'Indonesia']
+#t2_sub = cc.lulc['1'].salem.subset(shape=ind, margin=2)
+mask = cc.lulc['1'].salem.roi(shape=ind, all_touched=True)
+mask = mask >= 0
+
 regions = {'South_East_Sumatra': [-3, 103, -4, 104],
            'Peatland_east_Riau': [1, 101.5, 0, 102.5],
            'South_Kalimantan': [-2.25, 112, -3.25, 113]}
