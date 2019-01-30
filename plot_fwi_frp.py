@@ -155,14 +155,21 @@ cc = CompData(data_path)
 cc.read_lulc()
 cc.read_monthly()
 
-"""
+from salem import wgs84
+grid_c = salem.Grid(nxny=(3, 2), dxdy=(1, 1), x0y0=(0, 0),
+                    proj=wgs84, pixel_ref='corner')
+
 import cartopy.io.shapereader as shapereader
 shdf = salem.read_shapefile(get_demo_file('world_borders.shp'))
 ind = shdf[shdf['CNTRY_NAME'] == 'Indonesia']
-#t2_sub = cc.lulc['1'].salem.subset(shape=ind, margin=2)
-mask = cc.lulc['1'].salem.roi(shape=ind, all_touched=True)
-mask = mask >= 0
+t2_sub = cc.lulc['7'].salem.subset(shape=ind, margin=2)
 
+prod = cc.lulc['7']
+mask = prod.salem.roi(shape=ind, grid=prod.salem.grid)
+maska = prod.salem.roi(shape=ind, all_touched=True)
+#mask = mask >= 0
+
+"""
 regions = {'South_East_Sumatra': [-3, 103, -4, 104],
            'Peatland_east_Riau': [1, 101.5, 0, 102.5],
            'South_Kalimantan': [-2.25, 112, -3.25, 113]}

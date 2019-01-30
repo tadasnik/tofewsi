@@ -12,6 +12,25 @@ class Envdata(metaclass=abc.ABCMeta):
         self.region_bbox = {'indonesia': [8.0, 93.0, -13.0, 143.0],
                                  'riau': [3, -2, 99, 104]}
 
+    def spatial_subset_dfr(self, dfr, bbox):
+        """
+        Selects data within spatial bbox. bbox coords must be given as
+        positive values for the Northern hemisphere, and negative for
+        Southern. West and East both positive - Note - the method is
+        naive and will only work for bboxes fully fitting in the Eastern hemisphere!!!
+        Args:
+            dfr - pandas dataframe
+            bbox - (list) [North, West, South, East]
+        Returns:
+            pandas dataframe
+        """
+        dfr = dfr[(dfr['latitude'] < bbox[0]) &
+                                (dfr['latitude'] > bbox[2])]
+        dfr = dfr[(dfr['longitude'] > bbox[1]) &
+                                (dfr['longitude'] < bbox[3])]
+        return dfr
+
+
     def read_hdf4(self, file_name, dataset=None):
         """
         Reads Scientific Data Set(s) stored in a HDF-EOS (HDF4) file

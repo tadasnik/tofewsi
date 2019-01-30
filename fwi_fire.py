@@ -3,7 +3,7 @@ import numpy as np
 import xarray as xr
 import pandas as pd
 from envdata import Envdata
-#from gridding import Gridder
+from gridding import Gridder
 
 def spatial_subset_dfr(dfr, bbox):
     """
@@ -36,10 +36,54 @@ def modis_frp_proc(data_path, years, lats, lons):
     dfr_all = pd.concat(dfrs, ignore_index = True)
     return dfr_all
 
+def monthly_frp_dfr(frp_file, bbox, res, ds):
+    dfr = pd.read_parquet(frp_file)
+    gri = Gridder(bbox = 'indonesia', step = res)
+    dfr = spatial_subset_dfr(dfr, gri.bbox)
+    dfr = gri.add_grid_inds(dfr)
+    dfr['year'] = dfr['date'].dt.year
+    dfr['month'] = dfr['date'].dt.month
+    dfr['mind'] = (dfr['year'] - dfr['year'].min()) * 12 + dfr['month']
+    grdfr = pd.DataFrame({'frp': dfr.groupby(['lonind', 'latind', 'mind'])['date'].count()})
+    #grdfr = pd.DataFrame({'frp': dfr.groupby(['lonind', 'latind'])['date'].count()})
+    grdfr.reset_index(inplace = True)
+    grid = np.zeros((gri.lats.shape[0], gri.lons.shape[0], grdfr.mind.max()), dtype=int)
+    grid[grdfr.latind, grdfr.lonind, grdfr.mind - 1] = grdfr['frp'].astype(int)
+    prim = pd.read_parquet('/mnt/data/forest/forest_primary_0.05deg_clean.parquet')
+    grdfr_agg = pd.DataFrame({'frp': dfr.groupby(['lonind', 'latind'])['date'].count()})
+    prim_frp = pd.merge(prim, grdfr_agg, how='inner', on=['lonind', 'latind'])
+    frp_m = grid[prim_frp.latind, prim_frp.lonind, :]
+    df = pd.concat([prim_frp[['lonind', 'latind', 'frp']], pd.DataFrame(frp_m, columns=[str(x) for x in range(1, 193)])], axis = 1)
+    #grid = np.flip(grid, axis = 0)
+    #dataset = xr.Dataset({'count': (['latitude', 'longitude', 'time'], grids)},
+    #                      coords={'latitude': self.lats,
+    #                              'longitude': self.lons,
+    #                              'time': dates})
+
+
+def piecewise(row):
+    x_vals = row.filter(regex = '_x')
+    y_vals = row.filter(regex = '_y')
+    row_model = pwlf.PiecewiseLinFit(x_vals, y_vals)
+    #fit data for two of segments
+    res = row_model.fitfast(2)
+    r_sq = row_model.r_squared()
+    return np.array((res[1], r_sq))
+    #xHat = np.linspace(x_vals.min(), x_vals.max(), num=100)
+    #yHat = row_model.predict(xHat)
+
 class CompData(Envdata):
     def __init__(self, data_path, bbox=None, hour=None):
         super().__init__(data_path, bbox=None, hour=None)
         self.land_mask, self.land_mask_array = self.read_land_mask()
+
+    def read_monthly_dfrs(self):
+        self.frpfr = pd.read_parquet('/mnt/data/frp/frp_count_indonesia_5km_monthly.parquet')
+        self.dcfr = pd.read_parquet('/mnt/data/fwi/dc_indonesia_5km_monthly.parquet')
+        self.fwifr = pd.read_parquet('/mnt/data/fwi/fwi_indonesia_5km_monthly.parquet')
+
+    def do_piecewise(self):
+        comb = pd.merge(cc.dcfr, cc.frpfr, on=['lonind', 'latind'])
 
     def read_lulc(self):
         lulc_path = os.path.join(self.data_path,
@@ -92,8 +136,8 @@ class CompData(Envdata):
                                                   'fwi_frp_monthly_land.parquet'))
 
     def read_monthly(self):
-        self.fwi_m = xr.open_dataset(os.path.join(self.data_path, 'fwi', 'fwi_arr_m.nc'))
-        self.frp_m = xr.open_dataset(os.path.join(self.data_path, 'frp', 'frp_count_indonesia_m.nc'))
+        self.fwi_m = xr.open_dataset(os.path.join(self.data_path, 'fwi', 'fwi_indonesia_5km_monthly.nc'))
+        self.frp_m = xr.open_dataset(os.path.join(self.data_path, 'frp', 'frp_count_indonesia_5km_monthly.nc'))
 
     def get_pixel(self, lat, lon, fwi_ds):
         frp_pix = self.frp_m['count'].sel(latitude = lat, longitude = lon)
@@ -105,15 +149,13 @@ if __name__ == '__main__':
     data_path = '/mnt/data/'
     #data_path = '/home/tadas/data/'
     cc = CompData(data_path)
-    cc.read_lulc()
+    cc.read_monthly_dfrs()
     #fwi = xr.open_dataset(os.path.join(data_path, 'fwi', 'fwi_arr.nc'))
     #frp = xr.open_dataset(os.path.join(data_path, 'frp', 'frp_count_indonesia.nc'))
     #cc.set_frp_ds(frp)
     #cc.set_fwi_ds(fwi)
     #cc.temporal_overlap()
     cc.read_monthly()
-    cc.read_monthly_land_dfr()
+    #cc.read_monthly_land_dfr()
     #lulc = os.path.join(data_path, 'land_cover/peatlands/SEA_LC_2015_0.25.tif')
     #lulc = xr.open_rasterio(lulc)
-    #lulc = xr.Dataset({'lulc': (['latitude', 'longitude'], np.squeeze(lulc.values))},
-    #        coords = {'latitude': cc.frp_m.latitude, 'longitude': cc.frp_m.longitude})

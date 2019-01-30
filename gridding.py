@@ -48,14 +48,19 @@ def lat_lon_grid_points(bbox, step):
 
 class Gridder(object):
     def __init__(self, lats=None, lons=None, bbox=None, step=None):
+        bboxes = {'indonesia': [8.0, 93.0, -13.0, 143.0], 'riau': [3, -2, 99, 104]}
         if all(cord is not None for cord in [lats, lons]):
             self.lats, self.lons = lats, lons
+            self.step = self.grid_step()
         elif all(item is not None for item in [bbox, step]):
-            self.lats, self.lons = lat_lon_grid_points(bbox, step)
+            self.step = step
+            if isinstance(bbox, list):
+                self.lats, self.lons = lat_lon_grid_points(bbox, step)
+            if isinstance(bbox, str):
+                self.lats, self.lons = lat_lon_grid_points(bboxes[bbox], step)
         else:
             print('Please provide either lats + lons or bbox + step')
             return None
-        self.step = self.grid_step()
         self.bbox = self.grid_bbox()
         self.grid_bins()
 
@@ -130,25 +135,31 @@ class Gridder(object):
         for item in classes:
             print(item)
             gridded = self.dfr_to_grid(grouped[['lonind', 'latind', item]], item)
-            dataset = xr.dataset({str(item): (['latitude', 'longitude'], np.flipud(gridded))},
+            dataset = xr.Dataset({str(item): (['latitude', 'longitude'], np.flipud(gridded))},
                                   coords={'latitude': self.lats,
                                          'longitude': self.lons})
             dss.append(dataset)
         return xr.merge(dss)
 
-
+    def grid_array_to_dataset(self, grid_array, name):
+        dataset = xr.Dataset({str(name): (['latitude', 'longitude'], np.flipud(grid_array))},
+                              coords={'latitude': self.lats,
+                                     'longitude': self.lons})
+        return dataset
+ 
 
     def to_grid(self, dfr):
         dfr = self.add_grid_inds(dfr)
         grouped = pd.DataFrame({'count' : dfr.groupby(['lonind', 'latind']).size()}).reset_index()
         gridded = self.dfr_to_grid(grouped, 'count')
 
-    def dfr_to_grid(self, dfr, column):
-        gridded = np.zeros((self.lat_bins.shape[0],
-                         self.lon_bins.shape[0]))
+    def dfr_to_grid(self, dfr, column, no_value):
+        gridded = np.empty((self.lats.shape[0],
+                         self.lons.shape[0]))
+        gridded[:, :] = no_value
         latinds = dfr['latind'].values.astype(int)
         loninds = dfr['lonind'].values.astype(int)
-        gridded[latinds, loninds] = dfr[column].astype(int)
+        gridded[latinds, loninds] = dfr[column]
         gridded = np.flipud(gridded)
         return gridded
 
@@ -163,9 +174,9 @@ class Gridder(object):
 
     def grid_dfr(self, dfr):
         dates = pd.date_range(dfr.date.min(), dfr.date.max(), freq='D')
-        lonind, latind = self.binning(dfr['longitude'].values, dfr['latitude'].values)
-        dfr.loc[:, 'lonind'] = lonind
-        dfr.loc[:, 'latind'] = latind
+        #lonind, latind = self.binning(dfr['longitude'].values, dfr['latitude'].values)
+        #dfr.loc[:, 'lonind'] = lonind
+        #dfr.loc[:, 'latind'] = latind
         dfa = pd.DataFrame({'count': dfr.groupby(['date', 'latind', 'lonind']).size()})
         dfa = dfa.reset_index()
         dfa.loc[:, 'dind'] = (dfa.date - dfa.date.min()).dt.days
@@ -200,8 +211,8 @@ class Gridder(object):
 if __name__ == '__main__':
     bboxes = {'indonesia': [8.0, 93.0, -13.0, 143.0], 'riau': [3, -2, 99, 104]}
     bbox = bboxes['indonesia']
-    lats, lons = lat_lon_grid_points(bbox, 0.01)
-    gri = Gridder(bbox=bbox, step=0.01)
+    lats, lons = lat_lon_grid_points(bbox, 0.05)
+    gri = Gridder(bbox=bbox, step=0.05)
     #fname = '/mnt/data/land_cover/peatlands/Per-humid_SEA_LC_2015_CRISP_Geotiff_indexed_colour.parquet'
     #fwi = xr.open_dataset('fwi_arr.nc')
     #dfr = pd.read_parquet('/mnt/data/frp/M6_indonesia.parquet')

@@ -15,6 +15,8 @@ import matplotlib
 matplotlib.use('TkAgg')
 from matplotlib.colors import LinearSegmentedColormap, ListedColormap
 import matplotlib.pyplot as plt
+from cartopy.feature import NaturalEarthFeature
+
 
 def discrete_cmap(N, base_cmap=None):
     """Create an N-bin discrete colormap from the specified input map"""
@@ -138,6 +140,9 @@ def plot_peatlands(dataset):
 
 def plot_dataset(dataset):
     fig = plt.figure(figsize=(18,6))
+
+    #coast = NaturalEarthFeature(category='physical', scale='50m',
+    #                            facecolor='none', name='coastline')
     #select hour
     #ds.sel(time=datetime.time(1))
     """
@@ -170,7 +175,8 @@ def plot_dataset(dataset):
     ax.gridlines(ccrs.PlateCarree(), draw_labels=True)
     #borders = admin_borders()
     #ax.add_feature(borders)
-    ax.add_feature(feature.COASTLINE)
+    #ax.add_feature(coast)
+    ax.coastlines('50m')
     plt.tight_layout(pad=2, w_pad=3, h_pad=7.0)
     #plt.savefig('lulc_2010_riau.png', dpi = 80)
     plt.show()
