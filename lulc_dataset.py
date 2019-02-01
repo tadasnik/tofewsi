@@ -186,7 +186,7 @@ class LulcData(Envdata):
             grouped.reset_index(inplace = True)
             dfrs.append(grouped)
         grouped = pd.concat(dfrs)
-        grouped = grouped.drop_duplicates()
+        #grouped = grouped.drop_duplicates()
         grouped = grouped.groupby(['lonind', 'latind']).sum().reset_index()
         #return grouped
         grouped.to_parquet(out_name)
@@ -213,26 +213,26 @@ class LulcData(Envdata):
         """
 
     def proc_forest_ds(self, data_path, res):
-        for ds_type in ['loss', 'gain', 'primary']:
+        for ds_type in ['primary']:
             ds_data_path = os.path.join(data_path, ds_type)
             out_name = os.path.join(data_path, 'forest_{0}_{1}deg_clean.parquet'.format(ds_type, res))
             self.grid_dfrs(ds_data_path, res, ds_type, out_name)
 
-    def combine_lulcs_5km(self):
-        prim = pd.read_parquet('/mnt/data/forest/forest_primary_0.05deg.parquet')
-        prim = prim.drop_duplicates()
-        prim = prim.groupby(['lonind', 'latind']).sum().reset_index()
+    def combine_lulcs(self, res):
+        prim = pd.read_parquet('/mnt/data/forest/forest_primary_{}deg_clean.parquet'.format(res))
         prim.loc[:, 'f_prim'] = prim['2'] / prim['total']
         prim = prim[['lonind', 'latind', 'total', 'f_prim']]
+        loss = pd.read_parquet('/mnt/data/forest/forest_loss_{}deg_clean.parquet'.format(res))
+        com = pd.merge(prim, loss.iloc[:, :19], how='left', on=['lonind', 'latind'])
 
-        ds = gri.dfr_to_grid(prim, 'f_prim', np.nan)
-        dataset = xr.Dataset({'frp': (['latitude', 'longitude'], np.flipud(ds))},
-                              coords={'latitude': gri.lats,
-                                     'longitude': gri.lons})
+        gain = pd.read_parquet('/mnt/data/forest/forest_gain_{}deg_clean.parquet'.format(res))
+        gain.rename({'1': 'gain'}, axis=1, inplace=True)
+        com = pd.merge(com, gain[['lonind', 'latind', 'gain']], how='left', on=['lonind', 'latind'])
 
-        shdf = salem.read_shapefile(get_demo_file('world_borders.shp'))
-        ind = shdf[shdf['CNTRY_NAME'] == 'Indonesia']
-        sub = dataset.salem.subset(shape=ind, margin=2)
+        for i in range(1, 18, 1):
+            com.loc[:, str(i)] = com[str(i)] / com['total']
+        com['gain'] = com['gain'] / com['total']
+        return com
 
     def combine_forest_dfrs(self):
         prim = pd.read_parquet('/mnt/data/forest/forest_primary_0.05deg.parquet')

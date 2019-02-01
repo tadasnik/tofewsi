@@ -141,37 +141,9 @@ def plot_peatlands(dataset):
 def plot_dataset(dataset):
     fig = plt.figure(figsize=(18,6))
 
-    #coast = NaturalEarthFeature(category='physical', scale='50m',
-    #                            facecolor='none', name='coastline')
-    #select hour
-    #ds.sel(time=datetime.time(1))
-    """
-    for nr, month in enumerate(mon['month'].values):
-        ax = fig.add_subplot(3, 4, month, projection=ccrs.PlateCarree())
-        mon[nr].plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(),
-                                   x = 'longitude', y='latitude', add_colorbar=False)
-        ax.add_feature(borders)
-        #ax.add_feature(feature.BORDERS, linestyle='-')
-        #ax.add_feature(feature.COASTLINE)
-    lc_names = ['Majority_Land_Cover_Type_1',
-                'Majority_Land_Cover_Type_2',
-                'Majority_Land_Cover_Type_3']
-
-    for nr, lc_name in enumerate(lc_names, 1):
-        ax = fig.add_subplot(1, 3, nr, projection=ccrs.PlateCarree())
-        ll = dataset[lc_name]
-        im = ll.plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(),
-                           x = 'longitude', y='latitude', cmap=discrete_cmap(14), add_colorbar=False)
-        gl = ax.gridlines(ccrs.PlateCarree(), draw_labels=True)
-        gl.xlabels_top = gl.ylabels_right = False
-        ax.add_feature(borders)
-        ax.set_title(lc_name)
-        #plt.colorbar(im, ax=ax, shrink=.62, orientation='horizontal')
-
-    """
     ax = fig.add_subplot(111, projection=ccrs.PlateCarree())
     dataset.plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(),
-                           x = 'longitude', y='latitude', add_colorbar=False)
+                           x = 'longitude', y='latitude')
     ax.gridlines(ccrs.PlateCarree(), draw_labels=True)
     #borders = admin_borders()
     #ax.add_feature(borders)

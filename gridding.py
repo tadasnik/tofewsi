@@ -146,7 +146,11 @@ class Gridder(object):
                               coords={'latitude': self.lats,
                                      'longitude': self.lons})
         return dataset
- 
+
+    def dfr_to_dataset(self, dfr, name, no_value):
+        gridded = self.dfr_to_grid(dfr, name, no_value)
+        dataset = self.grid_array_to_dataset(gridded, name)
+        return dataset
 
     def to_grid(self, dfr):
         dfr = self.add_grid_inds(dfr)
