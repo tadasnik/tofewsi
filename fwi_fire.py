@@ -10,6 +10,108 @@ from envdata import Envdata
 from gridding import Gridder
 import matplotlib.pyplot as plt
 
+def prepare_features(cc):
+    frp = pd.merge(cc.fc[['lonind', 'latind']], cc.frpfr, on=['lonind', 'latind'], how='inner')
+    fc = pd.merge(frp[['lonind', 'latind']], cc.fc, on=['lonind', 'latind'], how='left')
+
+    frp.fillna(value=0, inplace=True)
+    frp = frp.set_index(['lonind', 'latind'])
+    frp.drop('frp', axis = 1, inplace = True)
+    frp = frp.stack()
+    frp = frp.reset_index(name = 'frp')
+
+    #fc = cc.fc.copy()
+    #fc = pd.merge(frp[['lonind', 'latind']], cc.fc, on=['lonind', 'latind'], how='left')
+    part = fc[['f_prim', 'gain']]
+
+    #last year loss
+    last_year = fc.drop(['total', 'f_prim', 'gain', '17'], axis = 1)
+    last_year = loss_to_features(last_year)
+
+    #lost this year
+    this_year = fc.drop(['total', 'f_prim', 'gain', '1'], axis = 1)
+    this_year = loss_to_features(this_year)
+
+    #lost this year
+    this_year = fc.drop(['total', 'f_prim', 'gain', '1'], axis = 1)
+    this_year = loss_to_features(this_year)
+
+
+
+    #accum loss
+    accum_loss = fc.drop(['total', 'f_prim', 'gain'], axis = 1)
+    accum_loss.iloc[: ,2:] = accum_loss.iloc[:, 2:].cumsum(axis = 1)
+    accum_loss.drop('1', axis = 1, inplace = True)
+    accum_loss = loss_to_features(accum_loss)
+
+    #three year loss
+    loss_three = fc.drop(['total', 'f_prim', 'gain'], axis = 1)
+    loss_three.iloc[: ,2:] = loss_three.iloc[:, 2:].rolling(window = 3, min_periods = 2, axis = 1).sum()
+    loss_three.drop('1', axis = 1, inplace = True)
+    loss_three = loss_to_features(loss_three)
+
+
+    frp.loc[:, 'loss_last'] = last_year.values
+    frp.loc[:, 'loss_this'] = this_year.values
+    frp.loc[:, 'loss_three'] = loss_three.values
+    frp.loc[:, 'loss_accum'] = accum_loss.values
+    frp.loc[:, 'f_prim'] = part['f_prim'].repeat(192).values
+    frp.loc[:, 'gain'] = part['gain'].repeat(192).values
+    frp = cc.add_fwi_features(['fwi', 'dc', 'ffmc'], fc[['lonind', 'latind']], frp)
+    frp.rename({'level_2': 'month'}, axis = 1, inplace = True)
+    return frp
+
+def prepare_features_5km(cc):
+    frp = pd.merge(cc.fc[['lonind', 'latind']], cc.frpfr, on=['lonind', 'latind'], how='inner')
+    fc = pd.merge(frp[['lonind', 'latind']], cc.fc, on=['lonind', 'latind'], how='left')
+
+    frp.fillna(value=0, inplace=True)
+    frp = frp.set_index(['lonind', 'latind'])
+    frp.drop('frp', axis = 1, inplace = True)
+    frp = frp.stack()
+    frp = frp.reset_index(name = 'frp')
+
+    #fc = cc.fc.copy()
+    #fc = pd.merge(frp[['lonind', 'latind']], cc.fc, on=['lonind', 'latind'], how='left')
+    part = fc[['f_prim', 'gain']]
+
+    #last year loss
+    last_year = fc.drop(['total', 'f_prim', 'gain', 'loss', '17'], axis = 1)
+    last_year = loss_to_features(last_year)
+
+    #lost this year
+    this_year = fc.drop(['total', 'f_prim', 'gain', 'loss', '1'], axis = 1)
+    this_year = loss_to_features(this_year)
+
+    #lost this year
+    this_year = fc.drop(['total', 'f_prim', 'gain', 'loss', '1'], axis = 1)
+    this_year = loss_to_features(this_year)
+
+
+
+    #accum loss
+    accum_loss = fc.drop(['total', 'f_prim', 'gain', 'loss'], axis = 1)
+    accum_loss.iloc[: ,2:] = accum_loss.iloc[:, 2:].cumsum(axis = 1)
+    accum_loss.drop('1', axis = 1, inplace = True)
+    accum_loss = loss_to_features(accum_loss)
+
+    #three year loss
+    loss_three = fc.drop(['total', 'f_prim', 'gain', 'loss'], axis = 1)
+    loss_three.iloc[: ,2:] = loss_three.iloc[:, 2:].rolling(window = 3, min_periods = 2, axis = 1).sum()
+    loss_three.drop('1', axis = 1, inplace = True)
+    loss_three = loss_to_features(loss_three)
+
+
+    frp.loc[:, 'loss_last'] = last_year.values
+    frp.loc[:, 'loss_this'] = this_year.values
+    frp.loc[:, 'loss_three'] = loss_three.values
+    frp.loc[:, 'loss_accum'] = accum_loss.values
+    frp.loc[:, 'f_prim'] = part['f_prim'].repeat(192).values
+    frp.loc[:, 'gain'] = part['gain'].repeat(192).values
+    frp = cc.add_fwi_features(['fwi', 'dc', 'ffmc'], fc[['lonind', 'latind']], frp)
+    frp.rename({'level_2': 'month'}, axis = 1, inplace = True)
+    return frp
+
 def spatial_subset_dfr(dfr, bbox):
     """
     Selects data within spatial bbox. bbox coords must be given as
@@ -72,7 +174,6 @@ def fit_piecewise(dfr, n_cpu):
     print("Dask completed in: {0} using {1} CPUs".format(datetime.datetime.now() - t0, n_cpu))
     return result
 
-
 def piecewise(row):
     x_vals = row.filter(regex = '_x')
     y_vals = row.filter(regex = '_y')
@@ -102,24 +203,31 @@ def plot_piecewise(dfr, row_ind):
     plt.savefig('figs/PiecewiseLinFit_cell_{0}'.format(row_ind))
     plt.show()
 
+def loss_to_features(fc):
+    fc = fc.set_index(['lonind', 'latind'])
+    fc = fc.stack()
+    fc = fc.repeat(12)
+    return fc
+
+
 class CompData(Envdata):
     def __init__(self, data_path, bbox=None, hour=None):
         super().__init__(data_path, bbox=None, hour=None)
         self.land_mask, self.land_mask_array = self.read_land_mask()
 
-    def read_monthly_dfrs_25(self):
-        self.frpfr25 = pd.read_parquet('/mnt/data/frp/frp_count_indonesia_25km_monthly.parquet')
-        self.dcfr25 = pd.read_parquet('/mnt/data/fwi/dc_indonesia_25km_monthly.parquet')
-        self.fwifr25 = pd.read_parquet('/mnt/data/fwi/fwi_indonesia_25km_monthly.parquet')
+    def read_monthly_dfrs(self, res):
+        self.frpfr = pd.read_parquet('/mnt/data/frp/frp_count_indonesia_{}deg_monthly.parquet'.format(res))
+        self.dcfr = pd.read_parquet('/mnt/data/fwi/dc_indonesia_{}deg_monthly.parquet'.format(res))
+        self.fwifr = pd.read_parquet('/mnt/data/fwi/fwi_indonesia_{}deg_monthly.parquet'.format(res))
+        self.ffmcfr = pd.read_parquet('/mnt/data/fwi/ffmc_indonesia_{}deg_monthly.parquet'.format(res))
 
-
-    def read_monthly_dfrs(self):
-        self.frpfr = pd.read_parquet('/mnt/data/frp/frp_count_indonesia_5km_monthly.parquet')
-        self.dcfr = pd.read_parquet('/mnt/data/fwi/dc_indonesia_5km_monthly.parquet')
-        self.fwifr = pd.read_parquet('/mnt/data/fwi/fwi_indonesia_5km_monthly.parquet')
-
-    def do_piecewise(self):
-        comb = pd.merge(cc.dcfr, cc.frpfr, on=['lonind', 'latind'])
+    def do_piecewise(self, other):
+        frp = pd.merge(self.fc[['lonind', 'latind']], self.frpfr, on=['lonind', 'latind'], how='inner')
+        comb = pd.merge(frp, other, on=['lonind', 'latind'], how = 'left')
+        result = fit_piecewise(comb, 8)
+        result[['lonind', 'latind']] = comb[['lonind', 'latind']]
+        result.rename({1: 'r2', 0: 'br'}, axis = 1, inplace = True)
+        return result
 
     def read_lulc(self):
         lulc_path = os.path.join(self.data_path,
@@ -171,14 +279,11 @@ class CompData(Envdata):
         self.dfr_m = pd.read_parquet(os.path.join(self.data_path,
                                                   'fwi_frp_monthly_land.parquet'))
 
-    def read_monthly(self):
-        self.fwi_m = xr.open_dataset(os.path.join(self.data_path, 'fwi', 'fwi_indonesia_5km_monthly.nc'))
-        self.frp_m = xr.open_dataset(os.path.join(self.data_path, 'frp', 'frp_count_indonesia_5km_monthly.nc'))
-
-    def read_monthly_25(self):
-        self.fwi_m25 = xr.open_dataset(os.path.join(self.data_path, 'fwi', 'fwi_arr_m.nc'))
-        self.frp_m25 = xr.open_dataset(os.path.join(self.data_path, 'frp', 'frp_count_indonesia_m.nc'))
-
+    def read_monthly(self, res):
+        self.fwi_m = xr.open_dataset(os.path.join(self.data_path, 'fwi',
+                                                  'fwi_indonesia_{}deg_monthly.nc'.format(res)))
+        self.frp_m = xr.open_dataset(os.path.join(self.data_path, 'frp',
+                                                  'frp_count_indonesia_{}deg_monthly.nc'.format(res)))
 
     def get_pixel(self, lat, lon, fwi_ds):
         frp_pix = self.frp_m['count'].sel(latitude = lat, longitude = lon)
@@ -186,25 +291,66 @@ class CompData(Envdata):
         return frp_pix, fwi_pix
 
     def read_forest_change(self, res):
-        self.fc = pd.read_parquet('/mnt/data/forest/forest_change_0.05.parquet')
+        fc = pd.read_parquet('/mnt/data/forest/forest_change_{}.parquet'.format(res))
+        self.fc = fc.fillna(value = 0)
 
     def digitize_values(self, dfr, columns, bins):
         for column in columns:
             dfr[column + '_d'] = pd.np.digitize(dfr[column], bins = bins)
         return dfr
 
+    def feature_dfr(self, dfr):
+        start_year = 2
+        last_year_ind = ((dfr.month.astype(int) - 1) // 12) - 1
+        last_year_loss = cc.fc
+
+    def fwi_ds_to_dfr(self, prod, lon_lat_fr):
+        ds = self.fwi_m[prod]
+        lon_lat_fr.reset_index(drop = True, inplace = True)
+        fr = ds.values[:, lon_lat_fr.latind, lon_lat_fr.lonind]
+        dfr = pd.concat([lon_lat_fr[['latind', 'lonind']],
+                         pd.DataFrame(fr.T, columns = [str(x) for x in range(1, 193)])],
+                         axis = 1)
+        return dfr
+
+    def stack_dfr(self, dfr):
+        dfr = dfr.set_index(['lonind', 'latind'])
+        dfr = dfr.stack()
+        return dfr
+
+    def add_fwi_features(self, products, lon_lat_fr, dfr):
+        for prod in products:
+            df = self.fwi_ds_to_dfr(prod, lon_lat_fr)
+            df = self.stack_dfr(df)
+            dfr.loc[:, prod] = df.values
+        return dfr
+
+    def read_features(self, res, frp_thresh, total_thresh):
+        self.read_monthly_dfrs(res)
+        self.read_monthly(res)
+        self.read_forest_change(res)
+        self.frpfr = self.frpfr[cc.frpfr.frp < frp_thresh]
+        self.fc = self.fc[self.fc.total > total_thresh]
+        self.fc.reset_index(drop = True, inplace = True)
+        self.frpfr.reset_index(drop = True, inplace = True)
+
+
+
 if __name__ == '__main__':
     data_path = '/mnt/data/'
     #data_path = '/home/tadas/data/'
     cc = CompData(data_path)
-    cc.read_monthly_dfrs()
-    #cc.read_monthly_dfrs_25()
-    #cc.read_monthly_25()
-    cc.read_monthly()
-    cc.read_forest_change(0.05)
+
+    #do 5km 
+    """
+    #Sumatra only!
+    cc.frpfr = cc.frpfr[(cc.frpfr.lonind > 43) & (cc.frpfr.lonind < 275)]
+    cc.frpfr = cc.frpfr[(cc.frpfr.latind > 141) & (cc.frpfr.latind < 380)]
+
     cc.frpfr = cc.frpfr[cc.frpfr.frp < 1001]
     cc.fc = cc.fc[cc.fc.total > 35000]
-    cc.fc = cc.digitize_values(cc.fc,['gain', 'loss'], [0, 0.01, 0.25, 0.5, 0.75, 1])
-    ff = pd.merge(cc.frpfr[['lonind', 'latind', 'frp']], cc.fc, on=['lonind', 'latind'], how='inner')
-    med_frp = ff.groupby(['loss_d'])['frp'].median()
-    #cc.read_monthly_land_dfr()
+    """
+
+    #do 25 km
+    cc.read_features(0.25, 6001, 700000)
+    #res = cc.do_piecewise(cc.ffmcfr)

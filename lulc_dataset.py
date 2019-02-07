@@ -235,13 +235,14 @@ class LulcData(Envdata):
         return com
 
     def combine_forest_dfrs(self):
-        prim = pd.read_parquet('/mnt/data/forest/forest_primary_0.05deg.parquet')
-        prim = prim.drop_duplicates()
-        prim = prim.groupby(['lonind', 'latind']).sum().reset_index()
+        prim = pd.read_parquet('/mnt/data/forest/forest_primary_0.25deg_clean.parquet')
+        pri = pd.read_parquet('/mnt/data/forest/Indonesia_primary_1km.parquet')
+        #prim = prim.drop_duplicates()
+        #prim = prim.groupby(['lonind', 'latind']).sum().reset_index()
         prim.loc[:, 'f_prim'] = prim['2'] / prim['total']
         prim = prim[['lonind', 'latind', 'total', 'f_prim']]
 
-        gain = pd.read_parquet('/mnt/data/forest/forest_gain_0.05deg.parquet')
+        gain = pd.read_parquet('/mnt/data/forest/forest_gain_0.25deg_clean.parquet')
         gain = gain.drop_duplicates()
         gain = gain.groupby(['lonind', 'latind']).sum().reset_index()
 
@@ -259,7 +260,8 @@ class LulcData(Envdata):
         mask = dataset.salem.roi(shape=ind)
         maska = dataset.salem.roi(shape=ind, all_touched=True)
 
-        loss = pd.read_parquet('/mnt/data/forest/loss/forest_loss_1km.parquet')
+        los = pd.read_parquet('/mnt/data/forest/forest_loss_1km.parquet')
+        loss = pd.read_parquet('/mnt/data/forest/forest_loss_0.25deg_clean.parquet')
         loss = loss.drop_duplicates()
         loss = loss.groupby(['lonind', 'latind']).sum().reset_index()
 

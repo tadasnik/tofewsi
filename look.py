@@ -144,13 +144,15 @@ def plot_dataset(dataset):
     ax = fig.add_subplot(111, projection=ccrs.PlateCarree())
     dataset.plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(),
                            x = 'longitude', y='latitude')
-    ax.gridlines(ccrs.PlateCarree(), draw_labels=True)
+    gl = ax.gridlines(ccrs.PlateCarree(), draw_labels=True)
+    gl.xlabels_top = False
     #borders = admin_borders()
     #ax.add_feature(borders)
     #ax.add_feature(coast)
     ax.coastlines('50m')
     plt.tight_layout(pad=2, w_pad=3, h_pad=7.0)
-    #plt.savefig('lulc_2010_riau.png', dpi = 80)
+    #plt.title('FFMC vs FRP count break point')
+    #plt.savefig('figs/25km_FFMC_break.png', dpi = 300, bbox_inches='tight')
     plt.show()
 
 def mask_ocean(dar, land_mask):

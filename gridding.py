@@ -106,6 +106,27 @@ class Gridder(object):
         dfr.loc[:, 'latind'] = latind
         return dfr
 
+    def spatial_subset_ind_dfr(self, dfr, bbox):
+        """
+        Selects data within spatial bbox. bbox coords must be given as
+        positive values for the Northern hemisphere, and negative for
+        Southern. West and East both positive - Note - the method is
+        naive and will only work for bboxes fully fitting in the Eastern hemisphere!!!
+        Args:
+            dfr - pandas dataframe
+            bbox - (list) [North, West, South, East]
+        Returns:
+            pandas dataframe
+        """
+        sbox = np.where((self.lats < bbox[0])&(self.lats > bbox[2]))
+        ebox = np.where((self.lons > bbox[1])&(self.lons < bbox[3]))
+        dfr = dfr[(dfr['latind'] <= sbox[0].max()) &
+                                (dfr['latind'] >= sbox[0].min())]
+        dfr = dfr[(dfr['lonind'] >= ebox[0].min()) &
+                                (dfr['lonind'] <= ebox[0].max())]
+        return dfr
+
+
     def primary_to_grid(self, dfr):
         dfr = self.add_grid_inds(dfr)
         grouped = dfr.groupby(['lonind', 'latind', 'primary']).size().unstack(fill_value = 0)
