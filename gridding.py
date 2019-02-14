@@ -236,8 +236,8 @@ class Gridder(object):
 if __name__ == '__main__':
     bboxes = {'indonesia': [8.0, 93.0, -13.0, 143.0], 'riau': [3, -2, 99, 104]}
     bbox = bboxes['indonesia']
-    lats, lons = lat_lon_grid_points(bbox, 0.05)
-    gri = Gridder(bbox=bbox, step=0.05)
+    #lats, lons = lat_lon_grid_points(bbox, 0.05)
+    #gri = Gridder(bbox=bbox, step=0.05)
     #fname = '/mnt/data/land_cover/peatlands/Per-humid_SEA_LC_2015_CRISP_Geotiff_indexed_colour.parquet'
     #fwi = xr.open_dataset('fwi_arr.nc')
     #dfr = pd.read_parquet('/mnt/data/frp/M6_indonesia.parquet')

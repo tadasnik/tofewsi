@@ -353,4 +353,5 @@ if __name__ == '__main__':
 
     #do 25 km
     cc.read_features(0.25, 6001, 700000)
+
     #res = cc.do_piecewise(cc.ffmcfr)
