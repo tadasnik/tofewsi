@@ -29,8 +29,8 @@ from sklearn.svm import SVC
 
 def plot_year_probs(dfr, clfs, year):
     months = 12
-    plot_x_size = months * 4
-    plot_y_size = (len(clfs) + 1) * 4
+    plot_y_size = months * 3
+    plot_x_size = (len(clfs) + 1) * 6
     projection = ccrs.PlateCarree()
     axes_class = (GeoAxes,
                   dict(map_projection = projection))
@@ -44,7 +44,7 @@ def plot_year_probs(dfr, clfs, year):
                     cbar_size='3%',
                     label_mode='')
 
-    #fig, axes = plt.subplots(nrows = months, ncols = len(clfs) + 1,
+    #fig, axes = plt.subplots(nr ows = months, ncols = len(clfs) + 1,
     #                         figsize = (plot_y_size, plot_x_size),
     #                         sharex = True, sharey = True,
     #                         subplot_kw={'projection': ccrs.PlateCarree()})
@@ -57,16 +57,16 @@ def plot_year_probs(dfr, clfs, year):
             df = dfr[dfr.month == months[row_nr]]
             try:
                 col_name = mod_names[col_nr] + '_prob'
-                vmin = 0
-                vmax = 1
+                vmin = 0.49
+                vmax = 0.5
             except:
                 col_name = 'frp'
-                vmin = 1
-                vmax = 30
+                vmin = 9
+                vmax = 10
             ds = gri.dfr_to_dataset(df, col_name, np.nan)
             print(col_name)
             print(ds[col_name])
-            ds[col_name].plot.pcolormesh(ax=colax, transform=ccrs.PlateCarree(), 
+            ds[col_name].plot.pcolormesh(ax=colax, transform=ccrs.PlateCarree(),
                                          vmin = vmin, vmax = vmax, x = 'longitude', y='latitude',
                                          add_colorbar=False, add_labels=False)
             #gl = colax.gridlines(ccrs.PlateCarree(), draw_labels=True)
@@ -75,7 +75,7 @@ def plot_year_probs(dfr, clfs, year):
             #colax.set_extent([9, 96, -10, 143], crs=ccrs.PlateCarree())
     tit = fig.suptitle('{0}'.format(year), y=.97, fontsize=18)
     plt.savefig('figs/models_probs_{}.png'.format(year), dpi=300)#, bbox_inches='tight', bbox_extra_artists=[tit])
-    plt.show()
+    #plt.show()
 
 def roc_plots(frpsel, features, clfs, cv, name, max_fact):
     plot_x_size = len(features) * 4
@@ -107,7 +107,7 @@ def roc_plots(frpsel, features, clfs, cv, name, max_fact):
             colax.plot(mean_fpr, mean_tpr, color='b',
                      label=r'Mean ROC (AUC = %0.2f $\pm$ %0.2f)' % (mean_auc, std_auc),
                      lw=2, alpha=.8)
-            colax.text(0.7, .2, 'score {0:.2}'.format(score))
+            #colax.text(0.7, .2, 'score {0:.2}'.format(score))
 
             std_tpr = np.std(tprsint, axis=0)
             tprs_upper = np.minimum(mean_tpr + std_tpr, 1)
@@ -128,7 +128,7 @@ def roc_plots(frpsel, features, clfs, cv, name, max_fact):
     #fig.text(0.01, 0.5, 'Active fire pixel count', va='center', rotation='vertical', fontsize = 14)
     tit = fig.suptitle('{0}'.format(name), y=.97, fontsize=18)
     plt.show()
-    #plt.savefig('figs/rocs_{}_more_scores.png'.format(name), dpi=300)#, bbox_inches='tight', bbox_extra_artists=[tit])
+    plt.savefig('figs/rocs_{}_indonesia.png'.format(name), dpi=300)#, bbox_inches='tight', bbox_extra_artists=[tit])
 
 def fit_predict_maxent(x_train, y_train, x_test):
     robj.pandas2ri.activate()
@@ -149,8 +149,8 @@ def do_roc_year(frpsel, features, clf, max_fact):
     mean_fpr = np.linspace(0, 1, 100)
     for year in range(2002, 2018, 1):
         probas_, score, y_test = predict_year(frpsel, features, year, clf, max_fact)
-        if not score:
-            continue
+        #if not score:
+        #    continue
         if clf == 'maxent':
             fpr, tpr, thresholds = roc_curve(y_test, probas_)
         else:
@@ -175,12 +175,13 @@ def do_roc(X, XX, y, clf):
     for train, test in cv.split(X, y):
         if clf == 'maxent':
             print(train.shape)
-            try:
-                probas_ = fit_predict_maxent(XX.iloc[train, :], y[train], XX.iloc[test, :])
-                score = 0.9999
-                fpr, tpr, thresholds = roc_curve(y[test], probas_)
-            except:
-                pass
+            #try
+            probas_ = fit_predict_maxent(XX.iloc[train, :], y[train], XX.iloc[test, :])
+            score = 0.9999
+            fpr, tpr, thresholds = roc_curve(y[test], probas_)
+            print(fpr, tpr, thresholds)
+            #except:
+            #    pass
         else:
             probas_ = clf.fit(X[train], y[train]).predict_proba(X[test])
             score = clf.score(X[test], y[test])
@@ -234,8 +235,10 @@ def do_roc_auc(bboxes, clfs, max_fact):
         frpsel = frp_data_subset(item)
         #feats = [frpsel[['fwi', 'dc', 'ffmc']],
         #         frpsel[['loss_this', 'loss_last', 'loss_three', 'loss_accum', 'f_prim', 'gain']],
-        feats =  [['fwi', 'dc', 'ffmc'], ['loss_this', 'loss_last', 'loss_three', 'loss_accum', 'f_prim', 'gain'], ['lonind', 'latind', 'loss_this', 'loss_last', 'loss_three', 'loss_accum', 'gain', 'fwi', 'ffmc'],
-                 ['lonind', 'latind', 'loss_this', 'loss_last', 'loss_three', 'loss_accum', 'f_prim', 'gain', 'fwi', 'dc', 'ffmc']]
+        feats =  [ ['fwi'], ['dc'], ['ffmc'], ['dc', 'ffmc'],
+            ['fwi', 'dc', 'ffmc']]
+        #feats =  [['fwi', 'dc', 'ffmc'], ['loss_this', 'loss_last', 'loss_three', 'loss_accum', 'f_prim', 'gain'], ['lonind', 'latind', 'loss_this', 'loss_last', 'loss_three', 'loss_accum', 'gain', 'fwi', 'ffmc'],
+        #         ['lonind', 'latind', 'loss_this', 'loss_last', 'loss_three', 'loss_accum', 'f_prim', 'gain', 'fwi', 'dc', 'ffmc']]
         roc_plots(frpsel, feats, clfs, cv, key, max_fact)
 
 def get_year_train_test(frpsel, year, max_fact=None):
@@ -409,7 +412,7 @@ def predict_year(frpsel, features, year, clf, max_fact):
     else:
 
         preds, score = predict_probability(x_train_scaled, y_train, x_test_scaled, y_test, clf)
-    return preds, score
+    return preds, score, y_test
 
 
 def year_pred_to_ds(year, max_fact, clfs, frpsel, features):
@@ -428,6 +431,7 @@ def year_pred_to_ds(year, max_fact, clfs, frpsel, features):
     y_test = class_labels(x_test, 10)
     x_test_scaled = scaler.transform(x_test[features].values)
     for key, item in clfs.items():
+        print(key)
         if key == 'Maxent':
             try:
                 preds, score = fit_predict_maxent(x_train.loc[:, features], y_train, x_test.loc[:, features])
@@ -435,7 +439,6 @@ def year_pred_to_ds(year, max_fact, clfs, frpsel, features):
             except:
                 return None, None, None
         else:
-            print(item)
             preds, score = predict_probability(x_train_scaled, y_train, x_test_scaled, y_test, item)
             x_test.loc[:, key + '_prob'] = preds[:, 1]
     return x_test
@@ -465,7 +468,8 @@ bboxes = {'Indonesia': indonesia}#,
          # 'Kalimantan': kalimantan,
          # 'Riau': riau}
 
-feats =  [['fwi', 'dc', 'ffmc'],
+feats =  [ ['fwi'], ['dc', 'ffmc'],
+    ['fwi', 'dc', 'ffmc'],
           ['loss_this', 'loss_last', 'loss_three', 'loss_accum', 'f_prim', 'gain'],
           ['lonind', 'latind', 'loss_this', 'loss_last', 'loss_three', 'loss_accum', 'gain', 'fwi', 'ffmc'],
           ['lonind', 'latind', 'loss_this', 'loss_last', 'loss_three', 'loss_accum', 'f_prim', 'gain', 'fwi', 'dc', 'ffmc']]
@@ -494,13 +498,13 @@ clfnn2 = MLPClassifier(solver='lbfgs', alpha=2,
 clfnn = MLPClassifier(solver='adam', alpha=1, hidden_layer_sizes=(5, 2),  random_state=1)
 
 #clfs = {'logistic': logist, 'maxent': 'maxent', 'SCV lin': svmlin, 'SVC rbf': svmrbf, 'NN': clfnn}
-clfs = {'NeuralNet': clfnn1, 'Logistic': logist, 'SVC rbf': svmrbf, 'Maxent': 'maxent'}#, 'NN': clfnn}#, 'SVC': svmrbf}
+clfs = {'Logistic': logist, 'Maxent': 'maxent', 'SVC rbf': svmrbf, 'NeuralNet': clfnn1 }#, 'NN': clfnn}#, 'SVC': svmrbf}
 #clfs = {'logistic': logist, 'SVC rbf': svmrbf}
 #clfs = {'maxent': 'maxent', 'SVC' : svmrbf}
 
-max_fact = 3000
+max_fact = 8000
 frpsel = frp_data_subset(indonesia)
-features = feats[3]
+#features = feats[3]
 
 #XS = frpsel[['lonind', 'latind', 'loss_last', 'loss_accum', 'loss_three', 'loss_this', 'f_prim', 'gain', 'fwi', 'dc', 'ffmc']]
 #X_scaled = preprocessing.scale(XS.values)

@@ -15,6 +15,44 @@ from envdata import Envdata
 from gridding import Gridder
 from dask.diagnostics import ProgressBar
 
+def split_loss_per_year():
+    data_path = '/mnt/data/forest/loss/'
+    fnames = glob.glob(os.path.join(data_path, 'H*.parquet'))
+    for year in range(2001, 2018, 1):
+        print(year)
+        dfrs = []
+        for fname in fnames:
+            print(fname)
+            dfr = pd.read_parquet(fname)
+            dfr_year = dfr[dfr.loss == int(str(year)[2:])]
+            dfrs.append(dfr_year)
+        df = pd.concat(dfrs)
+        df.reset_index(drop = True, inplace = True)
+        df.to_parquet(os.path.join(data_path, 'loss_{}.parquet'.format(year)))
+
+def loss_primary_or_not():
+    data_path = '/mnt/data/forest/primary/'
+    fnames = glob.glob(os.path.join(data_path, '*.parquet'))
+    for year in range(2002, 2018, 1):
+        print(year)
+        dfrs = []
+        dfr = pd.read_parquet('/mnt/data/forest/loss/loss_{}.parquet'.format(year))
+        dfr.sort_values(by = ['latitude', 'longitude'], inplace = True)
+        dfr = dfr.drop_duplicates()
+        for fname in fnames:
+            print(fname)
+            df = pd.read_parquet(fname)
+            dfp = df[df.primary == 2]
+            dfp.sort_values(by = ['latitude', 'longitude'], inplace = True)
+            com = pd.merge(dfr, dfp[['latitude', 'longitude']], how='inner', on=['latitude', 'longitude'])
+            dfrs.append(com)
+        df = pd.concat(dfrs)
+        com = pd.merge(dfr, df, how='left',  on=['latitude', 'longitude'])
+        com['loss_type'] = 1
+        com['loss_type'][com.loss_y > 0] = 2
+        com.drop(['loss_y', 'loss_x'], axis = 1, inplace = True)
+        com.to_parquet('/mnt/data/forest/loss/loss_{}_primary.parquet'.format(year))
+
 class LulcData(Envdata):
     def __init__(self, data_path, bbox=None, hour=None):
         self.bbox = bbox
