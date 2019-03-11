@@ -1,4 +1,5 @@
 from __future__ import print_function
+import codecs, json
 import cartopy.crs as ccrs
 from cartopy.mpl.geoaxes import GeoAxes
 from mpl_toolkits.axes_grid1 import AxesGrid
@@ -17,15 +18,38 @@ from sklearn.metrics import roc_curve, auc, accuracy_score
 from sklearn.model_selection import StratifiedKFold
 from sklearn.ensemble import BaggingClassifier
 from sklearn.model_selection import cross_val_score
-import rpy2.robjects as robj
-from rpy2.robjects.lib import grid
-from rpy2.robjects.packages import importr
-from rpy2.robjects import pandas2ri
+#import rpy2.robjects as robj
+#from rpy2.robjects.lib import grid
+#from rpy2.robjects.packages import importr
+#from rpy2.robjects import pandas2ri
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import classification_report
 from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
+
+def dfr_to_json(dfr, gri, json_file):
+    dfs = dfr[dfr.month == '165']
+    prob_cols = [col for col in dfs.columns if 'prob' in col]
+    cols = prob_cols + ['longitude', 'latitude', 'frp']
+    gri = Gridder(bbox = 'indonesia', step = 0.25)
+    dfs = gri.spatial_subset_ind_dfr(dfs, bbox)  
+    dfs['latitude'] = gri.lat_bins[dfs.latind.values + 1]
+    dfs['longitude'] = gri.lon_bins[dfs.lonind.values]
+    dfs[['longitude', 'latitude']].to_json('/home/tadas/ToFEWSI.github.io/assets/geo/lonlats_pd.json', orient="values")
+
+    dfs = dfs[cols]
+    dffi = dfs * 100
+    dffi = dffi.astype('int')
+    frpd = {'frp': dffi['frp'].tolist()}
+    probd = {'svc_rbf': dffi['SVC rbf_prob'].tolist(),
+            'NN': dffi['NeuralNet_prob'].tolist(),
+            'Maxent': dffi['Maxent_prob'].tolist()}
+    json.dump(topolonlatd, codecs.open('data/topolonlats.json', 'w', encoding='utf-8'))
+    json.dump(frpd, codecs.open('data/frp.json', 'w', encoding='utf-8'))
+    json.dump(probd, codecs.open('data/probs.json', 'w', encoding='utf-8'))
+
+
 
 def plot_year_probs(dfr, clfs, year):
     months = 12
