@@ -28,15 +28,41 @@ from sklearn.metrics import classification_report
 from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
 
+def round_floats(o):
+    if isinstance(o, float): return round(o, 2)
+    if isinstance(o, dict): return {k: round_floats(v) for k, v in o.items()}
+    if isinstance(o, (list, tuple)): return [round_floats(x) for x in o]
+    return o
+
 def dfr_to_json(dfr, gri, json_file):
-    dfs = dfr[dfr.month == '165']
-    prob_cols = [col for col in dfs.columns if 'prob' in col]
+    year = 2015
+    month_names = pd.date_range(start='{0}-01'.format(year), freq='M', periods=12).month_name()
+    month_inds = dfr.month.unique()
+    prob_cols = [col for col in dfr.columns if 'prob' in col]
+    #dfs[prob_cols][dfs[prob_cols] < 0.5] = np.nan
     cols = prob_cols + ['longitude', 'latitude', 'frp']
     gri = Gridder(bbox = 'indonesia', step = 0.25)
-    dfs = gri.spatial_subset_ind_dfr(dfs, bbox)  
-    dfs['latitude'] = gri.lat_bins[dfs.latind.values + 1]
-    dfs['longitude'] = gri.lon_bins[dfs.lonind.values]
-    dfs[['longitude', 'latitude']].to_json('/home/tadas/ToFEWSI.github.io/assets/geo/lonlats_pd.json', orient="values")
+    dfr = gri.spatial_subset_ind_dfr(dfr, gri.bbox)  
+    json_d = {}
+    for nr, month in enumerate(month_names):
+        dfs = dfr[dfr.month == month_inds[nr]]
+        json_d[month] = {
+                'frp': dfs.frp.tolist(),
+                'NN': (dfs.NeuralNet_prob * 100).astype(int).tolist(),
+                'Maxent': (dfs.Maxent_prob * 100).astype(int).tolist(),
+                'SVC': (dfs['SVC rbf_prob'] * 100).astype(int).tolist()
+                }
+
+        if nr == 0:
+            dfs['latitude'] = gri.lat_bins[dfs.latind.values + 1]
+            dfs['longitude'] = gri.lon_bins[dfs.lonind.values]
+            dfs[['longitude', 'latitude']].to_json('/home/tadas/tofewsi/website/assets/geo/lonlats_pdtest.json', orient="values")
+
+    with open('/home/tadas/tofewsi/website/assets/probdata.json', 'w') as outfile:
+        json.dump(json_d, outfile) 
+
+
+
 
     dfs = dfs[cols]
     dffi = dfs * 100
@@ -48,8 +74,6 @@ def dfr_to_json(dfr, gri, json_file):
     json.dump(topolonlatd, codecs.open('data/topolonlats.json', 'w', encoding='utf-8'))
     json.dump(frpd, codecs.open('data/frp.json', 'w', encoding='utf-8'))
     json.dump(probd, codecs.open('data/probs.json', 'w', encoding='utf-8'))
-
-
 
 def plot_year_probs(dfr, clfs, year):
     months = 12

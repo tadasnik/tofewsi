@@ -48,7 +48,7 @@ def lat_lon_grid_points(bbox, step):
 
 class Gridder(object):
     def __init__(self, lats=None, lons=None, bbox=None, step=None):
-        bboxes = {'indonesia': [8.0, 93.0, -13.0, 143.0], 'riau': [3, -2, 99, 104]}
+        bboxes = {'indonesia': [8.0, 93.0, -13.0, 143.0], 'riau': [3, 99, -2, 104]}
         if all(cord is not None for cord in [lats, lons]):
             self.lats, self.lons = lats, lons
             self.step = self.grid_step()
@@ -72,7 +72,7 @@ class Gridder(object):
         lon_min, lon_max = self.lons.min(), self.lons.max()
         self.lat_min = lat_min - self.step * 0.5
         self.lon_min = lon_min - self.step * 0.5
-        self.lat_max = lat_max + self.step * 0.5
+        self.lat_max = lat_max - self.step * 0.5
         self.lon_max = lon_max + self.step * 0.5
         return [self.lat_max, self.lon_min, self.lat_min, self.lon_max]
 
@@ -118,8 +118,8 @@ class Gridder(object):
         Returns:
             pandas dataframe
         """
-        sbox = np.where((self.lats < bbox[0])&(self.lats > bbox[2]))
-        ebox = np.where((self.lons > bbox[1])&(self.lons < bbox[3]))
+        sbox = np.where((self.lats < bbox[0]) & (self.lats > bbox[2]))
+        ebox = np.where((self.lons > bbox[1]) & (self.lons < bbox[3]))
         dfr = dfr[(dfr['latind'] <= sbox[0].max()) &
                                 (dfr['latind'] >= sbox[0].min())]
         dfr = dfr[(dfr['lonind'] >= ebox[0].min()) &
