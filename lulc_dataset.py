@@ -18,22 +18,24 @@ from dask.diagnostics import ProgressBar
 def split_loss_per_year():
     data_path = '/mnt/data/forest/loss/'
     fnames = glob.glob(os.path.join(data_path, 'H*.parquet'))
-    for year in range(2001, 2018, 1):
+    for year in range(2001, 2019, 1):
         print(year)
         dfrs = []
         for fname in fnames:
             print(fname)
             dfr = pd.read_parquet(fname)
-            dfr_year = dfr[dfr.loss == int(str(year)[2:])]
+            dfr_year = dfr[dfr.loss_year == int(str(year)[2:])]
             dfrs.append(dfr_year)
         df = pd.concat(dfrs)
         df.reset_index(drop = True, inplace = True)
+        df.rename({'loss_year': 'loss'}, axis = 1, inplace = True)
+        print(df.head())
         df.to_parquet(os.path.join(data_path, 'loss_{}.parquet'.format(year)))
 
 def loss_primary_or_not():
     data_path = '/mnt/data/forest/primary/'
     fnames = glob.glob(os.path.join(data_path, '*.parquet'))
-    for year in range(2002, 2018, 1):
+    for year in range(2001, 2019, 1):
         print(year)
         dfrs = []
         dfr = pd.read_parquet('/mnt/data/forest/loss/loss_{}.parquet'.format(year))
@@ -57,6 +59,19 @@ class LulcData(Envdata):
     def __init__(self, data_path, bbox=None, hour=None):
         self.bbox = bbox
         super().__init__(data_path, bbox=self.bbox, hour=None)
+
+    def preproces_forest_loss(self):
+        fnames = glob.glob(os.path.join(self.data_path, 'H*.tif'))
+        for fname in fnames:
+            self.preprocess_tiff_to_dfr(fname, 'loss_year')
+
+    def preproces_forest_gain(self):
+        #fnames = glob.glob(os.path.join(self.data_path, 'H*.tif'))
+        #for fname in fnames:
+        #    self.preprocess_tiff_to_dfr(fname, 'gain')
+        fnames = glob.glob(os.path.join(self.data_path, 'H*.parquet'))
+        self.grid_dfrs(fnames, 0.25, 'gain', '/mnt/data/forest/forest_loss_0.25deg_v2.parquet')
+
 
     def read_land_cover(self, dataset_path, sp_res):
         lc_names = ['Majority_Land_Cover_Type_1',
@@ -207,15 +222,40 @@ class LulcData(Envdata):
         dfr.to_parquet(out_name)
         return out_name
 
-    def grid_dfrs(self, data_path, res, column, out_name):
-        fnames = glob.glob(os.path.join(data_path, '*.parquet'))
+    def grid_loss(self, res, column, out_name):
+        fnames = glob.glob(os.path.join(self.data_path, 'loss*primary.parquet'))
+        print(fnames)
+        dfrs = []
+        for fname in fnames:
+            year = fname.split('_')[-2]
+            print(fname)
+            dfr = pd.read_parquet(fname)
+            print(dfr.columns)
+            gri = Gridder(bbox = 'indonesia', step = res)
+            dfr = gri.add_grid_inds(dfr)
+            print(column)
+            grouped = dfr.groupby(['lonind', 'latind', column]).size().unstack(fill_value = 0)
+            grouped.rename({1: '{0}_loss'.format(year),
+                            2: '{0}_loss_prim'.format(year)},
+                           axis = 1, inplace = True)
+            grouped.columns = grouped.columns.astype(str)
+            grouped.reset_index(inplace = True)
+            dfrs.append(grouped)
+        grouped = pd.concat(dfrs)
+        #grouped = grouped.drop_duplicates()
+        grouped = grouped.groupby(['lonind', 'latind']).sum().reset_index()
+        #return grouped
+        grouped.to_parquet(out_name)
+
+
+    def grid_dfrs(self, fnames, res, column, out_name):
         print(fnames)
         dfrs = []
         for fname in fnames:
             print(fname)
             dfr = pd.read_parquet(fname)
             print(dfr.columns)
-            gri = Gridder(bbox = self.bbox, step = res)
+            gri = Gridder(bbox = 'indonesia', step = res)
             dfr = gri.add_grid_inds(dfr)
             print(column)
             grouped = dfr.groupby(['lonind', 'latind', column]).size().unstack(fill_value = 0)
@@ -251,36 +291,44 @@ class LulcData(Envdata):
         """
 
     def proc_forest_ds(self, data_path, res):
-        for ds_type in ['primary']:
+        for ds_type in ['loss']:
             ds_data_path = os.path.join(data_path, ds_type)
-            out_name = os.path.join(data_path, 'forest_{0}_{1}deg_clean.parquet'.format(ds_type, res))
-            self.grid_dfrs(ds_data_path, res, ds_type, out_name)
+            if ds_type == 'loss':
+                fnames = glob.glob(os.path.join(ds_data_path, '*primary.parquet'))
+                ds_type = 'loss_type'
+            print(fnames)
+            out_name = os.path.join(data_path, 'forest_{0}_{1}deg_v2.parquet'.format(ds_type, res))
+            self.grid_dfrs(fnames, res, ds_type, out_name)
 
     def combine_lulcs(self, res):
         prim = pd.read_parquet('/mnt/data/forest/forest_primary_{}deg_clean.parquet'.format(res))
         prim.loc[:, 'f_prim'] = prim['2'] / prim['total']
         prim = prim[['lonind', 'latind', 'total', 'f_prim']]
-        loss = pd.read_parquet('/mnt/data/forest/forest_loss_{}deg_clean.parquet'.format(res))
-        com = pd.merge(prim, loss.iloc[:, :19], how='left', on=['lonind', 'latind'])
+        loss = pd.read_parquet('/mnt/data/forest/forest_loss_type_{}deg_v2.parquet'.format(res))
+        com = pd.merge(prim, loss, how='left', on=['lonind', 'latind'])
 
         gain = pd.read_parquet('/mnt/data/forest/forest_gain_{}deg_clean.parquet'.format(res))
         gain.rename({'1': 'gain'}, axis=1, inplace=True)
         com = pd.merge(com, gain[['lonind', 'latind', 'gain']], how='left', on=['lonind', 'latind'])
 
-        for i in range(1, 18, 1):
-            com.loc[:, str(i)] = com[str(i)] / com['total']
+        for i in range(2001, 2018, 1):
+            cols = com.filter(regex=str(i))
+            for col in cols:
+                com.loc[:, col] = com[col] / com['total']
+            com.loc[:, ] = com[str(i)] / com['total']
+
         com['gain'] = com['gain'] / com['total']
         return com
 
     def combine_forest_dfrs(self):
         prim = pd.read_parquet('/mnt/data/forest/forest_primary_0.25deg_clean.parquet')
-        pri = pd.read_parquet('/mnt/data/forest/Indonesia_primary_1km.parquet')
         #prim = prim.drop_duplicates()
         #prim = prim.groupby(['lonind', 'latind']).sum().reset_index()
         prim.loc[:, 'f_prim'] = prim['2'] / prim['total']
         prim = prim[['lonind', 'latind', 'total', 'f_prim']]
+        prim = prim[prim.total > 700000]
 
-        gain = pd.read_parquet('/mnt/data/forest/forest_gain_0.25deg_clean.parquet')
+        gain = pd.read_parquet('/mnt/data/forest/forest_gain_0.25deg_v2.parquet')
         gain = gain.drop_duplicates()
         gain = gain.groupby(['lonind', 'latind']).sum().reset_index()
 
@@ -298,17 +346,22 @@ class LulcData(Envdata):
         mask = dataset.salem.roi(shape=ind)
         maska = dataset.salem.roi(shape=ind, all_touched=True)
 
-        los = pd.read_parquet('/mnt/data/forest/forest_loss_1km.parquet')
-        loss = pd.read_parquet('/mnt/data/forest/forest_loss_0.25deg_clean.parquet')
-        loss = loss.drop_duplicates()
-        loss = loss.groupby(['lonind', 'latind']).sum().reset_index()
+        #los = pd.read_parquet('/mnt/data/forest/forest_loss_1km.parquet')
+        loss = pd.read_parquet('/mnt/data/forest/loss_primary_0.25deg_clean.parquet')
+        #loss = loss.drop_duplicates()
+        #loss = loss.groupby(['lonind', 'latind']).sum().reset_index()
 
-        loss.loc[:, 'loss'] = 0
-        loss['loss'][(loss['total'] > 5)] = 1
-        loss = loss[['lonind', 'latind', 'loss']]
+        #loss.loc[:, 'loss'] = 0
+        #loss['loss'][(loss['total'] > 5)] = 1
+        #loss = loss[['lonind', 'latind', 'loss']]
+
+        gain.loc[:, 'gain'] = 1
+        gain = gain[['lonind', 'latind', 'gain']]
 
         tt = pd.merge(prim, loss, on=['lonind', 'latind'])
-        tfrp = pd.merge(tt, grfrp, on=['lonind', 'latind'])
+        ttt = pd.merge(tt, gain, on=['lonind', 'latind'])
+
+        #tfrp = pd.merge(tt, grfrp, on=['lonind', 'latind'])
 
         gain.loc[:, 'gain'] = 1
         gain = gain[['lonind', 'latind', 'gain']]
@@ -323,8 +376,8 @@ class LulcData(Envdata):
 
 if __name__ == '__main__':
     #data_path = '/mnt/data/land_cover/mcd12c1'
-    data_path = '/mnt/data/land_cover/peatlands'
-    #data_path = '/mnt/data/forest/loss'
+    #data_path = '/mnt/data/land_cover/peatlands'
+    data_path = '/mnt/data/forest/gain'
     #fname = '23_tt_6hourly.nc'
     #fname = 'MCD12C1.A2010001.051.2012264191019.hdf'
     #fname = 'Per-humid_SEA_LC_2015_CRISP_Geotiff_indexed_colour.tif'
@@ -334,6 +387,7 @@ if __name__ == '__main__':
 
     # Indonesia bbox
     bbox = [8, 93, -13, 143]
+
     lc = LulcData(data_path, bbox=bbox, hour=None)
     """
     input_shps = ['/mnt/data/land_cover/peatlands/Peatland_land_cover_1990.shp',

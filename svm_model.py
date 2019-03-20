@@ -28,12 +28,6 @@ from sklearn.metrics import classification_report
 from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
 
-def round_floats(o):
-    if isinstance(o, float): return round(o, 2)
-    if isinstance(o, dict): return {k: round_floats(v) for k, v in o.items()}
-    if isinstance(o, (list, tuple)): return [round_floats(x) for x in o]
-    return o
-
 def dfr_to_json(dfr, gri, json_file):
     year = 2015
     month_names = pd.date_range(start='{0}-01'.format(year), freq='M', periods=12).month_name()
@@ -42,7 +36,7 @@ def dfr_to_json(dfr, gri, json_file):
     #dfs[prob_cols][dfs[prob_cols] < 0.5] = np.nan
     cols = prob_cols + ['longitude', 'latitude', 'frp']
     gri = Gridder(bbox = 'indonesia', step = 0.25)
-    dfr = gri.spatial_subset_ind_dfr(dfr, gri.bbox)  
+    dfr = gri.spatial_subset_ind_dfr(dfr, gri.bbox)
     json_d = {}
     for nr, month in enumerate(month_names):
         dfs = dfr[dfr.month == month_inds[nr]]
@@ -59,7 +53,7 @@ def dfr_to_json(dfr, gri, json_file):
             dfs[['longitude', 'latitude']].to_json('/home/tadas/tofewsi/website/assets/geo/lonlats_pdtest.json', orient="values")
 
     with open('/home/tadas/tofewsi/website/assets/probdata.json', 'w') as outfile:
-        json.dump(json_d, outfile) 
+        json.dump(json_d, outfile)
 
 
 

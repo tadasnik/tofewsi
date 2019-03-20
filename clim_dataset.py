@@ -166,24 +166,24 @@ class Climdata(object):
 
     def write_csv(self, dfr, fname):
         print('writing dataframe to csv file {0}'.format(fname))
-        dfr.to_csv(fname, index=False, compression = 'gzip')
+        dfr.to_csv(fname, index=False)#, compression = 'gzip')
         print('finished writing')
 
 
 if __name__ == '__main__':
     #data_path = '/home/tadas/tofewsi/data/'
     #fname = '2013-12-31_to_2014-12-31_169.128_228.128_0.25deg.nc'
-    data_path = '/mnt/data/SEAS5'
+    #data_path = '/mnt/data/SEAS5'
     #data_path = '/mnt/data/era5/amazon'
-    #data_path = '/mnt/data/era5/riau'
+    data_path = '/mnt/data/era5/glob'
     #chirps_path = '/mnt/data/chirps'
     #data_path = '.'
     #fname = '23_tt_6hourly.nc'
     #fname1 = '24_tt_6hourly.nc'
-    ds_name = os.path.join(data_path, '2018_11_seas5.nc')
+    #ds_name = os.path.join(data_path, '2018_11_seas5.nc')
     # indonesia bbox
     #bbox = [8.0, 93.0, -13.0, 143.0]
-    bbox = [8.0, -13.0, 93.0, 143.0]
+    #bbox = [8.0, -13.0, 93.0, 143.0]
     cl = Climdata(data_path, bbox=bbox, hour=None)
     """
     # Riau bbox

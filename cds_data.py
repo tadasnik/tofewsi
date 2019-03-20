@@ -2,13 +2,13 @@ import cdsapi
 
 c = cdsapi.Client()
 
-for year in range(2014, 2018, 1):
-    for month in range(1, 13, 1):
+for year in range(2018, 2019, 1):
+    for month in range(1, 5, 1):
         c.retrieve(
             'reanalysis-era5-single-levels',
             {
                 'product_type':'reanalysis',
-                'format':'grib',
+                'format':'netcdf',
                 'variable':[
                     '10m_u_component_of_wind','10m_v_component_of_wind','2m_dewpoint_temperature',
                     '2m_temperature','surface_solar_radiation_downwards','total_precipitation', 'total_cloud_cover'
@@ -39,7 +39,7 @@ for year in range(2014, 2018, 1):
                     '21:00','22:00','23:00'
                 ]
             },
-            '/mnt/data/era5/glob/{0}_{1}.grib'.format(year, month))
+            '/mnt/data/era5/glob/{0}_{1}.nc'.format(year, month))
 """
 c.retrieve(
     'seasonal-monthly-single-levels',
@@ -68,6 +68,29 @@ c.retrieve(
         ]
     },
     'download.grib')
+
+c.retrieve(
+    'seasonal-monthly-single-levels',
+    {
+        'format':'grib',
+        'originating_centre':'ecmwf',
+        'system':'5',
+        'variable':[
+            '10m_u_component_of_wind','10m_v_component_of_wind','2m_dewpoint_temperature',
+            '2m_temperature','total_precipitation'
+        ],
+        'product_type':[
+            'monthly_mean'
+        ],
+        'year':'2019',
+        'month':'02',
+        'leadtime_month':[
+            '1','2','3',
+            '4','5','6'
+        ]
+    },
+    '/mnt/data/SEAS5/2019_02_mm.grib')
+
 c.retrieve(
     'seasonal-original-single-levels',
     {
@@ -77,8 +100,8 @@ c.retrieve(
             '10m_u_component_of_wind','10m_v_component_of_wind','2m_dewpoint_temperature',
             '2m_temperature','total_precipitation'
         ],
-        'year':'2018',
-        'month':'11',
+        'year':'2019',
+        'month':'02',
         'day':'01',
         'leadtime_hour':[
             '6','12','18',
