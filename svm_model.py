@@ -18,10 +18,10 @@ from sklearn.metrics import roc_curve, auc, accuracy_score
 from sklearn.model_selection import StratifiedKFold
 from sklearn.ensemble import BaggingClassifier
 from sklearn.model_selection import cross_val_score
-#import rpy2.robjects as robj
-#from rpy2.robjects.lib import grid
-#from rpy2.robjects.packages import importr
-#from rpy2.robjects import pandas2ri
+import rpy2.robjects as robj
+from rpy2.robjects.lib import grid
+from rpy2.robjects.packages import importr
+from rpy2.robjects import pandas2ri
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import classification_report
@@ -42,6 +42,7 @@ def dfr_to_json(dfr, gri, json_file):
         dfs = dfr[dfr.month == month_inds[nr]]
         json_d[month] = {
                 'frp': dfs.frp.tolist(),
+                'Logistic': (dfs.NeuralNet_prob * 100).astype(int).tolist(),
                 'NN': (dfs.NeuralNet_prob * 100).astype(int).tolist(),
                 'Maxent': (dfs.Maxent_prob * 100).astype(int).tolist(),
                 'SVC': (dfs['SVC rbf_prob'] * 100).astype(int).tolist()
@@ -169,8 +170,8 @@ def roc_plots(frpsel, features, clfs, cv, name, max_fact):
     #fig.text(0.5, 0.01, 'Mean {}'.format(fwi_ds), ha='center', fontsize = 14)
     #fig.text(0.01, 0.5, 'Active fire pixel count', va='center', rotation='vertical', fontsize = 14)
     tit = fig.suptitle('{0}'.format(name), y=.97, fontsize=18)
-    plt.show()
     plt.savefig('figs/rocs_{}_indonesia.png'.format(name), dpi=300)#, bbox_inches='tight', bbox_extra_artists=[tit])
+    plt.show()
 
 def fit_predict_maxent(x_train, y_train, x_test):
     robj.pandas2ri.activate()
@@ -179,7 +180,7 @@ def fit_predict_maxent(x_train, y_train, x_test):
     train_r = pandas2ri.py2ri(x_train)
     test_r = pandas2ri.py2ri(x_test)
     mod = maxent.maxnet(y_train_r, train_r)
-    probs = robj.r('predict')(mod, test_r, type="cloglog")
+    probs = robj.r('predict')(mod, test_r, type="logistic")
     probs = np.array(probs).flatten()
     return probs, None
 
@@ -189,7 +190,7 @@ def do_roc_year(frpsel, features, clf, max_fact):
     fprs = []
     aucs = []
     mean_fpr = np.linspace(0, 1, 100)
-    for year in range(2002, 2018, 1):
+    for year in range(2002, 2019, 1):
         probas_, score, y_test = predict_year(frpsel, features, year, clf, max_fact)
         #if not score:
         #    continue
@@ -203,7 +204,7 @@ def do_roc_year(frpsel, features, clf, max_fact):
         tprsint.append(interp(mean_fpr, fpr, tpr))
         tprsint[-1][0] = 0.0
         roc_auc = auc(fpr, tpr)
-        print(roc_auc)
+        print('roc_auc', roc_auc)
         aucs.append(roc_auc)
     return tprs, tprsint, fprs, aucs, mean_fpr, score
 
@@ -248,9 +249,12 @@ def feature_selection(frpsel, max_fact):
     frpsel = frpsel.iloc[::factor, :]
     labels = class_labels(frpsel, 10)
     custom_cv  = leave_year_split(frpsel)
-    XS = frpsel[['loss_last', 'loss_accum', 'loss_three', 'loss_this', 'f_prim', 'gain', 'fwi', 'dc', 'ffmc']].astype(float)
+    features = frpsel.columns[4:,].tolist()
+    feats =  features + ['lonind', 'latind']
+    print('features', feats)
+    XS = frpsel[feats]
     X_scaled = preprocessing.scale(XS.values)
-    rfe = RFE(estimator=svmlin, n_features_to_select=8, step=1)
+    rfe = RFE(estimator=svmlin, n_features_to_select=1, step=1)
     rfe.fit(X_scaled, labels)
     print('feature ranking RFE: ', rfe.ranking_)
     print("Optimal number of features : %d" % rfe.n_features_)
@@ -267,7 +271,7 @@ def feature_selection(frpsel, max_fact):
     #              scoring='accuracy', n_jobs=7)
     print(labels)
     rfecv.fit(X_scaled, labels)
-    print('feature ranking RFECV: ', rfe.ranking_)
+    print('feature ranking RFECV: ', rfecv.ranking_)
     print("Optimal number of features : %d" % rfecv.n_features_)
     print(rfecv.grid_scores_)
 
@@ -279,6 +283,7 @@ def do_roc_auc(bboxes, clfs, max_fact):
         #         frpsel[['loss_this', 'loss_last', 'loss_three', 'loss_accum', 'f_prim', 'gain']],
         feats =  [ ['fwi'], ['dc'], ['ffmc'], ['dc', 'ffmc'],
             ['fwi', 'dc', 'ffmc']]
+
         #feats =  [['fwi', 'dc', 'ffmc'], ['loss_this', 'loss_last', 'loss_three', 'loss_accum', 'f_prim', 'gain'], ['lonind', 'latind', 'loss_this', 'loss_last', 'loss_three', 'loss_accum', 'gain', 'fwi', 'ffmc'],
         #         ['lonind', 'latind', 'loss_this', 'loss_last', 'loss_three', 'loss_accum', 'f_prim', 'gain', 'fwi', 'dc', 'ffmc']]
         roc_plots(frpsel, feats, clfs, cv, key, max_fact)
@@ -293,12 +298,12 @@ def get_year_train_test(frpsel, year, max_fact=None):
     return X_train_inds, X_test_inds
 
 def predict_probability(x_train, y_train, x_test, y_test, clf):
-    probas = clf.fit(x_train, y_train).predict_proba(x_test)
-    print(clf.score(x_test, y_test))
+    clf.fit(x_train, y_train)
+    probas = clf.predict_proba(x_test)
     return probas, clf.score(x_test, y_test)
 
 def frp_data_subset(bbox):
-    frp = pd.read_parquet('data/feature_frame_0.25deg.parquet')
+    frp = pd.read_parquet('data/feature_frame_0.25deg_v2.parquet')
     gri = Gridder(bbox = 'indonesia', step = 0.25)
     frp = gri.spatial_subset_ind_dfr(frp, bbox)
     return frp
@@ -324,7 +329,8 @@ def select_nn_params(frpsel, max_fact):
     frpsel = balance_classes(frpsel)
     factor = subset_factor(frpsel.shape[0], max_fact)
     frpsel = frpsel.iloc[::factor, :]
-    feats = ['lonind', 'latind', 'loss_this', 'loss_last', 'loss_three', 'loss_accum', 'f_prim', 'gain', 'fwi', 'dc', 'ffmc']
+    features = frpsel.columns[4:,].tolist()
+    feats =  features + ['lonind', 'latind']
     scaler = preprocessing.StandardScaler().fit(frpsel[feats])
     labels = class_labels(frpsel, 10)
     feats = frpsel.loc[:, feats]
@@ -347,7 +353,7 @@ def select_nn_params(frpsel, max_fact):
 
         clf = GridSearchCV(MLPClassifier(), tuned_parameters, cv=custom_cv,
                            scoring='%s_macro' % score, n_jobs=-1)
-        clf.fit(X_train, y_train)
+        clf.fit(feats, labels)
         print("Best parameters set found on development set:")
         print()
         print(clf.best_params_)
@@ -376,7 +382,8 @@ def select_svm_params(frpsel, max_fact):
     frpsel = balance_classes(frpsel)
     factor = subset_factor(frpsel.shape[0], max_fact)
     frpsel = frpsel.iloc[::factor, :]
-    feats = ['lonind', 'latind', 'loss_this', 'loss_last', 'loss_three', 'loss_accum', 'f_prim', 'gain', 'fwi', 'dc', 'ffmc']
+    features = frpsel.columns[4:,].tolist()
+    feats =  features + ['lonind', 'latind']
     scaler = preprocessing.StandardScaler().fit(frpsel[feats])
     labels = class_labels(frpsel, 10)
     feats = frpsel.loc[:, feats]
@@ -423,7 +430,7 @@ def select_svm_params(frpsel, max_fact):
 
 def leave_year_split(frpsel):
     year = 2002
-    while year <= 2017:
+    while year <= 2018:
         train, test = get_year_train_test(frpsel, year)#, 500)
         yield train, test
         year += 1
@@ -449,15 +456,17 @@ def predict_year(frpsel, features, year, clf, max_fact):
     if clf == 'maxent':
         try:
             preds, score = fit_predict_maxent(x_train.loc[:, features], y_train, x_test.loc[:, features])
+            print('predict_probability', score)
         except:
             return None, None, None
     else:
 
         preds, score = predict_probability(x_train_scaled, y_train, x_test_scaled, y_test, clf)
+        print('predict_probability', score)
     return preds, score, y_test
 
 
-def year_pred_to_ds(year, max_fact, clfs, frpsel, features):
+def year_pred_to_dfr(year, max_fact, clfs, frpsel, features):
     train, test = get_year_train_test(frpsel, year)
     #features = ['fwi', 'dc', 'ffmc']
     #features = ['lonind', 'latind', 'loss_this', 'loss_last', 'loss_three', 'loss_accum', 'f_prim', 'gain', 'fwi', 'dc', 'ffmc']
@@ -481,11 +490,18 @@ def year_pred_to_ds(year, max_fact, clfs, frpsel, features):
             except:
                 return None, None, None
         else:
-            preds, score = predict_probability(x_train_scaled, y_train, x_test_scaled, y_test, item)
+            preds, labs, score = predict_probability(x_train_scaled, y_train, x_test_scaled, y_test, item)
             x_test.loc[:, key + '_prob'] = preds[:, 1]
+            x_test.loc[:, key + '_lab'] = labs
     return x_test
 
-
+def perdict_years(clsf, frpsel, features, max_fact):
+    dfrs = []
+    for year in range(2002, 2019, 1):
+        dfr = year_pred_to_dfr(year, max_fact, clfs, frpsel, features)
+        dfrs.append(dfr)
+    dfrs = pd.concat(dfrs)
+    return dfrs
 
 sumatra = [6, 96, -6, 106]
 java = [-5.8, 105, -9.3, 119]
@@ -510,12 +526,6 @@ bboxes = {'Indonesia': indonesia}#,
          # 'Kalimantan': kalimantan,
          # 'Riau': riau}
 
-feats =  [ ['fwi'], ['dc', 'ffmc'],
-    ['fwi', 'dc', 'ffmc'],
-          ['loss_this', 'loss_last', 'loss_three', 'loss_accum', 'f_prim', 'gain'],
-          ['lonind', 'latind', 'loss_this', 'loss_last', 'loss_three', 'loss_accum', 'gain', 'fwi', 'ffmc'],
-          ['lonind', 'latind', 'loss_this', 'loss_last', 'loss_three', 'loss_accum', 'f_prim', 'gain', 'fwi', 'dc', 'ffmc']]
-
 random_state = np.random.RandomState(0)
 
 cv = StratifiedKFold(n_splits=10, shuffle = True)
@@ -528,7 +538,7 @@ svmlin = svm.SVC(kernel='linear', probability=True, C=1,
 svmrbf = svm.SVC(kernel='rbf', C=1, gamma=0.15, probability=True,
                      random_state=random_state)
 
-logist = LogisticRegression(solver = 'liblinear', penalty='l1', class_weight={1: 1, 0: 100})
+logist = LogisticRegression(solver = 'liblinear', penalty='l1')
 
 clfnn1 = MLPClassifier(solver='lbfgs', alpha=1,
                      hidden_layer_sizes=(10), activation='logistic', random_state=1)
@@ -540,13 +550,22 @@ clfnn2 = MLPClassifier(solver='lbfgs', alpha=2,
 clfnn = MLPClassifier(solver='adam', alpha=1, hidden_layer_sizes=(5, 2),  random_state=1)
 
 #clfs = {'logistic': logist, 'maxent': 'maxent', 'SCV lin': svmlin, 'SVC rbf': svmrbf, 'NN': clfnn}
-clfs = {'Logistic': logist, 'Maxent': 'maxent', 'SVC rbf': svmrbf, 'NeuralNet': clfnn1 }#, 'NN': clfnn}#, 'SVC': svmrbf}
+clfs = {'Logistic': logist, 'Maxent': 'maxent', 'SVC rbf': svmrbf, 'NeuralNet': clfnn2 }#, 'NN': clfnn}#, 'SVC': svmrbf}
 #clfs = {'logistic': logist, 'SVC rbf': svmrbf}
 #clfs = {'maxent': 'maxent', 'SVC' : svmrbf}
 
 max_fact = 8000
 frpsel = frp_data_subset(indonesia)
-#features = feats[3]
+features = frpsel.columns[4:,].tolist()
+ffs = ['loss_last_sec', 'loss_this_prim', 'loss_accum_prim',
+       'loss_accum_sec', 'loss_three_prim', 'loss_three_sec', 'f_prim',
+       'gain', 'dem', 'dc_med', 'ffmc_med', 'fwi_med', 'ffmc_75p',
+       'fwi_75p', 'dc_7mm', 'ffmc_7mm', 'fwi_7mm', 'dc_3m', 'latind']
+feats =  [ features + ['lonind', 'latind'], ffs]
+
+#feats = [['lonind', 'latind', 'loss_this', 'loss_last',
+#         'loss_three', 'loss_accum', 'f_prim', 'gain', 'fwi', 'dc', 'ffmc'], ['dc', 'fwi', 'ffmc']]
+#roc_plots(frpsel, feats, clfs, cv, 'test_v2_dem_2018_roll_sel', 4000)
 
 #XS = frpsel[['lonind', 'latind', 'loss_last', 'loss_accum', 'loss_three', 'loss_this', 'f_prim', 'gain', 'fwi', 'dc', 'ffmc']]
 #X_scaled = preprocessing.scale(XS.values)

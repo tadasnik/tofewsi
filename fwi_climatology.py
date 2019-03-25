@@ -75,7 +75,7 @@ class Climdata_dask(Envdata):
     def read_era5_dask(self, fname):
         dataset = xr.open_dataset(fname)
         dataset = self.spatial_subset(dataset, self.bbox)
-        #dataset = self.time_subset(dataset, self.hour)
+        dataset = self.time_subset(dataset, self.hour)
         return dataset
 
     def prepare_xarray_fwi(self, fname):
@@ -116,13 +116,12 @@ class Climdata_dask(Envdata):
 
 
 if __name__ == '__main__':
-    year = 2000
-    month = 1
+
     data_path = '/mnt/data/era5/indonesia'
     #fwi_varr = xr.open_dataset('/mnt/data/era5/indonesia/fwi_vars_{0}_{1}.nc'.format(year, month))
     ffmc0, dmc0, dc0 = None, None, None
     fwi_arrs = []
-    for nr, year in enumerate(range(2000, 2018, 1)):
+    for nr, year in enumerate(range(2000, 2019, 1)):
         for month in range(1, 13, 1):
             print(year, month)
             fname = os.path.join(data_path, 'fwi_vars_{0}_{1}.nc'.format(year, month))
@@ -132,16 +131,17 @@ if __name__ == '__main__':
     fwi_ds = xr.concat(fwi_arrs, dim='time')
     """
     month = 1
-    fname = os.path.join(data_path, '{0}_{1}.nc'.format(year, month))
+    data_path = '/mnt/data/era5/glob'
+    #fname = os.path.join(data_path, '{0}_{1}.nc'.format(year, month))
     bbox = [8.0, 93.0, -13.0, 143.0]
     cl = Climdata_dask(data_path, bbox = bbox)
     #client = cl.dask_client()
     #initial conditions
-    fwi_vars = cl.prepare_xarray_fwi(fname)
+    #fwi_vars = cl.prepare_xarray_fwi(fname)
     #fwi_arr, ffmc0, dmc0, dc0 = calc_fwi(fwi_vars)
     fwis = []
     fwivars = []
-    for nr, year in enumerate(range(2000, 2018, 1)):
+    for nr, year in enumerate(range(2018, 2019, 1)):
         for month in range(1, 13, 1):
             print(year, month)
             fname = os.path.join(data_path, '{0}_{1}.nc'.format(year, month))
@@ -163,4 +163,3 @@ if __name__ == '__main__':
     land_mask = xr.open_dataset(land_mask)
     land_mask = cl.spatial_subset(land_mask, bbox)
     """
-#

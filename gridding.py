@@ -176,7 +176,8 @@ class Gridder(object):
     def to_grid(self, dfr):
         dfr = self.add_grid_inds(dfr)
         grouped = pd.DataFrame({'count' : dfr.groupby(['lonind', 'latind']).size()}).reset_index()
-        gridded = self.dfr_to_grid(grouped, 'count')
+        gridded = self.dfr_to_grid(grouped, 'count', np.nan)
+        return gridded
 
     def dfr_to_grid(self, dfr, column, no_value):
         gridded = np.empty((self.lats.shape[0],
@@ -199,9 +200,9 @@ class Gridder(object):
 
     def grid_dfr(self, dfr):
         dates = pd.date_range(dfr.date.min(), dfr.date.max(), freq='D')
-        #lonind, latind = self.binning(dfr['longitude'].values, dfr['latitude'].values)
-        #dfr.loc[:, 'lonind'] = lonind
-        #dfr.loc[:, 'latind'] = latind
+        lonind, latind = self.binning(dfr['longitude'].values, dfr['latitude'].values)
+        dfr.loc[:, 'lonind'] = lonind
+        dfr.loc[:, 'latind'] = latind
         dfa = pd.DataFrame({'count': dfr.groupby(['date', 'latind', 'lonind']).size()})
         dfa = dfa.reset_index()
         dfa.loc[:, 'dind'] = (dfa.date - dfa.date.min()).dt.days

@@ -355,7 +355,8 @@ class LulcData(Envdata):
         #loss['loss'][(loss['total'] > 5)] = 1
         #loss = loss[['lonind', 'latind', 'loss']]
 
-        gain.loc[:, 'gain'] = 1
+        #gain.loc[:, 'gain'] = 1
+        gain.rename({'total': 'gain'}, axis = 1, inplace = True) 
         gain = gain[['lonind', 'latind', 'gain']]
 
         tt = pd.merge(prim, loss, on=['lonind', 'latind'])

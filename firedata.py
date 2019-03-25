@@ -6,54 +6,14 @@ import itertools
 import numpy as np
 import xarray as xr
 import pandas as pd
-#from sklearn.cluster import DBSCAN
+from sklearn.cluster import DBSCAN
 from multiprocessing import Pool, cpu_count
 #from gridding import Gridder
 #from pyhdf import SD
 import h5py
+from gridding import *
 from envdata import Envdata
 import matplotlib.pyplot as plt
-
-def spatial_subset(dataset, bbox):
-    """
-    Selects data within spatial bbox. bbox coords must be given as
-    positive values for the Northern hemisphere, and negative for
-    Southern. West and East both positive - Note - the method is
-    naive and will only work for bboxes fully fitting in the Eastern hemisphere!!!
-    Args:
-        dataset - xarray dataset
-        bbox - (list) [North, South, West, East]
-    Returns:
-        xarray dataset
-    """
-    lat_name = [x for x in list(dataset.coords) if 'lat' in x]
-    lon_name = [x for x in list(dataset.coords) if 'lon' in x]
-    print(lat_name, bbox)
-    dataset = dataset.where((dataset[lat_name[0]] < bbox[0]) &
-                            (dataset[lat_name[0]] > bbox[1]), drop=True)
-    dataset = dataset.where((dataset[lon_name[0]] > bbox[2]) &
-                            (dataset[lon_name[0]] < bbox[3]), drop=True)
-    return dataset
-
-
-def spatial_subset_dfr(dfr, bbox):
-    """
-    Selects data within spatial bbox. bbox coords must be given as
-    positive values for the Northern hemisphere, and negative for
-    Southern. West and East both positive - Note - the method is
-    naive and will only work for bboxes fully fitting in the Eastern hemisphere!!!
-    Args:
-        dfr - pandas dataframe
-        bbox - (list) [North, South, West, East]
-    Returns:
-        pandas dataframe
-    """
-    dfr = dfr[(dfr['lat'] < bbox[0]) &
-                            (dfr['lat'] > bbox[1])]
-    dfr = dfr[(dfr['lon'] > bbox[2]) &
-                            (dfr['lon'] < bbox[3])]
-    return dfr
-
 
 def spatial_subset(dataset, bbox):
     """
@@ -108,7 +68,10 @@ def cluster_euc(xyzt, eps, min_samples):
     return db.labels_
 
 def lon_lat_to_spherical(dfr):
-    lon_rad, lat_rad = np.deg2rad(dfr.lon), np.deg2rad(dfr.lat)
+    try:
+        lon_rad, lat_rad = np.deg2rad(dfr.lon), np.deg2rad(dfr.lat)
+    except:
+        lon_rad, lat_rad = np.deg2rad(dfr.longitude), np.deg2rad(dfr.latitude)
     xyz = spher_to_cartes(lon_rad, lat_rad)
     return xyz
 
@@ -126,7 +89,7 @@ def spher_to_cartes(lon_rad, lat_rad):
 
 def get_days_since(dfr):
     basedate = pd.Timestamp('2002-01-01')
-    dates = pd.to_datetime(dfr.year, format='%Y') + pd.to_timedelta(dfr.date, unit='d')
+    dates = pd.to_datetime(dfr.date.dt.year, format='%Y') + pd.to_timedelta(dfr.date, unit='d')
     dfr.loc[:, 'day_since'] = (dates - basedate).dt.days
     return dfr#(dates - basedate).dt.days
 
@@ -146,6 +109,30 @@ def add_xyz(dfr):
     dfr.loc[:, 'y'] = xyz[:,1]
     dfr.loc[:, 'z'] = xyz[:,2]
     return dfr
+
+def monthly_frp_dfr(dfr, gri):
+    """
+    Grid frp pixel DataFrame dfr at given spatial resolution of the
+    passed Gridder instance and at monthly temporal freq, than prepare and return
+    frp monthly count feature DataFrame
+    """
+    dfr = gri.add_grid_inds(dfr)
+    dfr['year'] = dfr['date'].dt.year
+    dfr['month'] = dfr['date'].dt.month
+    dfr['mind'] = (dfr['year'] - dfr['year'].min()) * 12 + dfr['month']
+    grdfr = pd.DataFrame({'frp': dfr.groupby(['lonind', 'latind', 'mind'])['date'].count()})
+    #grdfr = pd.DataFrame({'frp': dfr.groupby(['lonind', 'latind'])['date'].count()})
+    grdfr.reset_index(inplace = True)
+    grid = np.zeros((gri.lats.shape[0], gri.lons.shape[0], grdfr.mind.max()), dtype=int)
+    grid[grdfr.latind, grdfr.lonind, grdfr.mind - 1] = grdfr['frp'].astype(int)
+    #prim = pd.read_parquet('/mnt/data/forest/forest_primary_{}deg_clean.parquet'.format(gri.step))
+    grdfr_agg = pd.DataFrame({'frp': dfr.groupby(['lonind', 'latind'])['date'].count()})
+    grdfr_agg.reset_index(inplace = True)
+    #prim_frp = pd.merge(prim, grdfr_agg, how='inner', on=['lonind', 'latind'])
+    frp_m = grid[grdfr_agg.latind, grdfr_agg.lonind, :]
+    df = pd.concat([grdfr_agg[['lonind', 'latind', 'frp']],
+                    pd.DataFrame(frp_m, columns=[str(x) for x in range(1, frp_m.shape[1] + 1)])], axis = 1)
+    return df
 
 class FireObs(object):
     def __init__(self, data_path, bbox=None, hour=None):
@@ -593,15 +580,15 @@ def ds_monthly_means_2d(darray, land_mask):
     return darray_masked
 
 def ds_monthly_means(darray, land_mask):
-    darray_m = darray.groupby('time.month').mean() 
+    darray_m = darray.groupby('time.month').mean()
     darray_masked = darray_m.where(land_mask.values)
     return darray_masked
 
 
 def dfr_monthly_counts(dfr):
-    dfr_m = dfr.day_since.groupby([dfr.date.dt.year, 
+    dfr_m = dfr.day_since.groupby([dfr.date.dt.year,
                                    dfr.date.dt.month]).count().mean(level=1)
-    return dfr_m 
+    return dfr_m
 
 
 def plot_comp_gfas(fwi, gfas, bboxes, land_mask, y2_label):
@@ -885,84 +872,36 @@ def plot_comp(fwi, ba, bboxes, land_mask, y2_label):
 
 if __name__ == '__main__':
     #TODO
-    #plot 2008 - 2015 and 2015 for
-    #indonesia and amazon
-    #FWI and DC vs BA, FRP, GFED4, GFED4.1
+    data_path = '/mnt/data/frp/'
+    env = Envdata(data_path)
+    gri = Gridder(bbox = 'indonesia', step = 0.25)
+    dfr = pd.read_parquet('/mnt/data/frp/M6_indonesia.parquet')
+    dfrm = monthly_frp_dfr(dfr, gri)
+    dfrm.to_parquet('/mnt/data/frp/frp_count_indonesia_0.25deg_monthly_v2.parquet')
+
     """
-    indonesia_bbox = [7.0, -11.0, 93.0, 143.0]
-    kalimantan = [7.0, -4.5, 108.0, 119]
-    sumatra_south = [3, -6, 98, 106]
-    riau_inner = [1,  -0.4, 101, 103.5]
-    bboxes = {'Indonesia': indonesia_bbox,
-              'Kalimantan': kalimantan,
-              'South Sumatra': sumatra_south,
-              'Inner Riau': riau_inner}
-
-
-    pass
-    land_mask = '~/data/land_mask/land_mask_indonesia.nc'
-    fwi_ds = '~/data/fwi/fwi_dc_indonesia.nc'
-    ba_prod = '~/data/ba/indonesia_ba.parquet'
-    fo = FireObs(data_path)
-    #orig_indonesia_bbox = [8.0, -13.0, 93.0, 143.0]
-    indonesia_bbox = [7.0, -11.0, 93.0, 143.0]
-    kalimantan = [7.0, -4.5, 108.0, 119]
-    sumatra_south = [3, -6, 98, 106]
-    riau_inner = [1,  -0.4, 101, 103.5]
-    bboxes = {'Indonesia': indonesia_bbox,
-              'Kalimantan': kalimantan,
-              'South Sumatra': sumatra_south,
-              'Inner Riau': riau_inner}
-    land_mask = xr.open_dataset(land_mask)
-    ba = pd.read_parquet(ba_prod)
-    ba = ba[ba.date.dt.year >= 2008]
-    ba15 = ba[ba['date'].dt.year == 2015]
-
-    fwi = xr.open_dataset('~/data/fwi/fwi_dc_indonesia.nc')
-    fwi_m = ff['fwi'].groupby('time.month').mean('time') 
-    fwi_m_m = fwi_m.where(land_mask)
-    #dur = 16
-    #dfr.loc[:, 'day_since_tmp'] = dfr['day_since'] * (self.eps / dur)
-    ##labs16 = cluster_euc(dfr[['x', 'y', 'z', 'day_since_tmp']].values, self.eps, min_samples=2)
-    #dfr.loc[:, 'labs16'] = labs16
-    #ba.populate_store_af_blocks(store_name, tropics_store, )
-    #ba.cluster_store(store_name, ['Af_tr', 'Am_tr', 'As_tr'])
-    #ba.populate_store_tropics(tropics_store)
-    #ba.populate_store()
-    data_path = '/mnt/data/gfed/'
-    fo = FireObs(data_path)
+    #prepare M6 pixel data for indonesia
     dts = []
-    for year in range(2008, 2016, 1):
-        ds_name = os.path.join(data_path, 'GFED4.1s_{0}.hdf5'.format(year))
-        ds = h5py.File(ds_name, 'r')
-        lon = ds['lon'].value
-        lat = ds['lat'].value
-        grid_size = ds['ancill/grid_cell_area'].value
-        bas = []
-        for month in range(1, 13, 1):
-            ba = ds['burned_area/{:02}/burned_fraction'.format(month)].value
-            bas.append(ba * grid_size)
-        dates = [datetime.datetime(year, x, 1) for x in range(1, 13, 1)]
-        dt = xr.Dataset({'gfed4s_ba': (('time', 'lat', 'lon'), np.array(bas))},
-                         coords = {'time': dates,
-                                   'lat': lat[:, 0],
-                                   'lon': lon[0, :]})
-        dts.append(dt)
-    ds = xr.concat(dts, dim = 'time')
+    for year in range(2002, 2019, 1):
+        print(year)
+        #ds = fo.read_dfr_from_parquet('M6_{0}'.format(year))
+        ds = pd.read_parquet(os.path.join(data_path, 'M6_{0}.parquet'.format(year)))
+        ds.rename({'lat': 'latitude', 'lon': 'longitude'}, axis = 1, inplace = True)
+        if 'date' not in ds.columns:
+            ds.rename({'acq_date': 'date'}, axis = 1, inplace = True)
+            ds['date'] =  pd.to_datetime(ds['date'])
+            print(ds.columns)
+        am = env.spatial_subset_dfr(ds[['latitude', 'longitude', 'frp', 'date', 'confidence']], gri.bbox)
+        dts.append(am)
+    di = pd.concat(dts)
 
-    bbox = [12, -12, -80, -40]
+    #cluster indonesia frp
     data_path = '/mnt/data/frp/'
     fo = FireObs(data_path)
-    dts = []
-    for year in range(2008, 2016, 1):
-        ds = fo.read_dfr_from_parquet('M6_{0}'.format(year))
-        am = spatial_subset_dfr(ds, bbox)
-        dts.append(am)
-    #ds = dfr.concat(dts, dim = 'time')
+    dfr = pd.read_parquet('/mnt/data/frp/M6_indonesia.parquet')
+    di = fo.preprocess(dfr)
+    dc = fo.cluster_region(di)
+    di_labs = pd.concat([di[['longitude', 'latitude', 'frp', 'confidence', 'date']], dc], axis=1)
     """
-    bbox = [12, -12, -80, -40]
-    data_path = '/home/tadas/fireobs/data'
-    fo = FireObs(data_path)
-    ds = fo.read_dfr_from_parquet('Am_tr')
-    am = spatial_subset_dfr(ds, bbox)
- 
+
+
