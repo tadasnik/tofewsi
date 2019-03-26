@@ -28,37 +28,45 @@ from sklearn.metrics import classification_report
 from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
 
-def dfr_to_json(dfr, gri, json_file):
-    year = 2015
-    month_names = pd.date_range(start='{0}-01'.format(year), freq='M', periods=12).month_name()
-    month_inds = dfr.month.unique()
-    prob_cols = [col for col in dfr.columns if 'prob' in col]
-    #dfs[prob_cols][dfs[prob_cols] < 0.5] = np.nan
-    cols = prob_cols + ['longitude', 'latitude', 'frp']
+def dfr_to_json(dfrs):
     gri = Gridder(bbox = 'indonesia', step = 0.25)
-    dfr = gri.spatial_subset_ind_dfr(dfr, gri.bbox)
-    json_d = {}
-    for nr, month in enumerate(month_names):
-        dfs = dfr[dfr.month == month_inds[nr]]
-        json_d[month] = {
-                'frp': dfs.frp.tolist(),
-                'Logistic': (dfs.NeuralNet_prob * 100).astype(int).tolist(),
-                'NN': (dfs.NeuralNet_prob * 100).astype(int).tolist(),
-                'Maxent': (dfs.Maxent_prob * 100).astype(int).tolist(),
-                'SVC': (dfs['SVC rbf_prob'] * 100).astype(int).tolist()
-                }
-
-        if nr == 0:
+    year = 2002
+    month_names = pd.date_range(start='2002-01'.format(year), freq='M', periods=12).month_name()
+    years_d = {}
+    for year in range(2002, 2019, 1):
+        dfr = dfrs[dfrs.year == year]
+        month_inds = dfr.month.unique()
+        prob_cols = [col for col in dfr.columns if 'prob' in col]
+        #dfs[prob_cols][dfs[prob_cols] < 0.5] = np.nan
+        cols = prob_cols + ['longitude', 'latitude', 'frp']
+        gri = Gridder(bbox = 'indonesia', step = 0.25)
+        dfr = gri.spatial_subset_ind_dfr(dfr, gri.bbox)
+        json_d = {}
+        for nr, month in enumerate(month_names):
+            dfs = dfr[dfr.month == month_inds[nr]]
+            json_d[month] = {
+                    'frp': dfs.frp.astype(int).tolist(),
+                    'dc': dfs.dc_med.astype(int).tolist(),
+                    'fwi': dfs.fwi_med.astype(int).tolist(),
+                    'ffmc': dfs.ffmc_med.astype(int).tolist(),
+                    'Logistic': (dfs.NeuralNet_prob * 100).astype(int).tolist(),
+                    'NN': (dfs.NeuralNet_prob * 100).astype(int).tolist(),
+                    'Maxent': (dfs.Maxent_prob * 100).astype(int).tolist(),
+                    'SVC': (dfs['SVC rbf_prob'] * 100).astype(int).tolist()
+                    }
+        years_d[year] = json_d
+        if year == 2002 and nr == 0:
             dfs['latitude'] = gri.lat_bins[dfs.latind.values + 1]
             dfs['longitude'] = gri.lon_bins[dfs.lonind.values]
             dfs[['longitude', 'latitude']].to_json('/home/tadas/tofewsi/website/assets/geo/lonlats_pdtest.json', orient="values")
 
-    with open('/home/tadas/tofewsi/website/assets/probdata.json', 'w') as outfile:
-        json.dump(json_d, outfile)
+    with open('/home/tadas/tofewsi/website/assets/probdata_all.json', 'w') as outfile:
+        json.dump(years_d, outfile)
 
 
 
 
+    """
     dfs = dfs[cols]
     dffi = dfs * 100
     dffi = dffi.astype('int')
@@ -69,6 +77,7 @@ def dfr_to_json(dfr, gri, json_file):
     json.dump(topolonlatd, codecs.open('data/topolonlats.json', 'w', encoding='utf-8'))
     json.dump(frpd, codecs.open('data/frp.json', 'w', encoding='utf-8'))
     json.dump(probd, codecs.open('data/probs.json', 'w', encoding='utf-8'))
+    """
 
 def plot_year_probs(dfr, clfs, year):
     months = 12
@@ -289,7 +298,7 @@ def do_roc_auc(bboxes, clfs, max_fact):
         roc_plots(frpsel, feats, clfs, cv, key, max_fact)
 
 def get_year_train_test(frpsel, year, max_fact=None):
-    years = ((frpsel.month.astype(int) // 12.) + 2002).astype(int)
+    years = (((frpsel.month.astype(int) - 1) // 12.) + 2002).astype(int)
     X_train_inds = np.where(years != year)[0]
     X_test_inds = np.where(years == year)[0]
     if max_fact:
@@ -490,15 +499,17 @@ def year_pred_to_dfr(year, max_fact, clfs, frpsel, features):
             except:
                 return None, None, None
         else:
-            preds, labs, score = predict_probability(x_train_scaled, y_train, x_test_scaled, y_test, item)
+            preds, score = predict_probability(x_train_scaled, y_train, x_test_scaled, y_test, item)
             x_test.loc[:, key + '_prob'] = preds[:, 1]
-            x_test.loc[:, key + '_lab'] = labs
     return x_test
 
-def perdict_years(clsf, frpsel, features, max_fact):
+def predict_years(clsf, frpsel, features, max_fact):
     dfrs = []
     for year in range(2002, 2019, 1):
         dfr = year_pred_to_dfr(year, max_fact, clfs, frpsel, features)
+        dfr['year'] = year
+        dfr['month'] = dfr['month'].astype(int)
+        dfr['month'] = (dfr['month'] - dfr['month'].min()) + 1
         dfrs.append(dfr)
     dfrs = pd.concat(dfrs)
     return dfrs
@@ -554,7 +565,7 @@ clfs = {'Logistic': logist, 'Maxent': 'maxent', 'SVC rbf': svmrbf, 'NeuralNet': 
 #clfs = {'logistic': logist, 'SVC rbf': svmrbf}
 #clfs = {'maxent': 'maxent', 'SVC' : svmrbf}
 
-max_fact = 8000
+max_fact = 4000
 frpsel = frp_data_subset(indonesia)
 features = frpsel.columns[4:,].tolist()
 ffs = ['loss_last_sec', 'loss_this_prim', 'loss_accum_prim',
@@ -562,6 +573,8 @@ ffs = ['loss_last_sec', 'loss_this_prim', 'loss_accum_prim',
        'gain', 'dem', 'dc_med', 'ffmc_med', 'fwi_med', 'ffmc_75p',
        'fwi_75p', 'dc_7mm', 'ffmc_7mm', 'fwi_7mm', 'dc_3m', 'latind']
 feats =  [ features + ['lonind', 'latind'], ffs]
+
+#dfr = predict_years(clfs, frpsel, features + ['lonind', 'latind'], max_fact)
 
 #feats = [['lonind', 'latind', 'loss_this', 'loss_last',
 #         'loss_three', 'loss_accum', 'f_prim', 'gain', 'fwi', 'dc', 'ffmc'], ['dc', 'fwi', 'ffmc']]
