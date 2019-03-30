@@ -6,6 +6,7 @@ import numpy as np
 import xarray as xr
 import pandas as pd
 from osgeo import gdal, ogr
+import matplotlib.pyplot as plt
 #from pyhdf.SD import SD
 import salem
 from salem.utils import get_demo_file
@@ -390,6 +391,11 @@ if __name__ == '__main__':
     bbox = [8, 93, -13, 143]
 
     lc = LulcData(data_path, bbox=bbox, hour=None)
+
+    #ds_sum_kal = xr.open_rasterio('/mnt/data/land_cover/peat_depth/WI_peat_atlas/WIpeat.tif')
+    #ds_papua = xr.open_rasterio('/mnt/data/land_cover/peat_depth/WI_peat_atlas/WIpapua.tif')
+    #ds_all = ds_sum_kal + ds_papua
+    #ds_all = ds_all.to_dataset(name = 'depth')
     """
     input_shps = ['/mnt/data/land_cover/peatlands/Peatland_land_cover_1990.shp',
                   '/mnt/data/land_cover/peatlands/Peatland_land_cover_2007.shp',

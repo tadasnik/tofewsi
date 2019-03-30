@@ -14,7 +14,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.feature_selection import RFE
 from sklearn.feature_selection import RFECV
 from sklearn import preprocessing
-from sklearn.metrics import roc_curve, auc, accuracy_score
+from sklearn.metrics import roc_curve, auc, accuracy_score, roc_auc_score, average_precision_score, precision_recall_curve, brier_score_loss
 from sklearn.model_selection import StratifiedKFold
 from sklearn.ensemble import BaggingClassifier
 from sklearn.model_selection import cross_val_score
@@ -43,23 +43,25 @@ def dfr_to_json(dfrs):
         dfr = gri.spatial_subset_ind_dfr(dfr, gri.bbox)
         json_d = {}
         for nr, month in enumerate(month_names):
+            print(year, nr)
             dfs = dfr[dfr.month == month_inds[nr]]
             json_d[month] = {
                     'frp': dfs.frp.astype(int).tolist(),
                     'dc': dfs.dc_med.astype(int).tolist(),
                     'fwi': dfs.fwi_med.astype(int).tolist(),
                     'ffmc': dfs.ffmc_med.astype(int).tolist(),
-                    'Logistic': (dfs.NeuralNet_prob * 100).astype(int).tolist(),
+                    'Logistic': (dfs.Logistic_prob * 100).astype(int).tolist(),
                     'NN': (dfs.NeuralNet_prob * 100).astype(int).tolist(),
                     'Maxent': (dfs.Maxent_prob * 100).astype(int).tolist(),
                     'SVC': (dfs['SVC rbf_prob'] * 100).astype(int).tolist()
                     }
-        years_d[year] = json_d
-        if year == 2002 and nr == 0:
-            dfs['latitude'] = gri.lat_bins[dfs.latind.values + 1]
-            dfs['longitude'] = gri.lon_bins[dfs.lonind.values]
-            dfs[['longitude', 'latitude']].to_json('/home/tadas/tofewsi/website/assets/geo/lonlats_pdtest.json', orient="values")
+            if (year == 2002) & (nr == 0):
+                dfs['latitude'] = gri.lat_bins[dfs.latind.values + 1]
+                dfs['longitude'] = gri.lon_bins[dfs.lonind.values]
+                dfs[['longitude', 'latitude']].to_json('/home/tadas/tofewsi/website/assets/geo/lonlats_all.json', orient="values")
 
+
+        years_d[year] = json_d
     with open('/home/tadas/tofewsi/website/assets/probdata_all.json', 'w') as outfile:
         json.dump(years_d, outfile)
 
@@ -265,7 +267,7 @@ def feature_selection(frpsel, max_fact):
     X_scaled = preprocessing.scale(XS.values)
     rfe = RFE(estimator=svmlin, n_features_to_select=1, step=1)
     rfe.fit(X_scaled, labels)
-    print('feature ranking RFE: ', rfe.ranking_)
+    print('feature ranking RFE: ', list(zip(feats, rfe.ranking_)))
     print("Optimal number of features : %d" % rfe.n_features_)
     n_estimators = 20
     clr = BaggingClassifier(svmlin, max_samples = 1.0 / n_estimators,
@@ -280,10 +282,11 @@ def feature_selection(frpsel, max_fact):
     #              scoring='accuracy', n_jobs=7)
     print(labels)
     rfecv.fit(X_scaled, labels)
-    print('feature ranking RFECV: ', rfecv.ranking_)
+    print('feature ranking RFECV: ', list(zip(feats, rfecv.ranking_)))
+    print("Optimal number of features : %d" % rfe.n_features_)
     print("Optimal number of features : %d" % rfecv.n_features_)
     print(rfecv.grid_scores_)
-
+    return list(zip(feats, rfecv.ranking_))
 
 def do_roc_auc(bboxes, clfs, max_fact):
     for key, item in bboxes.items():
@@ -311,10 +314,10 @@ def predict_probability(x_train, y_train, x_test, y_test, clf):
     probas = clf.predict_proba(x_test)
     return probas, clf.score(x_test, y_test)
 
-def frp_data_subset(bbox):
+def frp_data_subset():
     frp = pd.read_parquet('data/feature_frame_0.25deg_v2.parquet')
     gri = Gridder(bbox = 'indonesia', step = 0.25)
-    frp = gri.spatial_subset_ind_dfr(frp, bbox)
+    frp = gri.spatial_subset_ind_dfr(frp, gri.bbox)
     return frp
 
 def balance_classes(frp):
@@ -560,13 +563,13 @@ clfnn2 = MLPClassifier(solver='lbfgs', alpha=2,
 
 clfnn = MLPClassifier(solver='adam', alpha=1, hidden_layer_sizes=(5, 2),  random_state=1)
 
-#clfs = {'logistic': logist, 'maxent': 'maxent', 'SCV lin': svmlin, 'SVC rbf': svmrbf, 'NN': clfnn}
-clfs = {'Logistic': logist, 'Maxent': 'maxent', 'SVC rbf': svmrbf, 'NeuralNet': clfnn2 }#, 'NN': clfnn}#, 'SVC': svmrbf}
+clfs = {'Logistic': logist, 'NN': clfnn}
+#clfs = {'Logistic': logist, 'Maxent': 'maxent', 'SVC rbf': svmrbf, 'NeuralNet': clfnn2 }#, 'NN': clfnn}#, 'SVC': svmrbf}
 #clfs = {'logistic': logist, 'SVC rbf': svmrbf}
 #clfs = {'maxent': 'maxent', 'SVC' : svmrbf}
 
 max_fact = 4000
-frpsel = frp_data_subset(indonesia)
+frpsel = frp_data_subset()
 features = frpsel.columns[4:,].tolist()
 ffs = ['loss_last_sec', 'loss_this_prim', 'loss_accum_prim',
        'loss_accum_sec', 'loss_three_prim', 'loss_three_sec', 'f_prim',
@@ -574,11 +577,11 @@ ffs = ['loss_last_sec', 'loss_this_prim', 'loss_accum_prim',
        'fwi_75p', 'dc_7mm', 'ffmc_7mm', 'fwi_7mm', 'dc_3m', 'latind']
 feats =  [ features + ['lonind', 'latind'], ffs]
 
-#dfr = predict_years(clfs, frpsel, features + ['lonind', 'latind'], max_fact)
+dfr = predict_years(clfs, frpsel, features + ['lonind', 'latind'], max_fact)
 
 #feats = [['lonind', 'latind', 'loss_this', 'loss_last',
 #         'loss_three', 'loss_accum', 'f_prim', 'gain', 'fwi', 'dc', 'ffmc'], ['dc', 'fwi', 'ffmc']]
-#roc_plots(frpsel, feats, clfs, cv, 'test_v2_dem_2018_roll_sel', 4000)
+#roc_plots(frpsel, feats, clfs, cv, 'test_v2_dem_2018_roll_sel_peat_depth', 7000)
 
 #XS = frpsel[['lonind', 'latind', 'loss_last', 'loss_accum', 'loss_three', 'loss_this', 'f_prim', 'gain', 'fwi', 'dc', 'ffmc']]
 #X_scaled = preprocessing.scale(XS.values)

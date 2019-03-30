@@ -22,6 +22,19 @@ def dem_ds_to_dfr(cc):
                      axis = 1)
     return dfr
 
+def peat_depth_ds_to_dfr(cc):
+    ds = xr.open_dataset('/mnt/data/land_cover/peat_depth/peat_depth_ind.nc')
+    ds = ds.rename({'x':'longitude', 'y':'latitude'})
+    depth = cc.spatial_subset(ds.depth, cc.region_bbox['indonesia'])
+    lon_lat_fr = cc.fc[['lonind', 'latind']]
+    lon_lat_fr.reset_index(drop = True, inplace = True)
+    fr = depth.values[:, lon_lat_fr.latind, lon_lat_fr.lonind]
+    dfr = pd.concat([lon_lat_fr[['latind', 'lonind']],
+                     pd.DataFrame(fr.T, columns = [str(x) for x in range(1, fr.shape[0] + 1)])],
+                     axis = 1)
+    return dfr
+
+
 def prepare_features(cc, current_year):
     first_year = 2001
     cc.read_forest_change()
@@ -101,6 +114,9 @@ def prepare_features(cc, current_year):
     gain = cc.fc['gain'] / cc.fc['total']
     dem = dem_ds_to_dfr(cc)
 
+    #peat depth
+    depth = peat_depth_ds_to_dfr(cc)
+
     frp.loc[:, 'loss_last_prim'] = last_year_prim.values
     frp.loc[:, 'loss_last_sec'] = last_year_sec.values
     frp.loc[:, 'loss_this_prim'] = this_year_prim.values
@@ -112,6 +128,7 @@ def prepare_features(cc, current_year):
     frp.loc[:, 'f_prim'] = prim_frac.values
     frp.loc[:, 'gain'] = gain.repeat(12 * (current_year - first_year)).values
     frp.loc[:, 'dem'] = dem['1'].repeat(12 * (current_year - first_year)).values
+    frp.loc[:, 'peat_depth'] = depth['1'].repeat(12 * (current_year - first_year)).values
 
     cc.fwi_m = xr.open_dataset(os.path.join(cc.data_path, 'fwi',
                                  'fwi_indonesia_{}deg_monthly_v2.nc'.format(cc.res)))
@@ -426,6 +443,7 @@ if __name__ == '__main__':
     res = 0.25
     #data_path = '/home/tadas/data/'
     cc = CompData(data_path, res)
+    cc.read_forest_change()
 
     #do 5km 
     """
