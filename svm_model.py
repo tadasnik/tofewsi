@@ -510,6 +510,7 @@ def predict_years(clsf, frpsel, features, max_fact):
     dfrs = []
     for year in range(2002, 2019, 1):
         dfr = year_pred_to_dfr(year, max_fact, clfs, frpsel, features)
+        print(dfr, year)
         dfr['year'] = year
         dfr['month'] = dfr['month'].astype(int)
         dfr['month'] = (dfr['month'] - dfr['month'].min()) + 1
@@ -563,8 +564,8 @@ clfnn2 = MLPClassifier(solver='lbfgs', alpha=2,
 
 clfnn = MLPClassifier(solver='adam', alpha=1, hidden_layer_sizes=(5, 2),  random_state=1)
 
-clfs = {'Logistic': logist, 'NN': clfnn}
-#clfs = {'Logistic': logist, 'Maxent': 'maxent', 'SVC rbf': svmrbf, 'NeuralNet': clfnn2 }#, 'NN': clfnn}#, 'SVC': svmrbf}
+#clfs = {'Logistic': logist, 'NN': clfnn}
+clfs = {'Logistic': logist, 'Maxent': 'maxent', 'SVC rbf': svmrbf, 'NeuralNet': clfnn2 }#, 'NN': clfnn}#, 'SVC': svmrbf}
 #clfs = {'logistic': logist, 'SVC rbf': svmrbf}
 #clfs = {'maxent': 'maxent', 'SVC' : svmrbf}
 
