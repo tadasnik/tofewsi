@@ -1,6 +1,7 @@
 import io
 import pandas as pd
 import xarray as xr
+import numpy as np
 import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
 from cartopy import feature
@@ -20,25 +21,36 @@ def ind_states():
     ind_state_borders = feature.ShapelyFeature(indo[0][1],
                                ccrs.PlateCarree(),
                                facecolor='none',
-                               edgecolor='black',
-                               alpha = 0.5)
+                               edgecolor='grey',
+                               alpha = 1)
     return ind_state_borders
 
-def plot_ind_data(indon, dataset):
-    ax = plt.axes(projection=ccrs.PlateCarree())
+def plot_ind_data(indon, dataset, variable):
+    fig = plt.figure(figsize=(35,10))
+    ax = fig.add_axes([0, 0, 1, 1], projection = ccrs.PlateCarree())
     #ax.add_feature(feature.COASTLINE)
-    ax.add_feature(indon)
+    ax.add_feature(indon, zorder=0)
     ax.set_extent((94.8, 141.1, 6.2, -10.5))
     ax.outline_patch.set(visible=False)
-    plt.savefig("test.svg", format="svg")
+    pcm = ax.pcolormesh(ds.longitude - (gri.step / 2), ds.latitude - (gri.step / 2), ds[variable],
+                 transform=ccrs.PlateCarree(), cmap="inferno")
+    plt.colorbar(pcm, orientation = 'horizontal', fraction = 0.03, pad = 0)
+    ax.background_patch.set_alpha(0)
+    ax.patch.set_alpha(0)
+    plt.savefig("test.png", format="png", dpi=300, 
+            bbox_inches='tight', pad_inches = 0, transparent = True)
     plt.show()
 
 def get_probs(dfr, model, year, month):
-    probs = dfr[model][(dfr.year == year) & (dfr.month == month)]
+    probs = dfr[[model, 'lonind', 'latind']][(dfr.year == year) & (dfr.month == month)]
     return probs
 
 
 gri = Gridder(bbox = 'indonesia', step = 0.25)
-probs = pd.read_parquet('data/feature_frame_0.25deg_v2.parquet')
+dfr = pd.read_parquet('data/prob_dfr.parquet')
+variable = 'NeuralNet_prob'
+probs = get_probs(dfr, variable, 2015, 10)
+ds = gri.dfr_to_dataset(probs, variable, np.nan)
 indon = ind_states()
-plot_ind_data(indon)
+plot_ind_data(indon, ds, variable)
+
