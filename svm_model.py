@@ -577,8 +577,11 @@ ffs = ['loss_last_sec', 'loss_this_prim', 'loss_accum_prim',
        'gain', 'dem', 'dc_med', 'ffmc_med', 'fwi_med', 'ffmc_75p',
        'fwi_75p', 'dc_7mm', 'ffmc_7mm', 'fwi_7mm', 'dc_3m', 'latind']
 feats =  [ features + ['lonind', 'latind'], ffs]
+features = ['dc_med', 'ffmc_med', 'fwi_med', 'ffmc_75p',
+       'fwi_75p', 'dc_7mm', 'ffmc_7mm', 'fwi_7mm', 'dc_3m']
 
-dfr = predict_years(clfs, frpsel, features + ['lonind', 'latind'], max_fact)
+#dfr = predict_years(clfs, frpsel, features + ['lonind', 'latind'], max_fact)
+dfr = predict_years(clfs, frpsel, features, max_fact)
 
 #feats = [['lonind', 'latind', 'loss_this', 'loss_last',
 #         'loss_three', 'loss_accum', 'f_prim', 'gain', 'fwi', 'dc', 'ffmc'], ['dc', 'fwi', 'ffmc']]
