@@ -1,4 +1,5 @@
 import os
+import glob
 import datetime
 import numpy as np
 import xarray as xr
@@ -6,6 +7,7 @@ import pandas as pd
 import dask.dataframe as dd
 import swifter
 import pwlf
+#import geopandas as gpd
 from envdata import Envdata
 from gridding import Gridder
 import matplotlib.pyplot as plt
@@ -34,12 +36,25 @@ def peat_depth_ds_to_dfr(cc):
                      axis = 1)
     return dfr
 
+def filter_volcanoes(frpsel):
+    gri = Gridder(bbox = 'indonesia', step = res)
+    fnames = glob.glob('data/volcanoes/*.shp')
+    dfs = []
+    for fn in fnames:
+        df = gpd.read_file(fn)
+        dfr = pd.DataFrame({'longitude': df.geometry.x, 'latitude': df.geometry.y})
+        dfs.append(dfr)
+    dfs = pd.concat(dfs)
+    dfs = gri.add_grid_inds(dfs)
+    mask = frpsel[['lonind', 'latind']].apply(tuple,1).isin(dfs[['lonind', 'latind']].apply(tuple, 1))
+    return frpsel[~mask]
 
 def prepare_features(cc, current_year):
     first_year = 2001
     cc.read_forest_change()
-    cc.frpfr = pd.read_parquet('/mnt/data/frp/frp_count_indonesia_{}deg_monthly_v2.parquet'.format(cc.res))
-    cc.frpfr = cc.frpfr[cc.frpfr.frp < 6001]
+    cc.frpfr = pd.read_parquet('/mnt/data/frp/frp_count_indonesia_{}deg_monthly_v2_no_volcanoes.parquet'.format(cc.res))
+    #cc.frpfr = filter_volcanoes(cc.frpfr)
+    #cc.frpfr = cc.frpfr[cc.frpfr.frp < 6001]
     frp = pd.merge(cc.fc[['lonind', 'latind']], cc.frpfr, on=['lonind', 'latind'], how='left')
     #fc = pd.merge(frp[['lonind', 'latind']], cc.fc, on=['lonind', 'latind'], how='left')
 

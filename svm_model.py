@@ -1,4 +1,5 @@
 from __future__ import print_function
+import geopandas as gpd
 import codecs, json
 import cartopy.crs as ccrs
 from cartopy.mpl.geoaxes import GeoAxes
@@ -14,7 +15,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.feature_selection import RFE
 from sklearn.feature_selection import RFECV
 from sklearn import preprocessing
-from sklearn.metrics import roc_curve, auc, accuracy_score, roc_auc_score, average_precision_score, precision_recall_curve, brier_score_loss
+from sklearn.metrics import roc_curve, auc, accuracy_score, roc_auc_score, balanced_accuracy_score, average_precision_score, precision_recall_curve, brier_score_loss
 from sklearn.model_selection import StratifiedKFold
 from sklearn.ensemble import BaggingClassifier
 from sklearn.model_selection import cross_val_score
@@ -148,17 +149,17 @@ def roc_plots(frpsel, features, clfs, cv, name, max_fact):
             tprs, tprsint, fprs, aucs, mean_fpr, score  = do_roc_year(frpsel, features[row_nr], clf, max_fact)
             #tprs, tprsint, fprs, aucs, mean_fpr, score  = do_roc(X, XX, y, clf)
             for item in zip(fprs, tprs):
-               colax.plot(item[0], item[1], lw=1, alpha=0.3)#,
+               colax.plot(item[0], item[1], lw=1, color='#5D5D5D', alpha=0.3)#,
             #         label='ROC fold %d (AUC = %0.2f)' % (i, roc_auc))
 
             #i += 1
-            colax.plot([0, 1], [0, 1], linestyle='--', lw=2, color='0.6', alpha = .8)
+            colax.plot([0, 1], [0, 1], linestyle='--', lw=2, color='#464646', alpha = .8)
             #         label='Chance', alpha=.8)
             mean_tpr = np.mean(tprsint, axis=0)
             mean_tpr[-1] = 1.0
             mean_auc = auc(mean_fpr, mean_tpr)
             std_auc = np.std(aucs)
-            colax.plot(mean_fpr, mean_tpr, color='b',
+            colax.plot(mean_fpr, mean_tpr, color='#1A2D40',
                      label=r'Mean ROC (AUC = %0.2f $\pm$ %0.2f)' % (mean_auc, std_auc),
                      lw=2, alpha=.8)
             #colax.text(0.7, .2, 'score {0:.2}'.format(score))
@@ -171,7 +172,7 @@ def roc_plots(frpsel, features, clfs, cv, name, max_fact):
 
             colax.set_xlim([-0.05, 1.05])
             colax.set_ylim([-0.05, 1.05])
-            if row_nr == 2:
+            if row_nr == 0:
                 colax.set_xlabel('False Positive Rate')
             if col_nr == 0:
                 colax.set_ylabel('True Positive Rate')
@@ -181,7 +182,8 @@ def roc_plots(frpsel, features, clfs, cv, name, max_fact):
     #fig.text(0.5, 0.01, 'Mean {}'.format(fwi_ds), ha='center', fontsize = 14)
     #fig.text(0.01, 0.5, 'Active fire pixel count', va='center', rotation='vertical', fontsize = 14)
     tit = fig.suptitle('{0}'.format(name), y=.97, fontsize=18)
-    plt.savefig('figs/rocs_{}_indonesia.png'.format(name), dpi=300)#, bbox_inches='tight', bbox_extra_artists=[tit])
+    #plt.savefig('figs/rocs_{}_indonesia.png'.format(name), dpi=300)#, bbox_inches='tight', bbox_extra_artists=[tit])
+    plt.savefig('egu_poster/figures/rocs_{}_indonesia.png'.format(name), dpi=300)#, bbox_inches='tight', bbox_extra_artists=[tit])
     plt.show()
 
 def fit_predict_maxent(x_train, y_train, x_test):
@@ -315,7 +317,8 @@ def predict_probability(x_train, y_train, x_test, y_test, clf):
     return probas, clf.score(x_test, y_test)
 
 def frp_data_subset():
-    frp = pd.read_parquet('data/feature_frame_0.25deg_v2.parquet')
+    #frp = pd.read_parquet('data/feature_frame_0.25deg_v2.parquet')
+    frp = pd.read_parquet('data/feature_frame_0.25deg_v2_no_volcanoes.parquet')
     gri = Gridder(bbox = 'indonesia', step = 0.25)
     frp = gri.spatial_subset_ind_dfr(frp, gri.bbox)
     return frp
@@ -324,7 +327,7 @@ def balance_classes(frp):
     #make sample sizes evenish
     frp1 = frp[frp.frp > 10]
     frp0 = frp[frp.frp == 0]
-    factor = int(frp0.shape[0] / frp1.shape[0])
+    factor = int(frp0.shape[0] / (frp1.shape[0] * 2))
     frpsel = pd.concat([frp1, frp0.iloc[::factor, :]])
     return frpsel
 
@@ -564,8 +567,8 @@ clfnn2 = MLPClassifier(solver='lbfgs', alpha=2,
 
 clfnn = MLPClassifier(solver='adam', alpha=1, hidden_layer_sizes=(5, 2),  random_state=1)
 
-#clfs = {'Logistic': logist, 'NN': clfnn}
-clfs = {'Logistic': logist, 'Maxent': 'maxent', 'SVC rbf': svmrbf, 'NeuralNet': clfnn2 }#, 'NN': clfnn}#, 'SVC': svmrbf}
+clfs = {'Logistic': logist, 'NN': clfnn}
+#clfs = {'Logistic': logist, 'Maxent': 'maxent', 'SVC rbf': svmrbf, 'NeuralNet': clfnn2 }#, 'NN': clfnn}#, 'SVC': svmrbf}
 #clfs = {'logistic': logist, 'SVC rbf': svmrbf}
 #clfs = {'maxent': 'maxent', 'SVC' : svmrbf}
 
@@ -577,15 +580,15 @@ ffs = ['loss_last_sec', 'loss_this_prim', 'loss_accum_prim',
        'gain', 'dem', 'dc_med', 'ffmc_med', 'fwi_med', 'ffmc_75p',
        'fwi_75p', 'dc_7mm', 'ffmc_7mm', 'fwi_7mm', 'dc_3m', 'latind']
 feats =  [ features + ['lonind', 'latind'], ffs]
-features = ['dc_med', 'ffmc_med', 'fwi_med', 'ffmc_75p',
-       'fwi_75p', 'dc_7mm', 'ffmc_7mm', 'fwi_7mm', 'dc_3m']
+#features = ['dc_med', 'ffmc_med', 'fwi_med', 'ffmc_75p',
+#       'fwi_75p', 'dc_7mm', 'ffmc_7mm', 'fwi_7mm', 'dc_3m']
 
 #dfr = predict_years(clfs, frpsel, features + ['lonind', 'latind'], max_fact)
-dfr = predict_years(clfs, frpsel, features, max_fact)
+#dfrfwi = predict_years(clfs, frpsel, features, max_fact)
 
 #feats = [['lonind', 'latind', 'loss_this', 'loss_last',
 #         'loss_three', 'loss_accum', 'f_prim', 'gain', 'fwi', 'dc', 'ffmc'], ['dc', 'fwi', 'ffmc']]
-#roc_plots(frpsel, feats, clfs, cv, 'test_v2_dem_2018_roll_sel_peat_depth', 7000)
+#roc_plots(frpsel, feats, clfs, cv, 'test_v2_dem_2018_roll_sel_peat_depth', 8000)
 
 #XS = frpsel[['lonind', 'latind', 'loss_last', 'loss_accum', 'loss_three', 'loss_this', 'f_prim', 'gain', 'fwi', 'dc', 'ffmc']]
 #X_scaled = preprocessing.scale(XS.values)
