@@ -70,7 +70,7 @@ def plot_ind_data(dfr, indon, variable, my_cmap, vmin, vmax, year=None, month=No
     ax = fig.add_axes([0, 0, 1, 1], projection = ccrs.PlateCarree())
     print(ds[variable].min(), ds[variable].max())
     #ax.add_feature(feature.COASTLINE)
-    fc_c = my_cmap(vmin)
+    fc_c = my_cmap(0)
 
     ax.add_feature(indon, zorder=0, facecolor=fc_c)
     ax.set_extent((94.8, 141.1, 6.2, -10.5))
@@ -133,13 +133,13 @@ def roc_plots(dfr, name, color):
     for nr, ax in enumerate(axes):
         column = list(mod_names.keys())[nr]
         mod = mod_names[column]
-        sc = dfr.groupby(['year']).apply(lambda x: roc_curve(x.label, x[column]))
+        sc = dfr.groupby(['year']).apply(lambda x: skm.roc_curve(x.label, x[column]))
         #tprs, tprsint, fprs, aucs, mean_fpr, score  = do_roc(X, XX, y, clf)
         tprsint = []
         aucs = []
         for item in sc.values:
             tprsint.append(interp(mean_fpr, item[0], item[1]))
-            rauc = auc(item[0], item[1])
+            rauc = skm.auc(item[0], item[1])
             aucs.append(rauc)
             ax.plot(item[0], item[1], lw=1, color='#5D5D5D', alpha=0.3)#,
         tprsint[-1][0] = 0.0
@@ -147,11 +147,11 @@ def roc_plots(dfr, name, color):
         #         label='Chance', alpha=.8)
         mean_tpr = np.mean(tprsint, axis=0)
         mean_tpr[-1] = 1.0
-        mean_auc = auc(mean_fpr, mean_tpr)
+        mean_auc = skm.auc(mean_fpr, mean_tpr)
         std_auc = np.std(aucs)
         ax.plot(mean_fpr, mean_tpr, color=color,
                  label=r'Mean ROC (AUC = %0.2f $\pm$ %0.2f)' % (mean_auc, std_auc),
-                 lw=3)
+                 lw=5)
         #colax.text(0.7, .2, 'score {0:.2}'.format(score))
 
         std_tpr = np.std(tprsint, axis=0)
@@ -267,19 +267,21 @@ dfr['label'][dfr.frp > 10] = 1
 #brier = dfr.groupby(['lonind', 'latind']).apply(lambda x: skm.recall_score(x.label,
 #                                                x['NeuralNet_prob'].round().astype(int)))
 
-brier = dfr.groupby(['lonind', 'latind']).apply(lambda x: skm.average_precision_score(x.label, x['NeuralNet_prob']))
-brier = brier.reset_index()
-brier.rename({0: 'briersc'}, axis=1, inplace=True)
-plot_ind_data(brier, indon, 'briersc', my_cmap, 0, 1)
+#brier = dfr.groupby(['lonind', 'latind']).apply(lambda x: skm.average_precision_score(x.label, x['NeuralNet_prob']))
+#brier = brier.reset_index()
+#brier.rename({0: 'briersc'}, axis=1, inplace=True)
+#plot_ind_data(brier, indon, 'briersc', my_cmap, 0, 1)
 #plot_scores_bar(briersc, brierscfwi, rocsc, rocscfwi, 'brier_roc')
 #plot_scores_bar_single(briersc, rocsc, 'brier_roc')
-#plot_scores_bar_single(recal, prsc, 'recpr')
-#plot_ind_data(dfr, indon, 'frp', year, month, my_cmap, 10, 1, log_scale=True)
-#plot_ind_data(dfrfwi, indon, 'NeuralNet_prob', year, month, my_cmap, 'None', 0, 1)
-#plot_ind_data(dfrfwi, indon, 'ffmc_med', year, month, my_cmap, 'None', 30, 90)
-#plot_ind_data(dfr, indon, 'f_prim', year, month, my_cmap_blue, 'Fraction primary forest', 0, 1)
-#plot_ind_data(dfr, indon, 'loss_accum_prim', year, month, my_cmap_red, 'Fraction primary forest', 0, 0.2)
+plot_scores_bar_single(recal, prsc, 'recpr')
+#plot_ind_data(dfr, indon, 'frp', my_cmap, 10, 1000, year, month, log_scale=True)
+#plot_ind_data(dfr, indon, 'NeuralNet_prob', my_cmap, 0, 1, year, month)
+#plot_ind_data(dfrfwi, indon, 'ffmc_med', my_cmap, 30, 90, year, month)
+#plot_ind_data(dfr, indon, 'fwi_med', my_cmap, 0, 30, year, month)
+#plot_ind_data(dfr, indon, 'dc_med', my_cmap, 0, 1000, year, month)
+#plot_ind_data(dfr, indon, 'f_prim', my_cmap_blue, 0, 1, year, month)
+#plot_ind_data(dfr, indon, 'loss_accum_prim', my_cmap_red, 0, 0.2, year, month )
 #plot_ind_data(dfr, indon, 'gain',  my_cmap_blue, 0, 0.4, year = year, month = month)
-plot_ind_data(dfr, indon, 'peat_depth',  my_cmap_red, 0, 800, year = year, month = month)
-#roc_plots(dfr, 'full', '#FF5964') 
-#roc_plots(dfrfwi, 'fwi', '#FFE74C') 
+#plot_ind_data(dfr, indon, 'peat_depth',  my_cmap, 0, 800, year = year, month = month)
+#roc_plots(dfr, 'full', '#FF5964')
+#roc_plots(dfrfwi, 'fwi', '#FFE74C')
