@@ -21,6 +21,22 @@
   <defs
      id="defs2">
     <linearGradient
+       id="linearGradient1639"
+       osb:paint="solid">
+      <stop
+         style="stop-color:#000000;stop-opacity:1;"
+         offset="0"
+         id="stop1637" />
+    </linearGradient>
+    <linearGradient
+       id="linearGradient1629"
+       osb:paint="solid">
+      <stop
+         style="stop-color:#ff0000;stop-opacity:1;"
+         offset="0"
+         id="stop1627" />
+    </linearGradient>
+    <linearGradient
        id="linearGradient10521"
        osb:paint="solid"
        gradientTransform="matrix(0.27608689,0,0,0.27103765,-2.5631996,-564.92484)">
@@ -66,7 +82,7 @@
     <linearGradient
        id="linearGradient8665"
        osb:paint="solid"
-       gradientTransform="matrix(1.0939408e-4,0,0,2.2393134e-7,37.80252,544.5699)">
+       gradientTransform="matrix(1.1395214e-4,0,0,5.4993923e-7,3.2124541,537.9247)">
       <stop
          style="stop-color:#e8e8e8;stop-opacity:1;"
          offset="0"
@@ -552,6 +568,24 @@
        id="linearGradient9834"
        gradientUnits="userSpaceOnUse"
        gradientTransform="matrix(0.20637497,0,0,0.09873293,659.89483,1104.5847)" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient7380"
+       id="linearGradient1633"
+       gradientUnits="userSpaceOnUse"
+       x1="145.5743"
+       y1="46.193409"
+       x2="1165.2198"
+       y2="46.193409" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient872"
+       id="linearGradient1641"
+       x1="868.01306"
+       y1="776.93036"
+       x2="1117.3612"
+       y2="776.93036"
+       gradientUnits="userSpaceOnUse" />
   </defs>
   <sodipodi:namedview
      id="base"
@@ -560,20 +594,20 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="0.1767767"
-     inkscape:cx="767.71429"
-     inkscape:cy="1370.6866"
+     inkscape:zoom="0.125"
+     inkscape:cx="1346.2977"
+     inkscape:cy="2897.3565"
      inkscape:document-units="mm"
-     inkscape:current-layer="layer3"
+     inkscape:current-layer="layer2"
      showgrid="true"
      inkscape:pagecheckerboard="true"
      showguides="true"
      inkscape:showpageshadow="false"
      borderlayer="true"
-     inkscape:window-width="1920"
-     inkscape:window-height="1034"
+     inkscape:window-width="1914"
+     inkscape:window-height="1052"
      inkscape:window-x="0"
-     inkscape:window-y="24"
+     inkscape:window-y="0"
      inkscape:window-maximized="0"
      inkscape:guide-bbox="true">
     <inkscape:grid
@@ -866,7 +900,7 @@
            y="476.78748"
            style="stroke-linecap:butt;stroke-linejoin:round" /></flowRegion><flowPara
          id="flowPara7606"
-         style="stroke-linecap:butt;stroke-linejoin:round"></flowPara></flowRoot>    <flowRoot
+         style="stroke-linecap:butt;stroke-linejoin:round" /></flowRoot>    <flowRoot
        xml:space="preserve"
        id="flowRoot7676"
        style="font-style:normal;font-weight:normal;font-size:40px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-linecap:butt;stroke-linejoin:round"><flowRegion
@@ -879,7 +913,7 @@
            y="1589.2914"
            style="stroke-linecap:butt;stroke-linejoin:round" /></flowRegion><flowPara
          id="flowPara7682"
-         style="stroke-linecap:butt;stroke-linejoin:round"></flowPara></flowRoot>    <rect
+         style="stroke-linecap:butt;stroke-linejoin:round" /></flowRoot>    <rect
        style="opacity:1;fill:url(#linearGradient9834);fill-opacity:1;stroke:none;stroke-width:0.14274454;stroke-linecap:butt;stroke-linejoin:round;stroke-opacity:1"
        id="rect7672-9"
        width="463.70993"
@@ -908,13 +942,13 @@
            id="flowPara9819">Neural Networks</flowPara></flowRoot>      <image
          sodipodi:absref="/home/tadas/tofewsi/egu_poster/figures/NeuralNet_prob_2015_10.png"
          xlink:href="figures/NeuralNet_prob_2015_10.png"
-         y="336.40002"
-         x="475.60001"
-         id="image9115"
-         style="stroke-linecap:butt;stroke-linejoin:round;image-rendering:optimizeQuality"
-         preserveAspectRatio="none"
+         width="321.03"
          height="126.14999"
-         width="321.03" />
+         preserveAspectRatio="none"
+         style="stroke-linecap:butt;stroke-linejoin:round;image-rendering:optimizeQuality"
+         id="image9115"
+         x="475.60001"
+         y="336.40002" />
     </g>
     <flowRoot
        xml:space="preserve"
@@ -930,7 +964,7 @@
            y="1271.4331"
            style="stroke-linecap:butt;stroke-linejoin:round" /></flowRegion><flowPara
          id="flowPara9124"
-         style="stroke-linecap:butt;stroke-linejoin:round"></flowPara></flowRoot>    <flowRoot
+         style="stroke-linecap:butt;stroke-linejoin:round" /></flowRoot>    <flowRoot
        xml:space="preserve"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10.58333302px;line-height:1.25;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:end;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:end;fill:url(#linearGradient8706);fill-opacity:1;stroke:none;stroke-linecap:butt;stroke-linejoin:round"
        id="flowRoot7740-4"
@@ -943,43 +977,43 @@
          style="fill:url(#linearGradient8706);stroke-linecap:butt;stroke-linejoin:round">Neural Networks</flowPara></flowRoot>    <image
        sodipodi:absref="/home/tadas/tofewsi/egu_poster/figures/rocs_full.png"
        xlink:href="figures/rocs_full.png"
-       width="285.36002"
-       height="65.609848"
-       preserveAspectRatio="none"
-       style="stroke-linecap:butt;stroke-linejoin:round;image-rendering:optimizeQuality"
-       id="image10846"
+       y="269.12003"
        x="867.96997"
-       y="269.12003" />
+       id="image10846"
+       style="stroke-linecap:butt;stroke-linejoin:round;image-rendering:optimizeQuality"
+       preserveAspectRatio="none"
+       height="65.609848"
+       width="285.36002" />
     <image
        sodipodi:absref="/home/tadas/tofewsi/egu_poster/figures/rocs_fwi.png"
        xlink:href="figures/rocs_fwi.png"
-       width="284.99976"
-       height="67.279999"
-       preserveAspectRatio="none"
-       style="stroke-linecap:butt;stroke-linejoin:round;image-rendering:optimizeQuality"
-       id="image10908"
+       y="370.04001"
        x="867.97003"
-       y="370.04001" />
+       id="image10908"
+       style="stroke-linecap:butt;stroke-linejoin:round;image-rendering:optimizeQuality"
+       preserveAspectRatio="none"
+       height="67.279999"
+       width="284.99976" />
     <image
        sodipodi:absref="/home/tadas/tofewsi/egu_poster/figures/scores_brier_roc_single.png"
        xlink:href="figures/scores_brier_roc_single.png"
-       width="235.98068"
-       height="66.4328"
-       preserveAspectRatio="none"
-       style="stroke-linecap:butt;stroke-linejoin:round;image-rendering:optimizeQuality"
+       y="563.47003"
+       x="892.31207"
        id="image11151"
-       x="867.97003"
-       y="563.47003" />
+       style="stroke-linecap:butt;stroke-linejoin:round;image-rendering:optimizeQuality"
+       preserveAspectRatio="none"
+       height="66.4328"
+       width="235.98068" />
     <image
        sodipodi:absref="/home/tadas/tofewsi/egu_poster/figures/scores_recpr_single.png"
        xlink:href="figures/scores_recpr_single.png"
-       width="237.80003"
-       height="68.574364"
-       preserveAspectRatio="none"
-       style="stroke-linecap:butt;stroke-linejoin:round;image-rendering:optimizeQuality"
+       y="664.39001"
+       x="891.7829"
        id="image11213"
-       x="867.97003"
-       y="664.39001" />
+       style="stroke-linecap:butt;stroke-linejoin:round;image-rendering:optimizeQuality"
+       preserveAspectRatio="none"
+       height="68.574364"
+       width="237.80003" />
     <rect
        style="opacity:1;fill:url(#linearGradient9364);fill-opacity:1;stroke:none;stroke-width:0.50304651;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        id="rect11350"
@@ -998,7 +1032,7 @@
            x="4314.104"
            y="286.07251"
            style="stroke-linecap:butt;stroke-linejoin:round" /></flowRegion><flowPara
-         id="flowPara11358"></flowPara></flowRoot>    <flowRoot
+         id="flowPara11358" /></flowRoot>    <flowRoot
        xml:space="preserve"
        id="flowRoot11360"
        style="fill:url(#linearGradient8706);fill-opacity:1;stroke:none;font-family:sans-serif;font-style:normal;font-weight:normal;font-size:40px;line-height:1.25;letter-spacing:0px;word-spacing:0px;"><flowRegion
@@ -1010,7 +1044,7 @@
            x="4673.6128"
            y="-317.85818"
            style="stroke-linecap:butt;stroke-linejoin:round;fill:url(#linearGradient8706);" /></flowRegion><flowPara
-         id="flowPara11366"></flowPara></flowRoot>    <rect
+         id="flowPara11366" /></flowRoot>    <rect
        style="opacity:1;fill:url(#linearGradient9364);fill-opacity:1;stroke:none;stroke-width:0.23121423;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        id="rect11428"
        width="285.36002"
@@ -1021,7 +1055,7 @@
        xml:space="preserve"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:17.63888931px;line-height:1.25;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:url(#linearGradient8706);fill-opacity:1;stroke:none;stroke-linecap:butt;stroke-linejoin:round"
        id="flowRoot11430"
-       transform="translate(0,-2.9934187)"><flowRegion
+       transform="translate(-0.52916667,-5.1100855)"><flowRegion
          id="flowRegion11432"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:17.63888931px;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start;fill:url(#linearGradient8706);stroke-linecap:butt;stroke-linejoin:round"><use
            x="0"
@@ -1033,28 +1067,13 @@
            height="100%" /></flowRegion><flowPara
          id="flowPara11867"
          style="stroke-linecap:butt;stroke-linejoin:round">Validation was performed leaving one year out during training and using it as testing data.</flowPara></flowRoot>    <rect
-       style="opacity:1;fill:url(#linearGradient8665);fill-opacity:1;stroke:none;stroke-width:0.30021811;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       style="opacity:1;fill:url(#linearGradient8665);fill-opacity:1;stroke:none;stroke-width:0.3336738;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        id="rect11847"
        width="285.35999"
-       height="142.97"
-       x="35.670002"
-       y="647.57001" />
-    <flowRoot
-       xml:space="preserve"
-       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:17.63888931px;line-height:1.25;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:url(#linearGradient8706);fill-opacity:1;stroke:none;stroke-linecap:butt;stroke-linejoin:round"
-       id="flowRoot11859"
-       transform="translate(0,16.404171)"><flowRegion
-         id="flowRegion11861"
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:17.63888931px;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start;fill:url(#linearGradient8706);stroke-linecap:butt;stroke-linejoin:round"><use
-           x="0"
-           y="0"
-           xlink:href="#rect11847"
-           id="use11863"
-           style="stroke-linecap:butt;stroke-linejoin:round"
-           width="100%"
-           height="100%" /></flowRegion><flowPara
-         id="flowPara11955"
-         style="stroke-linecap:butt;stroke-linejoin:round">Features were calculated on 25km grid and monthly temploral resolution for 2002 - 2018 period. A range of supervised learning models was tested in this study. </flowPara></flowRoot>    <rect
+       height="176.61003"
+       x="35.670017"
+       y="642.75061" />
+    <rect
        style="opacity:1;fill:url(#linearGradient8665);fill-opacity:1;stroke:none;stroke-width:0.18414918;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        id="rect11957"
        width="297.25003"
@@ -1138,23 +1157,26 @@
            height="100%" /></flowRegion><flowPara
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10.58333302px;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start;stroke-linecap:butt;stroke-linejoin:round"
          id="flowPara11999">Recall and precision for each year, Neural Networks</flowPara></flowRoot>    <rect
-       style="opacity:1;fill:url(#linearGradient8665);fill-opacity:1;stroke:none;stroke-width:0.14696947;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       style="opacity:1;fill:url(#linearGradient8665);fill-opacity:1;stroke:none;stroke-width:0.19408382;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        id="rect12001"
-       width="285.36002"
-       height="42.050045"
+       width="297.24994"
+       height="70.398315"
        x="867.97003"
-       y="756.89996" />
+       y="750.54987" />
     <flowRoot
        xml:space="preserve"
-       style="fill:black;fill-opacity:1;stroke:none;font-family:Montserrat;font-style:normal;font-weight:normal;font-size:10.58333333px;line-height:1.25;letter-spacing:0px;word-spacing:0px;-inkscape-font-specification:'Montserrat, Normal';font-stretch:normal;font-variant:normal;text-anchor:start;text-align:start;writing-mode:lr;font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;"
+       style="fill:url(#linearGradient1641);fill-opacity:1;stroke:none;font-family:Montserrat;font-style:normal;font-weight:normal;font-size:10.58333333px;line-height:1.25;letter-spacing:0px;word-spacing:0px;-inkscape-font-specification:'Montserrat, Normal';font-stretch:normal;font-variant:normal;text-anchor:start;text-align:start;writing-mode:lr;font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;"
        id="flowRoot12013"><flowRegion
          id="flowRegion12015"
-         style="-inkscape-font-specification:'Montserrat, Normal';font-family:Montserrat;font-weight:normal;font-style:normal;font-stretch:normal;font-variant:normal;font-size:10.58333333px;text-anchor:start;text-align:start;writing-mode:lr;font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;"><use
+         style="-inkscape-font-specification:'Montserrat, Normal';font-family:Montserrat;font-weight:normal;font-style:normal;font-stretch:normal;font-variant:normal;font-size:10.58333333px;text-anchor:start;text-align:start;writing-mode:lr;font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;fill-opacity:1;fill:url(#linearGradient1641);"><use
            x="0"
            y="0"
            xlink:href="#rect12001"
-           id="use12017" /></flowRegion><flowPara
-         id="flowPara12019">ToFEWSI project is funded by the UK’s National Environment Research Council (NERC) and the Indonesia Endowment for Education (LPDP)</flowPara></flowRoot>  </g>
+           id="use12017"
+           style="fill-opacity:1.0;fill:url(#linearGradient1641)" /></flowRegion><flowPara
+         id="flowPara1746">ToFEWSI project is funded by the UK’s National Environment Research Council (NERC) and the Indonesia Endowment for Education (LPDP)</flowPara><flowPara
+         id="flowPara1748">For more information visit</flowPara><flowPara
+         id="flowPara1750">https://tofewsi.github.io</flowPara></flowRoot>  </g>
   <g
      inkscape:groupmode="layer"
      id="layer2"
@@ -1184,7 +1206,7 @@
            x="3954.5952"
            y="317.85834"
            style="stroke-linecap:butt;stroke-linejoin:round" /></flowRegion><flowPara
-         id="flowPara5442"></flowPara></flowRoot>    <flowRoot
+         id="flowPara5442" /></flowRoot>    <flowRoot
        xml:space="preserve"
        id="flowRoot5454"
        style="fill:black;fill-opacity:1;stroke:none;font-family:sans-serif;font-style:normal;font-weight:normal;font-size:40px;line-height:1.25;letter-spacing:0px;word-spacing:0px"><flowRegion
@@ -1196,38 +1218,14 @@
            x="44.938583"
            y="-476.78732"
            style="stroke-linecap:butt;stroke-linejoin:round" /></flowRegion><flowPara
-         id="flowPara5460"></flowPara></flowRoot>    <flowRoot
-       xml:space="preserve"
-       id="flowRoot38"
-       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:186.66972351px;line-height:1.25;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#14213d;fill-opacity:1;stroke:none;stroke-width:0.99873108;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;"
-       transform="matrix(0.27034304,0,0,0.27034304,164.72654,6.3294268)"><flowRegion
-         id="flowRegion40"
-         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:186.66972351px;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#14213d;fill-opacity:1;stroke:none;stroke-width:0.99873108;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;"><rect
-           id="rect42"
-           width="4493.8584"
-           height="476.78741"
-           x="0"
-           y="7.5590549e-05"
-           style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:186.66972351px;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#14213d;fill-opacity:1;stroke:none;stroke-width:0.99873108;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;" /></flowRegion><flowPara
-         id="flowPara9496"
-         style="stroke:none;stroke-linecap:butt;stroke-linejoin:round;stroke-opacity:1;fill:#14213d;fill-opacity:1;">Forecasting fire activity in Indonesia</flowPara></flowRoot>    <image
+         id="flowPara5460" /></flowRoot>    <image
        y="16.820019"
-       x="59.450001"
+       x="35.637478"
        id="image6698"
-       xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAhwAAAIcAQMAAACHMOU/AAAABlBMVEUAAAD///+l2Z/dAAAAAnRS
-TlP//8i138cAAAAJcEhZcwAACxIAAAsSAdLdfvwAAAGpSURBVHic7dhLjgIxDAXA3ID735IbZDSa
-BDtfCYZledHQ2C52T1FK/UIVCAQCgRyQZ5nrr1Mevx/RnV7TMAQCgUAuSE0Vr8N+W9gOQyAQCOSK
-9IX9a825vXYhEAgE8g5SWzLnIzAEAoFAvobkb/XToIZAIBBImo3XtlWXyF6HIRAIBHJBpoo83j2W
-YQgEAoEckV09M7fP6FQQCAQCOSHTQln22yMadTIhEAgEckLqeLkw3d32RusGkiQIBAKBXJC8sNvv
-obyMFAgEAoFckZgoo9S34hGNbEIgEAjkhkTtMrohUQHnoIZAIBDIitQxow+rw+l3ym0IBAKBnJDp
-fFter8PW8mepC4FAIJATUms/2g6H3DYxxXP/LdYgEAgEckGey8TCDcmcf6sQCAQCuSK7eubZQHL3
-8fpbCAQCgRyRKYDL/ggcDQgEAoG8hUwZnZG+sAvqXhAIBAK5IsPWFMWZi4JAIBDIh0jdXzO0RsAQ
-CAQCeR+J1c7lrRmGQCAQyBWJGpC2f7hw6CdiCAQCgVyQqabwnq4e4q6hhzcEAoFATsj/CwKBQCDb
-+gGeFgGQQBrJeAAAAABJRU5ErkJggg==
-"
+       xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAhwAAAIcAQMAAACHMOU/AAAABlBMVEUAAAD///+l2Z/dAAAAAnRS TlP//8i138cAAAAJcEhZcwAACxIAAAsSAdLdfvwAAAGpSURBVHic7dhLjgIxDAXA3ID735IbZDSa BDtfCYZledHQ2C52T1FK/UIVCAQCgRyQZ5nrr1Mevx/RnV7TMAQCgUAuSE0Vr8N+W9gOQyAQCOSK 9IX9a825vXYhEAgE8g5SWzLnIzAEAoFAvobkb/XToIZAIBBImo3XtlWXyF6HIRAIBHJBpoo83j2W YQgEAoEckV09M7fP6FQQCAQCOSHTQln22yMadTIhEAgEckLqeLkw3d32RusGkiQIBAKBXJC8sNvv obyMFAgEAoFckZgoo9S34hGNbEIgEAjkhkTtMrohUQHnoIZAIBDIitQxow+rw+l3ym0IBAKBnJDp fFter8PW8mepC4FAIJATUms/2g6H3DYxxXP/LdYgEAgEckGey8TCDcmcf6sQCAQCuSK7eubZQHL3 8fpbCAQCgRyRKYDL/ggcDQgEAoG8hUwZnZG+sAvqXhAIBAK5IsPWFMWZi4JAIBDIh0jdXzO0RsAQ CAQCeR+J1c7lrRmGQCAQyBWJGpC2f7hw6CdiCAQCgVyQqabwnq4e4q6hhzcEAoFATsj/CwKBQCDb +gGeFgGQQBrJeAAAAABJRU5ErkJggg== "
        preserveAspectRatio="none"
-       height="67.279999"
-       width="67.279999"
+       height="75.690002"
+       width="75.690002"
        style="stroke-linecap:butt;stroke-linejoin:round" />
     <g
        id="g9813"
@@ -1244,19 +1242,26 @@ CAQCeR+J1c7lrRmGQCAQyBWJGpC2f7hw6CdiCAQCgVyQqabwnq4e4q6hhzcEAoFATsj/CwKBQCDb
            id="flowPara9804">MODIS active fires count October 2015</flowPara></flowRoot>      <image
          sodipodi:absref="/home/tadas/tofewsi/egu_poster/figures/frp_2015_10.png"
          xlink:href="figures/frp_2015_10.png"
-         y="538.23999"
-         x="475.60001"
-         id="image9061"
-         style="fill:url(#linearGradient8706);stroke-linecap:butt;stroke-linejoin:round;image-rendering:auto"
-         preserveAspectRatio="none"
+         width="321.03"
          height="126.14998"
-         width="321.03" />
+         preserveAspectRatio="none"
+         style="fill:url(#linearGradient8706);stroke-linecap:butt;stroke-linejoin:round;image-rendering:auto"
+         id="image9061"
+         x="475.60001"
+         y="538.23999" />
     </g>
+    <rect
+       style="opacity:1;fill:url(#linearGradient1633);fill-opacity:1;stroke-width:0.22024551;stroke-linecap:butt;stroke-linejoin:round"
+       id="rect1609"
+       width="1019.6456"
+       height="64.284882"
+       x="145.5743"
+       y="14.050967" />
     <flowRoot
        xml:space="preserve"
        id="flowRoot9472"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:106.66666412px;line-height:1.25;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:url(#linearGradient8706);fill-opacity:1;stroke:none;stroke-linecap:butt;stroke-linejoin:round"
-       transform="matrix(0.26458333,0,0,0.26458333,72.483741,-25.277404)"><flowRegion
+       transform="matrix(0.26458333,0,0,0.26458333,96.825423,-21.573235)"><flowRegion
          id="flowRegion9474"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:106.66666412px;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start;fill:url(#linearGradient8706);stroke-linecap:butt;stroke-linejoin:round"><rect
            id="rect9476"
@@ -1269,13 +1274,13 @@ CAQCeR+J1c7lrRmGQCAQyBWJGpC2f7hw6CdiCAQCgVyQqabwnq4e4q6hhzcEAoFATsj/CwKBQCDb
          style="fill:url(#linearGradient8706);stroke-linecap:butt;stroke-linejoin:round">Towards an Fire Early Warning System for Indonesia (ToFEWSI)</flowPara></flowRoot>    <image
        sodipodi:absref="/home/tadas/tofewsi/egu_poster/figures/NeuralNet_prob_2015_10_fwi.png"
        xlink:href="figures/NeuralNet_prob_2015_10_fwi.png"
-       width="321.03"
-       height="126.15002"
-       preserveAspectRatio="none"
-       style="stroke-linecap:butt;stroke-linejoin:round;image-rendering:optimizeQuality"
-       id="image9701"
+       y="672.79999"
        x="475.60001"
-       y="672.79999" />
+       id="image9701"
+       style="stroke-linecap:butt;stroke-linejoin:round;image-rendering:optimizeQuality"
+       preserveAspectRatio="none"
+       height="126.15002"
+       width="321.03" />
     <flowRoot
        xml:space="preserve"
        id="flowRoot10113"
@@ -1287,20 +1292,20 @@ CAQCeR+J1c7lrRmGQCAQyBWJGpC2f7hw6CdiCAQCgVyQqabwnq4e4q6hhzcEAoFATsj/CwKBQCDb
            x="629.14014"
            y="1176.0757"
            style="stroke-linecap:butt;stroke-linejoin:round" /></flowRegion><flowPara
-         id="flowPara10119"></flowPara></flowRoot>    <g
+         id="flowPara10119" /></flowRoot>    <g
        id="g11228"
-       transform="matrix(1.1262014,0,0,1.1262014,120.17198,-30.860099)"
+       transform="matrix(1.1262014,0,0,1.1262014,120.17198,-5.4600897)"
        style="stroke-linecap:butt;stroke-linejoin:round">
       <image
          sodipodi:absref="/home/tadas/tofewsi/egu_poster/figures/f_prim_2015_10.png"
          xlink:href="figures/f_prim_2015_10.png"
-         y="311.17001"
-         x="59.450001"
-         id="image9297"
-         style="display:inline;stroke-linecap:butt;stroke-linejoin:round;image-rendering:optimizeQuality"
-         preserveAspectRatio="none"
+         width="118.9"
          height="44.805485"
-         width="118.9" />
+         preserveAspectRatio="none"
+         style="display:inline;stroke-linecap:butt;stroke-linejoin:round;image-rendering:optimizeQuality"
+         id="image9297"
+         x="59.450001"
+         y="311.17001" />
       <flowRoot
          transform="matrix(0.13229166,0,0,0.13229166,29.725,154.72147)"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40.00000381px;line-height:1.25;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:end;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:end;fill:url(#linearGradient8706);fill-opacity:1;stroke:none;stroke-linecap:butt;stroke-linejoin:round"
@@ -1316,37 +1321,42 @@ CAQCeR+J1c7lrRmGQCAQyBWJGpC2f7hw6CdiCAQCgVyQqabwnq4e4q6hhzcEAoFATsj/CwKBQCDb
              id="rect10125" /></flowRegion><flowPara
            id="flowPara11221"
            style="stroke-linecap:butt;stroke-linejoin:round">Primary forest fraction 2014</flowPara></flowRoot>    </g>
-    <image
-       sodipodi:absref="/home/tadas/tofewsi/egu_poster/figures/loss_accum_prim_2015_10.png"
-       xlink:href="figures/loss_accum_prim_2015_10.png"
-       width="133.9054"
-       height="50.460014"
-       preserveAspectRatio="none"
-       style="display:inline;stroke-linecap:butt;stroke-linejoin:round;image-rendering:optimizeQuality"
-       id="image9359"
-       x="187.1246"
-       y="403.6232" />
+    <g
+       id="g1607"
+       transform="translate(0,16.933341)"
+       style="stroke-linecap:butt;stroke-linejoin:round">
+      <image
+         sodipodi:absref="/home/tadas/tofewsi/egu_poster/figures/loss_accum_prim_2015_10.png"
+         xlink:href="figures/loss_accum_prim_2015_10.png"
+         width="133.9054"
+         height="50.460014"
+         preserveAspectRatio="none"
+         style="display:inline;stroke-linecap:butt;stroke-linejoin:round;image-rendering:optimizeQuality"
+         id="image9359"
+         x="187.1246"
+         y="403.6232" />
+      <flowRoot
+         transform="matrix(0.1489871,0,0,0.1489871,153.55403,227.39714)"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;line-height:1.25;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:end;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:end;opacity:1;fill:url(#linearGradient8706);fill-opacity:1;stroke:none;stroke-linecap:butt;stroke-linejoin:round"
+         id="flowRoot10121-7"
+         xml:space="preserve"><flowRegion
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:end;writing-mode:lr-tb;text-anchor:end;fill:url(#linearGradient8706);stroke-linecap:butt;stroke-linejoin:round"
+           id="flowRegion10123-2"><rect
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:end;writing-mode:lr-tb;text-anchor:end;fill:url(#linearGradient8706);stroke-linecap:butt;stroke-linejoin:round"
+             y="1176.0757"
+             x="629.14014"
+             height="95.357475"
+             width="494.3244"
+             id="rect10125-0" /></flowRegion><flowPara
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:end;writing-mode:lr-tb;text-anchor:end;fill:url(#linearGradient8706);stroke-linecap:butt;stroke-linejoin:round"
+           id="flowPara10187">Primary forest loss </flowPara><flowPara
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:end;writing-mode:lr-tb;text-anchor:end;fill:url(#linearGradient8706);stroke-linecap:butt;stroke-linejoin:round"
+           id="flowPara10189">2001 - 2014</flowPara></flowRoot>    </g>
     <flowRoot
-       xml:space="preserve"
-       id="flowRoot10121-7"
-       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;line-height:1.25;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:end;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:end;opacity:1;fill:url(#linearGradient8706);fill-opacity:1;stroke:none;stroke-linecap:butt;stroke-linejoin:round"
-       transform="matrix(0.1489871,0,0,0.1489871,153.55403,235.86386)"><flowRegion
-         id="flowRegion10123-2"
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:end;writing-mode:lr-tb;text-anchor:end;fill:url(#linearGradient8706);stroke-linecap:butt;stroke-linejoin:round"><rect
-           id="rect10125-0"
-           width="494.3244"
-           height="95.357475"
-           x="629.14014"
-           y="1176.0757"
-           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:end;writing-mode:lr-tb;text-anchor:end;fill:url(#linearGradient8706);stroke-linecap:butt;stroke-linejoin:round" /></flowRegion><flowPara
-         id="flowPara10187"
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:end;writing-mode:lr-tb;text-anchor:end;fill:url(#linearGradient8706);stroke-linecap:butt;stroke-linejoin:round">Primary forest loss </flowPara><flowPara
-         id="flowPara10189"
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:end;writing-mode:lr-tb;text-anchor:end;fill:url(#linearGradient8706);stroke-linecap:butt;stroke-linejoin:round">2001 - 2014</flowPara></flowRoot>    <flowRoot
        xml:space="preserve"
        id="flowRoot10220"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;line-height:1.25;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:url(#linearGradient8706);fill-opacity:1;stroke:none;stroke-linecap:butt;stroke-linejoin:round"
-       transform="matrix(0.26458333,0,0,0.26458333,35.921024,-35.343242)"><flowRegion
+       transform="matrix(0.26458333,0,0,0.26458333,10.521008,-29.163811)"><flowRegion
          id="flowRegion10222"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start;fill:url(#linearGradient8706);stroke-linecap:butt;stroke-linejoin:round"><rect
            id="rect10224"
@@ -1356,77 +1366,29 @@ CAQCeR+J1c7lrRmGQCAQyBWJGpC2f7hw6CdiCAQCgVyQqabwnq4e4q6hhzcEAoFATsj/CwKBQCDb
            y="508.5733"
            style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start;fill:url(#linearGradient8706);stroke-linecap:butt;stroke-linejoin:round" /></flowRegion><flowPara
          id="flowPara10228"
-         style="fill:url(#linearGradient8706);stroke-linecap:butt;stroke-linejoin:round">https://tofewsi.github.io</flowPara></flowRoot>    <image
-       sodipodi:absref="/home/tadas/tofewsi/egu_poster/figures/dc_med_2015_10.png"
-       xlink:href="figures/dc_med_2015_10.png"
-       width="133.905"
-       height="50.459999"
-       preserveAspectRatio="none"
-       style="stroke-linecap:butt;stroke-linejoin:round;image-rendering:optimizeQuality"
-       id="image10022"
-       x="35.669998"
-       y="496.19" />
-    <flowRoot
-       xml:space="preserve"
-       id="flowRoot10121-7-3"
-       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;line-height:1.25;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:end;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:end;opacity:1;fill:url(#linearGradient8706);fill-opacity:1;stroke:none;stroke-linecap:butt;stroke-linejoin:round"
-       transform="matrix(0.14659588,0,0,0.14659588,3.0690052,322.82748)"><flowRegion
-         id="flowRegion10123-2-1"
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:end;writing-mode:lr-tb;text-anchor:end;fill:url(#linearGradient8706);stroke-linecap:butt;stroke-linejoin:round"><rect
-           id="rect10125-0-7"
-           width="494.3244"
-           height="95.357475"
-           x="629.14014"
-           y="1176.0757"
-           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:end;writing-mode:lr-tb;text-anchor:end;fill:url(#linearGradient8706);stroke-linecap:butt;stroke-linejoin:round" /></flowRegion><flowPara
-         style="stroke-linecap:butt;stroke-linejoin:round"
-         id="flowPara10447">Median Drought code October 2015</flowPara></flowRoot>    <g
-       id="g11775"
-       transform="matrix(0.56255068,0,0,0.5631007,2.2263614,217.76559)"
-       style="stroke-linecap:butt;stroke-linejoin:round">
-      <image
-         sodipodi:absref="/home/tadas/tofewsi/egu_poster/figures/fwi_med_2015_10.png"
-         xlink:href="figures/fwi_med_2015_10.png"
-         y="613.92999"
-         x="59.450001"
-         id="image10102"
-         style="stroke-linecap:butt;stroke-linejoin:round;image-rendering:optimizeQuality"
-         preserveAspectRatio="none"
-         height="89.61097"
-         width="237.8" />
-      <flowRoot
-         transform="matrix(0.26458333,0,0,0.26458333,0.23181911,302.0881)"
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;line-height:1.25;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:end;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:end;opacity:1;fill:url(#linearGradient8706);fill-opacity:1;stroke:none;stroke-linecap:butt;stroke-linejoin:round"
-         id="flowRoot10121-7-3-1"
-         xml:space="preserve"><flowRegion
-           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:end;writing-mode:lr-tb;text-anchor:end;fill:url(#linearGradient8706);stroke-linecap:butt;stroke-linejoin:round"
-           id="flowRegion10123-2-1-0"><rect
-             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:end;writing-mode:lr-tb;text-anchor:end;fill:url(#linearGradient8706);stroke-linecap:butt;stroke-linejoin:round"
-             y="1176.0757"
-             x="629.14014"
-             height="95.357475"
-             width="494.3244"
-             id="rect10125-0-7-4" /></flowRegion><flowPara
-           id="flowPara10445"
-           style="stroke-linecap:butt;stroke-linejoin:round">Median FWI October 2015</flowPara></flowRoot>    </g>
-    <rect
+         style="fill:url(#linearGradient8706);stroke-linecap:butt;stroke-linejoin:round">https://tofewsi.github.io</flowPara></flowRoot>    <rect
        style="opacity:1;fill:url(#linearGradient8665);fill-opacity:1;stroke:none;stroke-width:0.27418628;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        id="rect11656"
        width="130.79002"
        height="75.690002"
-       x="35.669987"
-       y="319.58002" />
+       x="35.669979"
+       y="344.81" />
     <flowRoot
        xml:space="preserve"
-       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10.58333302px;line-height:1.25;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;stroke-linecap:butt;stroke-linejoin:round"
-       id="flowRoot11680"><flowRegion
-         id="flowRegion11682"><use
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10.58333333px;line-height:1.25;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;stroke-linecap:butt;stroke-linejoin:round;"
+       id="flowRoot11680"
+       transform="translate(0,5.2916669)"><flowRegion
+         id="flowRegion11682"
+         style="stroke-linecap:butt;stroke-linejoin:round;-inkscape-font-specification:'Montserrat, Normal';font-family:Montserrat;font-weight:normal;font-style:normal;font-stretch:normal;font-variant:normal;font-size:10.58333333px;text-anchor:start;text-align:start;writing-mode:lr;font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;"><use
            x="0"
            y="0"
            xlink:href="#rect11656"
-           id="use11684" /></flowRegion><flowPara
-         style="stroke-linecap:butt;stroke-linejoin:round"
-         id="flowPara11686">Some of the land cover features used for model training. Deraived from Hansen et al., 2013, Science 342.</flowPara></flowRoot>    <flowRoot
+           id="use11684"
+           style="stroke-linecap:butt;stroke-linejoin:round"
+           width="100%"
+           height="100%"
+           transform="translate(0,-6.879167)" /></flowRegion><flowPara
+         id="flowPara1738">Some of the land cover datasets used for model training. Deraived from Hansen et al., 2013, Science 342.</flowPara></flowRoot>    <flowRoot
        xml:space="preserve"
        id="flowRoot10121-7-5"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:86.25152791px;line-height:1.25;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:end;letter-spacing:0px;word-spacing:0px;writing-mode:lr;text-anchor:end;opacity:1;fill:url(#linearGradient8706);fill-opacity:1;stroke:none;stroke-linecap:butt;stroke-linejoin:round;"
@@ -1442,66 +1404,138 @@ CAQCeR+J1c7lrRmGQCAQyBWJGpC2f7hw6CdiCAQCgVyQqabwnq4e4q6hhzcEAoFATsj/CwKBQCDb
          id="flowPara11749"
          style="stroke-linecap:butt;stroke-linejoin:round;-inkscape-font-specification:'Montserrat, Normal';font-family:Montserrat;font-weight:normal;font-style:normal;font-stretch:normal;font-variant:normal;font-size:86.25152791px;text-anchor:end;text-align:end;writing-mode:lr;font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;">Secondary forest gain</flowPara><flowPara
          id="flowPara11751"
-         style="stroke-linecap:butt;stroke-linejoin:round;-inkscape-font-specification:'Montserrat, Normal';font-family:Montserrat;font-weight:normal;font-style:normal;font-stretch:normal;font-variant:normal;font-size:86.25152791px;text-anchor:end;text-align:end;writing-mode:lr;font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;">2002 - 2012</flowPara></flowRoot>    <rect
-       style="opacity:1;fill:url(#linearGradient8665);fill-opacity:1;stroke:none;stroke-width:0.24180956;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-       id="rect11656-0"
-       width="130.79002"
-       height="58.869999"
-       x="190.23997"
-       y="496.19003" />
-    <g
-       id="g11782"
-       transform="matrix(0.56310073,0,0,0.56310073,153.6483,160.93743)"
-       style="stroke-linecap:butt;stroke-linejoin:round">
-      <image
-         sodipodi:absref="/home/tadas/tofewsi/egu_poster/figures/ffmc_med_2015_10.png"
-         xlink:href="figures/ffmc_med_2015_10.png"
-         y="714.85004"
-         x="59.450001"
-         id="image10394"
-         style="stroke-linecap:butt;stroke-linejoin:round;image-rendering:optimizeQuality"
-         preserveAspectRatio="none"
-         height="89.61097"
-         width="237.8" />
+         style="stroke-linecap:butt;stroke-linejoin:round;-inkscape-font-specification:'Montserrat, Normal';font-family:Montserrat;font-weight:normal;font-style:normal;font-stretch:normal;font-variant:normal;font-size:86.25152791px;text-anchor:end;text-align:end;writing-mode:lr;font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;">2002 - 2012</flowPara></flowRoot>    <flowRoot
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:17.63888889px;line-height:1.25;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr;text-anchor:start;fill:url(#linearGradient8706);fill-opacity:1;stroke:none;stroke-linecap:butt;stroke-linejoin:round;"
+       id="flowRoot11859"
+       transform="translate(0,21.166669)"><flowRegion
+         id="flowRegion11861"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:17.63888889px;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr;text-anchor:start;fill:url(#linearGradient8706);stroke-linecap:butt;stroke-linejoin:round;"><use
+           x="0"
+           y="0"
+           xlink:href="#rect11847"
+           id="use11863"
+           style="stroke-linecap:butt;stroke-linejoin:round"
+           width="100%"
+           height="100%" /></flowRegion><flowPara
+         id="flowPara1744">Modelling was performed on 25km grid and monthly temploral resolution for 2002 - 2018 period. Logistic regression, maxent, support vector classifier and neural networks algorithms were tested.</flowPara></flowRoot>    <g
+       id="g1736"
+       style="stroke-linecap:butt;stroke-linejoin:round"
+       transform="translate(0,-1.0583333)">
       <flowRoot
-         transform="matrix(0.26458333,0,0,0.26458333,-0.82651308,402.62977)"
+         transform="matrix(0.14659588,0,0,0.14659588,4.1273386,348.22764)"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;line-height:1.25;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:end;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:end;opacity:1;fill:url(#linearGradient8706);fill-opacity:1;stroke:none;stroke-linecap:butt;stroke-linejoin:round"
-         id="flowRoot10121-7-3-1-8"
+         id="flowRoot10121-7-3"
          xml:space="preserve"><flowRegion
            style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:end;writing-mode:lr-tb;text-anchor:end;fill:url(#linearGradient8706);stroke-linecap:butt;stroke-linejoin:round"
-           id="flowRegion10123-2-1-0-5"><rect
+           id="flowRegion10123-2-1"><rect
              style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:end;writing-mode:lr-tb;text-anchor:end;fill:url(#linearGradient8706);stroke-linecap:butt;stroke-linejoin:round"
              y="1176.0757"
              x="629.14014"
              height="95.357475"
              width="494.3244"
-             id="rect10125-0-7-4-5" /></flowRegion><flowPara
-           id="flowPara10443"
-           style="stroke-linecap:butt;stroke-linejoin:round">Median FFMC October 2015</flowPara></flowRoot>    </g>
-    <flowRoot
-       xml:space="preserve"
-       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10.58333333px;line-height:1.25;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr;text-anchor:start;opacity:1;fill:url(#linearGradient8706);fill-opacity:1;stroke:none;stroke-linecap:butt;stroke-linejoin:round;"
-       id="flowRoot11837"><flowRegion
-         id="flowRegion11839"
-         style="-inkscape-font-specification:'Montserrat, Normal';font-family:Montserrat;font-weight:normal;font-style:normal;font-stretch:normal;font-variant:normal;font-size:10.58333333px;text-anchor:start;text-align:start;writing-mode:lr;font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;fill:url(#linearGradient8706);"><use
-           x="0"
-           y="0"
-           xlink:href="#rect11656-0"
-           id="use11841" /></flowRegion><flowPara
-         id="flowPara11845">Canadian Fire Weather indices were calculated from the ECMWF ERA5 reanalyses dataset. </flowPara></flowRoot>    <g
+             id="rect10125-0-7" /></flowRegion><flowPara
+           id="flowPara10447"
+           style="stroke-linecap:butt;stroke-linejoin:round">Median Drought code October 2015</flowPara></flowRoot>      <g
+         style="stroke-linecap:butt;stroke-linejoin:round"
+         transform="translate(0,0.52916663)"
+         id="g1713">
+        <rect
+           style="opacity:1;fill:url(#linearGradient8665);fill-opacity:1;stroke:none;stroke-width:0.24180956;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+           id="rect11656-0"
+           width="130.79002"
+           height="58.869999"
+           x="190.23997"
+           y="521.41998" />
+        <image
+           sodipodi:absref="/home/tadas/tofewsi/egu_poster/figures/dc_med_2015_10.png"
+           xlink:href="figures/dc_med_2015_10.png"
+           y="521.06104"
+           x="35.669998"
+           id="image10022"
+           style="stroke-linecap:butt;stroke-linejoin:round;image-rendering:optimizeQuality"
+           preserveAspectRatio="none"
+           height="50.459999"
+           width="133.905" />
+        <image
+           sodipodi:absref="/home/tadas/tofewsi/egu_poster/figures/fwi_med_2015_10.png"
+           xlink:href="figures/fwi_med_2015_10.png"
+           y="588.34094"
+           x="35.669998"
+           id="image10102"
+           style="stroke-linecap:butt;stroke-linejoin:round;image-rendering:optimizeQuality"
+           preserveAspectRatio="none"
+           height="50.459999"
+           width="133.77455" />
+        <flowRoot
+           xml:space="preserve"
+           id="flowRoot10121-7-3-1"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;line-height:1.25;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:end;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:end;opacity:1;fill:url(#linearGradient8706);fill-opacity:1;stroke:none;stroke-linecap:butt;stroke-linejoin:round"
+           transform="matrix(0.14884153,0,0,0.14898706,2.3567714,412.74255)"><flowRegion
+             id="flowRegion10123-2-1-0"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:end;writing-mode:lr-tb;text-anchor:end;fill:url(#linearGradient8706);stroke-linecap:butt;stroke-linejoin:round"><rect
+               id="rect10125-0-7-4"
+               width="494.3244"
+               height="95.357475"
+               x="629.14014"
+               y="1176.0757"
+               style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:end;writing-mode:lr-tb;text-anchor:end;fill:url(#linearGradient8706);stroke-linecap:butt;stroke-linejoin:round" /></flowRegion><flowPara
+             style="stroke-linecap:butt;stroke-linejoin:round"
+             id="flowPara10445">Median FWI October 2015</flowPara></flowRoot>        <image
+           sodipodi:absref="/home/tadas/tofewsi/egu_poster/figures/ffmc_med_2015_10.png"
+           xlink:href="figures/ffmc_med_2015_10.png"
+           y="588.34094"
+           x="187.12463"
+           id="image10394"
+           style="stroke-linecap:butt;stroke-linejoin:round;image-rendering:optimizeQuality"
+           preserveAspectRatio="none"
+           height="50.460003"
+           width="133.90535" />
+        <flowRoot
+           xml:space="preserve"
+           id="flowRoot10121-7-3-1-8"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;line-height:1.25;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:end;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:end;opacity:1;fill:url(#linearGradient8706);fill-opacity:1;stroke:none;stroke-linecap:butt;stroke-linejoin:round"
+           transform="matrix(0.14898707,0,0,0.14898707,153.18289,412.52949)"><flowRegion
+             id="flowRegion10123-2-1-0-5"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:end;writing-mode:lr-tb;text-anchor:end;fill:url(#linearGradient8706);stroke-linecap:butt;stroke-linejoin:round"><rect
+               id="rect10125-0-7-4-5"
+               width="494.3244"
+               height="95.357475"
+               x="629.14014"
+               y="1176.0757"
+               style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:end;writing-mode:lr-tb;text-anchor:end;fill:url(#linearGradient8706);stroke-linecap:butt;stroke-linejoin:round" /></flowRegion><flowPara
+             style="stroke-linecap:butt;stroke-linejoin:round"
+             id="flowPara10443">Median FFMC October 2015</flowPara></flowRoot>      </g>
+      <flowRoot
+         transform="translate(0,-1.5994554)"
+         id="flowRoot11837"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10.58333302px;line-height:1.25;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;opacity:1;fill:url(#linearGradient8706);fill-opacity:1;stroke:none;stroke-linecap:butt;stroke-linejoin:round"
+         xml:space="preserve"><flowRegion
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10.58333302px;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start;fill:url(#linearGradient8706);stroke-linecap:butt;stroke-linejoin:round"
+           id="flowRegion11839"><use
+             height="100%"
+             width="100%"
+             style="stroke-linecap:butt;stroke-linejoin:round"
+             id="use11841"
+             xlink:href="#rect11656-0"
+             y="0"
+             x="0" /></flowRegion><flowPara
+           style="stroke-linecap:butt;stroke-linejoin:round"
+           id="flowPara11845">Canadian Fire Weather indices were calculated from the ECMWF ERA5 reanalyses dataset. </flowPara></flowRoot>    </g>
+    <g
        id="g11953"
-       transform="matrix(1.0232339,0,0,1,-0.82875111,-8.4666671)"
+       transform="matrix(1.0232339,0,0,1,-0.82875111,8.4666739)"
        style="stroke-linecap:butt;stroke-linejoin:round">
       <image
          sodipodi:absref="/home/tadas/tofewsi/egu_poster/figures/gain_2015_10.png"
          xlink:href="figures/gain_2015_10.png"
-         y="412.09"
-         x="35.669998"
-         id="image11591"
-         style="stroke-linecap:butt;stroke-linejoin:round;image-rendering:optimizeQuality"
-         preserveAspectRatio="none"
+         width="130.79001"
          height="50.460014"
-         width="130.79001" />
+         preserveAspectRatio="none"
+         style="stroke-linecap:butt;stroke-linejoin:round;image-rendering:optimizeQuality"
+         id="image11591"
+         x="35.669998"
+         y="412.09" />
       <flowRoot
          transform="matrix(0.1489871,0,0,0.1489871,-0.85215,235.84117)"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:39.99993896px;line-height:1.25;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:end;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:end;opacity:1;fill:url(#linearGradient8706);fill-opacity:1;stroke:none;stroke-linecap:butt;stroke-linejoin:round"
@@ -1519,7 +1553,22 @@ CAQCeR+J1c7lrRmGQCAQyBWJGpC2f7hw6CdiCAQCgVyQqabwnq4e4q6hhzcEAoFATsj/CwKBQCDb
            id="flowPara11943">Forest cover gain </flowPara><flowPara
            style="stroke-linecap:butt;stroke-linejoin:round"
            id="flowPara11945">2002 - 2012</flowPara></flowRoot>    </g>
-  </g>
+    <flowRoot
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:52.91666667px;line-height:1.25;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr;text-anchor:start;fill:#14213d;fill-opacity:1;stroke:none;stroke-width:0.99873108;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;"
+       id="flowRoot1619"
+       transform="translate(-2.9934186,-5.9868373)"><flowRegion
+         id="flowRegion1621"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:52.91666667px;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr;text-anchor:start;stroke-linecap:butt;stroke-linejoin:round;"><use
+           x="0"
+           y="0"
+           xlink:href="#rect1609"
+           id="use1623"
+           style="stroke-linecap:butt;stroke-linejoin:round"
+           width="100%"
+           height="100%" /></flowRegion><flowPara
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:52.91666667px;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr;text-anchor:start;fill:#14213d;fill-opacity:1;stroke:none;stroke-linecap:butt;stroke-linejoin:round;stroke-opacity:1;"
+         id="flowPara1625">Forecasting fire activity in Indonesia</flowPara></flowRoot>  </g>
   <g
      inkscape:groupmode="layer"
      id="layer4"
@@ -1543,7 +1592,7 @@ CAQCeR+J1c7lrRmGQCAQyBWJGpC2f7hw6CdiCAQCgVyQqabwnq4e4q6hhzcEAoFATsj/CwKBQCDb
            x="-853.83307"
            y="1907.1497"
            style="stroke-linecap:butt;stroke-linejoin:round" /></flowRegion><flowPara
-         id="flowPara5434"></flowPara></flowRoot>    <flowRoot
+         id="flowPara5434" /></flowRoot>    <flowRoot
        xml:space="preserve"
        id="flowRoot5518"
        style="fill:black;fill-opacity:1;stroke:none;font-family:sans-serif;font-style:normal;font-weight:normal;font-size:40px;line-height:1.25;letter-spacing:0px;word-spacing:0px"><flowRegion
@@ -1554,7 +1603,7 @@ CAQCeR+J1c7lrRmGQCAQyBWJGpC2f7hw6CdiCAQCgVyQqabwnq4e4q6hhzcEAoFATsj/CwKBQCDb
            x="449.38583"
            y="317.85834"
            style="stroke-linecap:butt;stroke-linejoin:round" /></flowRegion><flowPara
-         id="flowPara5524"></flowPara></flowRoot>    <flowRoot
+         id="flowPara5524" /></flowRoot>    <flowRoot
        xml:space="preserve"
        style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:28.51048035px;line-height:1.25;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr;text-anchor:start;fill:url(#linearGradient9230);fill-opacity:1;stroke:none;stroke-linecap:butt;stroke-linejoin:round;"
        id="flowRoot5568"
@@ -1580,7 +1629,7 @@ CAQCeR+J1c7lrRmGQCAQyBWJGpC2f7hw6CdiCAQCgVyQqabwnq4e4q6hhzcEAoFATsj/CwKBQCDb
        xml:space="preserve"
        id="flowRoot9517"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;line-height:1.25;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:end;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:end;fill:url(#linearGradient8706);fill-opacity:1;stroke:none;stroke-linecap:butt;stroke-linejoin:round"
-       transform="matrix(0.26458333,0,0,0.26458333,120.25303,14.994335)"><flowRegion
+       transform="matrix(0.26458333,0,0,0.26458333,144.06568,14.994335)"><flowRegion
          id="flowRegion9519"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:end;writing-mode:lr-tb;text-anchor:end;fill:url(#linearGradient8706);stroke-linecap:butt;stroke-linejoin:round"><rect
            id="rect9521"
@@ -1761,7 +1810,7 @@ CAQCeR+J1c7lrRmGQCAQyBWJGpC2f7hw6CdiCAQCgVyQqabwnq4e4q6hhzcEAoFATsj/CwKBQCDb
            x="3505.2095"
            y="794.64575"
            style="stroke-linecap:butt;stroke-linejoin:round" /></flowRegion><flowPara
-         id="flowPara11318"></flowPara></flowRoot>    <flowRoot
+         id="flowPara11318" /></flowRoot>    <flowRoot
        xml:space="preserve"
        id="flowRoot11320"
        style="fill:black;fill-opacity:1;stroke:none;font-family:sans-serif;font-style:normal;font-weight:normal;font-size:40px;line-height:1.25;letter-spacing:0px;word-spacing:0px"><flowRegion
@@ -1772,7 +1821,7 @@ CAQCeR+J1c7lrRmGQCAQyBWJGpC2f7hw6CdiCAQCgVyQqabwnq4e4q6hhzcEAoFATsj/CwKBQCDb
            x="3595.0867"
            y="-476.78732"
            style="stroke-linecap:butt;stroke-linejoin:round" /></flowRegion><flowPara
-         id="flowPara11326"></flowPara></flowRoot>    <flowRoot
+         id="flowPara11326" /></flowRoot>    <flowRoot
        xml:space="preserve"
        style="fill:url(#linearGradient8706);fill-opacity:1;stroke:none;font-family:Montserrat;font-style:normal;font-weight:normal;font-size:17.63888889px;line-height:1.25;letter-spacing:0px;word-spacing:0px;-inkscape-font-specification:'Montserrat, Normal';font-stretch:normal;font-variant:normal;text-anchor:start;text-align:start;writing-mode:lr;font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;"
        id="flowRoot11338"><flowRegion
@@ -1783,21 +1832,21 @@ CAQCeR+J1c7lrRmGQCAQyBWJGpC2f7hw6CdiCAQCgVyQqabwnq4e4q6hhzcEAoFATsj/CwKBQCDb
            xlink:href="#rect11310"
            id="use11342" /></flowRegion><flowPara
          id="flowPara11348">Models have significantly better prediction skill when trained with full feature set.</flowPara></flowRoot>    <rect
-       style="opacity:1;fill:url(#linearGradient8665);fill-opacity:1;stroke:none;stroke-width:0.24941529;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       style="opacity:1;fill:url(#linearGradient8665);fill-opacity:1;stroke:none;stroke-width:0.27179402;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        id="rect11515"
        width="285.36002"
-       height="134.56"
+       height="159.78999"
        x="35.669991"
-       y="168.20001" />
+       y="165.02505" />
     <flowRoot
        xml:space="preserve"
-       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:17.63888931px;line-height:1.25;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:url(#linearGradient8706);fill-opacity:1;stroke:none;stroke-linecap:butt;stroke-linejoin:round"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:17.63888889px;line-height:1.25;font-family:Montserrat;-inkscape-font-specification:'Montserrat, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr;text-anchor:start;fill:url(#linearGradient8706);fill-opacity:1;stroke:none;stroke-linecap:butt;stroke-linejoin:round;"
        id="flowRoot11517"><flowRegion
-         id="flowRegion11519"><use
+         id="flowRegion11519"
+         style="-inkscape-font-specification:'Montserrat, Normal';font-family:Montserrat;font-weight:normal;font-style:normal;font-stretch:normal;font-variant:normal;font-size:17.63888889px;text-anchor:start;text-align:start;writing-mode:lr;font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;"><use
            x="0"
            y="0"
            xlink:href="#rect11515"
            id="use11521" /></flowRegion><flowPara
-         style="stroke-linecap:butt;stroke-linejoin:round"
-         id="flowPara11523">This study explores if extreme peatland and forest burning events can be predicted by supervised learning methods using fire weather indices and available land use datasets.</flowPara></flowRoot>  </g>
+         id="flowPara1635">This study, part of the ToFEWSE project, explored if extreme peatland and forest burning events could be predicted by supervised learning methods using fire weather indices and available land use datasets.</flowPara></flowRoot>  </g>
 </svg>
