@@ -2,6 +2,7 @@ import cdsapi
 
 c = cdsapi.Client()
 
+"""
 for year in range(2018, 2019, 1):
     for month in range(1, 5, 1):
         c.retrieve(
@@ -40,7 +41,6 @@ for year in range(2018, 2019, 1):
                 ]
             },
             '/mnt/data/era5/glob/{0}_{1}.nc'.format(year, month))
-"""
 c.retrieve(
     'seasonal-monthly-single-levels',
     {
@@ -72,7 +72,7 @@ c.retrieve(
 c.retrieve(
     'seasonal-monthly-single-levels',
     {
-        'format':'grib',
+        'format':'netcdf',
         'originating_centre':'ecmwf',
         'system':'5',
         'variable':[
@@ -83,25 +83,27 @@ c.retrieve(
             'monthly_mean'
         ],
         'year':'2019',
-        'month':'02',
+        'month':'03',
         'leadtime_month':[
             '1','2','3',
             '4','5','6'
         ]
     },
-    '/mnt/data/SEAS5/2019_02_mm.grib')
+    '/mnt/data/SEAS5/2019_03_mm.nc')
+"""
 
 c.retrieve(
     'seasonal-original-single-levels',
     {
         'format':'grib',
         'originating_centre':'ecmwf',
+        'system':'5',
         'variable':[
             '10m_u_component_of_wind','10m_v_component_of_wind','2m_dewpoint_temperature',
             '2m_temperature','total_precipitation'
         ],
         'year':'2019',
-        'month':'02',
+        'month':'03',
         'day':'01',
         'leadtime_hour':[
             '6','12','18',
@@ -393,5 +395,4 @@ c.retrieve(
             '5154','5160'
         ]
     },
-    '/mnt/data/SEAS5/2018_05.grib')
-"""
+    '/mnt/data/SEAS5/2019_03.grib')

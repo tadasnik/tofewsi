@@ -1,0 +1,20 @@
+Can extreme burning events in Indonesia be predicted? This study, part of the
+ToFEWSI project, explored predictive skill of machine learning algorithms using
+fire weather and forest cover change datasets as inputs. 
+Some of the forest cover change datasets used for model training. Derived from Hansen et al., 2013, Science 342.
+Canadian Fire Weather indices were calculated from the ECMWF ERA5 reanalysis dataset.
+
+Logistic regression, Maxent, support vector machines and neural network
+algorithms were trained to predict fire occurrence on 25km grid and monthly
+time step for 2002 - 2018 period 2018 period.  
+
+Results indicate very good prediction skill for most years when models were trained with full feature set.
+Conversion of primary rainforest to other uses was linked to increased fire occurrence probability.
+
+The scores were consistent, but generally better during higher fire activity years.
+
+The results demonstrate feasibility of fire activity predictability on seasonal scales using long-range forecasting systems such as ECMWF SEAS5.
+(1) Swansea University, College of Science, Geography Department, Swansea, United Kingdom (tadas.nik@gmail.com)
+(2) Fenner School of Environment and Society, The Australian National University, Australia
+(3) Environmental Stewardship Branch, Alberta Agriculture and Forestry, Canada
+(4) Department of Renewable Resources, University of Alberta, Canada
