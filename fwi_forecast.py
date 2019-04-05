@@ -62,6 +62,7 @@ class Climdata_dask(Envdata):
         return dts
 
     def prepare_xarray_fwi(self, ds_name):
+        fnames = 
         dataset = self.read_seas5_dask(ds_name)
         tp  = dataset['tp'].resample(time='24H',
                                      closed='right',
@@ -116,8 +117,8 @@ if __name__ == '__main__':
     # indonesia bbox
     bbox = [8.0, 93.0, -13.0, 143.0]
     cl = Climdata_dask(data_path, bbox=bbox, hour=None)
-    #client = cl.dask_client()
-    #fwi_vars = cl.prepare_xarray_fwi(ds_name)
+    client = cl.dask_client()
+    fwi_vars = cl.prepare_xarray_fwi(ds_name)
     #fwi_vars.to_netcdf('/mnt/data/SEAS5/2018_11_fwi_vars_indonesia.nc')
     #fwi_arr = xr.open_dataset('/mnt/data/SEAS5/2018_11_fwi_vars_indonesia.nc')
     #dataset.to_netcdf('/mnt/data/SEAS5/fwi/fwi_indonesia_2018_11_{0}.nc'.format(number))
