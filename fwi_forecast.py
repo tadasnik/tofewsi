@@ -1,4 +1,5 @@
 import os
+import glob
 import datetime
 import numpy as np
 import pandas as pd
@@ -6,6 +7,7 @@ import xarray as xr
 import dask as ds
 from dask.distributed import Client
 from envdata import Envdata
+from gridding import Gridder
 from fwi.fwi_vectorized import FWI
 
 def calc_fwi(fwi_arr):
@@ -61,9 +63,19 @@ class Climdata_dask(Envdata):
         dts = self.spatial_subset(dts, self.bbox)
         return dts
 
-    def prepare_xarray_fwi(self, ds_name):
-        fnames = 
-        dataset = self.read_seas5_dask(ds_name)
+    def subset_datasets(self, fname):
+        gri = Gridder(bbox = 'indonesia', step = 0.25)
+        dss = []
+        for fn in fnames:
+            ds = xr.open_dataset(fn)
+            dsi = self.spatial_subset(ds, gri.bbox)
+            dsi = dsi.median(dim = 'number')
+            dss.append(dsi)
+        dsa = xr.merge(dss)
+        return dsa
+
+    def prepare_xarray_fwi(self, dataset):
+        #dataset = self.read_seas5_dask(ds_name)
         tp  = dataset['tp'].resample(time='24H',
                                      closed='right',
                                      label='right',
@@ -113,12 +125,14 @@ class Climdata_dask(Envdata):
 
 if __name__ == '__main__':
     data_path = '/mnt/data/SEAS5'
-    ds_name = os.path.join(data_path, '2018_11_seas5.nc')
     # indonesia bbox
     bbox = [8.0, 93.0, -13.0, 143.0]
     cl = Climdata_dask(data_path, bbox=bbox, hour=None)
     client = cl.dask_client()
-    fwi_vars = cl.prepare_xarray_fwi(ds_name)
+    fnames = glob.glob(os.path.join(data_path, '2019_03*nc'))
+    dsa = cl.subset_datasets(fnames)
+    dsa = xr.open_dataset('/mnt/data/SEAS5/2019_03_vars_ind.nc')
+    #fwi_vars = cl.prepare_xarray_fwi(fnames)
     #fwi_vars.to_netcdf('/mnt/data/SEAS5/2018_11_fwi_vars_indonesia.nc')
     #fwi_arr = xr.open_dataset('/mnt/data/SEAS5/2018_11_fwi_vars_indonesia.nc')
     #dataset.to_netcdf('/mnt/data/SEAS5/fwi/fwi_indonesia_2018_11_{0}.nc'.format(number))
@@ -126,7 +140,7 @@ if __name__ == '__main__':
     #for num in range(0, 51):
     #    ds = calc_fwi(fwi_arr.sel(number=num))
     #    dss.append(ds)
-    fwi_arr = xr.open_dataset('/mnt/data/SEAS5/fwi/2018_11_fwi_dc_indonesia.nc')
+    #fwi_arr = xr.open_dataset('/mnt/data/SEAS5/fwi/2018_11_fwi_dc_indonesia.nc')
     land_mask = 'data/era_land_mask.nc'
     land_mask = xr.open_dataset(land_mask)
     land_mask = cl.spatial_subset(land_mask, bbox)
