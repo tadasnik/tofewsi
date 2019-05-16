@@ -1,10 +1,26 @@
 import cdsapi
 
-c = cdsapi.Client()
+def join_values(values):
+    """
+    If values is a list, joins values with "/" and returns
+    the product as a single string. If values is a single value
+    returns it back. Values are converted to strings.
+    Args:
+        values (str/list of strings)
+    Returns:
+        string
+    """
+    if isinstance(values, list):
+        return '/'.join([str(x) for x in values])
+    else:
+        return str(values)
+ind_area = join_values([8.0, 93.0, -13.0, 143.0])
 
-"""
-for year in range(2018, 2019, 1):
-    for month in range(1, 5, 1):
+c = cdsapi.Client()
+hincast_years = [str(year) for year in range(1993, 2019, 1)]
+
+for year in range(1985, 1993, 1):
+    for month in range(1, 13, 1):
         c.retrieve(
             'reanalysis-era5-single-levels',
             {
@@ -41,6 +57,7 @@ for year in range(2018, 2019, 1):
                 ]
             },
             '/mnt/data/era5/glob/{0}_{1}.nc'.format(year, month))
+"""
 c.retrieve(
     'seasonal-monthly-single-levels',
     {
@@ -69,28 +86,39 @@ c.retrieve(
     },
     'download.grib')
 
-c.retrieve(
-    'seasonal-monthly-single-levels',
-    {
-        'format':'netcdf',
-        'originating_centre':'ecmwf',
-        'system':'5',
-        'variable':[
-            '10m_u_component_of_wind','10m_v_component_of_wind','2m_dewpoint_temperature',
-            '2m_temperature','total_precipitation'
-        ],
-        'product_type':[
-            'monthly_mean'
-        ],
-        'year':'2019',
-        'month':'03',
-        'leadtime_month':[
-            '1','2','3',
-            '4','5','6'
-        ]
-    },
-    '/mnt/data/SEAS5/2019_03_mm.nc')
-"""
+
+for month in ['04', '05', '06', '07', '08', '09', '10', '11', '12']:
+    c.retrieve(
+        'seasonal-monthly-single-levels',
+        {
+            'format':'netcdf',
+            'originating_centre':'ecmwf',
+            'system':'5',
+            'aria':ind_area,
+            'variable':[
+                '10m_wind_speed','2m_dewpoint_temperature',
+                '2m_temperature','total_precipitation', 'surface_solar_radiation_downwards'
+            ],
+            'product_type':[
+                'monthly_mean', 'monthly_standard_deviation'
+            ],
+            'year':[
+                '1993','1994','1995',
+                '1996','1997','1998',
+                '1999','2000','2001',
+                '2002','2003','2004',
+                '2005','2006','2007',
+                '2008','2009','2010',
+                '2011','2012','2013',
+                '2014','2015','2016'
+            ],
+            'month':month,
+            'leadtime_month':[
+                '1','2','3',
+                '4','5','6'
+            ]
+        },
+        '/mnt/data/SEAS5/monthly/hindcasts/{0}.nc'.format(month))
 
 c.retrieve(
     'seasonal-original-single-levels',
@@ -396,3 +424,4 @@ c.retrieve(
         ]
     },
     '/mnt/data/SEAS5/2019_03.grib')
+"""

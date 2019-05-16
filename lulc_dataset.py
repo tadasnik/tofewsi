@@ -1,5 +1,7 @@
 import os, glob
 import datetime
+import h5py
+import scipy
 #import rasterio
 import subprocess
 import numpy as np
@@ -11,10 +13,32 @@ import matplotlib.pyplot as plt
 import salem
 from salem.utils import get_demo_file
 from salem import wgs84
-import cartopy.io.shapereader as shapereader
+#import cartopy.io.shapereader as shapereader
 from envdata import Envdata
 from gridding import Gridder
 from dask.diagnostics import ProgressBar
+
+def plot_dfr_column(gri, dfr, column):
+    ds = gri.dfr_to_dataset(dfr, column, np.nan)
+    fig = plt.figure(figsize = (12, 5))
+    ds[column].plot()
+    plt.show()
+
+def plot_dfr_comparison_columns(gri, dfr, dfr2, column, column2):
+    ds = gri.dfr_to_dataset(dfr, column, np.nan)
+    ds2 = gri.dfr_to_dataset(dfr2, column2, np.nan)
+    fig = plt.figure(figsize = (12, 5))
+    (ds[column] - ds2[column2]).plot()
+    plt.show()
+
+
+def plot_dfr_comparison_column(gri, dfr, dfr2, column):
+    ds = gri.dfr_to_dataset(dfr, column, np.nan)
+    ds2 = gri.dfr_to_dataset(dfr2, column, np.nan)
+    fig = plt.figure(figsize = (12, 5))
+    (ds[column] - ds2[column]).plot()
+    plt.show()
+
 
 def split_loss_per_year():
     data_path = '/mnt/data/forest/loss/'
@@ -33,7 +57,7 @@ def split_loss_per_year():
         print(df.head())
         df.to_parquet(os.path.join(data_path, 'loss_{}.parquet'.format(year)))
 
-def loss_primary_or_not():
+def loss_primary_or_not(lc):
     data_path = '/mnt/data/forest/primary/'
     fnames = glob.glob(os.path.join(data_path, '*.parquet'))
     for year in range(2001, 2019, 1):
@@ -42,11 +66,15 @@ def loss_primary_or_not():
         dfr = pd.read_parquet('/mnt/data/forest/loss/loss_{}.parquet'.format(year))
         dfr.sort_values(by = ['latitude', 'longitude'], inplace = True)
         dfr = dfr.drop_duplicates()
+        dfr['latitude'] = np.rint(dfr['latitude'] * 1e6).astype(int)
+        dfr['longitude'] = np.rint(dfr['longitude'] * 1e6).astype(int)
         for fname in fnames:
             print(fname)
             df = pd.read_parquet(fname)
             dfp = df[df.primary == 2]
             dfp.sort_values(by = ['latitude', 'longitude'], inplace = True)
+            dfp['latitude'] = np.rint(dfp['latitude'] * 1e6).astype(int)
+            dfp['longitude'] = np.rint(dfp['longitude'] * 1e6).astype(int)
             com = pd.merge(dfr, dfp[['latitude', 'longitude']], how='inner', on=['latitude', 'longitude'])
             dfrs.append(com)
         df = pd.concat(dfrs)
@@ -54,7 +82,7 @@ def loss_primary_or_not():
         com['loss_type'] = 1
         com['loss_type'][com.loss_y > 0] = 2
         com.drop(['loss_y', 'loss_x'], axis = 1, inplace = True)
-        com.to_parquet('/mnt/data/forest/loss/loss_{}_primary.parquet'.format(year))
+        com.to_parquet('/mnt/data/forest/loss/loss_{}_primary_v3.parquet'.format(year))
 
 class LulcData(Envdata):
     def __init__(self, data_path, bbox=None, hour=None):
@@ -224,14 +252,16 @@ class LulcData(Envdata):
         return out_name
 
     def grid_loss(self, res, column, out_name):
-        fnames = glob.glob(os.path.join(self.data_path, 'loss*primary.parquet'))
+        fnames = glob.glob(os.path.join(self.data_path, 'loss*primary_v3.parquet'))
         print(fnames)
         dfrs = []
         for fname in fnames:
-            year = fname.split('_')[-2]
+            year = fname.split('_')[-3]
             print(fname)
             dfr = pd.read_parquet(fname)
             print(dfr.columns)
+            dfr['longitude'] /= 1e6
+            dfr['latitude'] /= 1e6
             gri = Gridder(bbox = 'indonesia', step = res)
             dfr = gri.add_grid_inds(dfr)
             print(column)
@@ -374,12 +404,93 @@ class LulcData(Envdata):
                                                 'latind': prim['latind'].values}).all(axis=1)
         tot = prim[['lonind', 'latind']]
 
+    def create_ecosys_grid_dataset(self, times):
+        gri = Gridder(bbox = 'riau', step = 0.05)
+        lons = gri.lon_bins[1: -1]
+        lats = gri.lat_bins[1:]
+        dataset = xr.Dataset({'dummy': (['latitude', 'longitude', 'time'], np.zeros((100, 100, len(times))))},
+                              coords={'latitude': lats,
+                                     'longitude': lons,
+                                     'time' : times})
+        return dataset
+ 
+    def process_soil_moisture_esa_cci(self):
+        times = pd.date_range(start='2015-01-01', end='2015-12-31', freq='D')
+        fnames = glob.glob('/mnt/data/soil_moisture/C3S*nc')
+        dss = []
+        gri = Gridder(bbox = 'riau', step = 0.05)
+        for fname in fnames:
+            ds = xr.open_dataset(fname)
+            ds = ds.rename({'lon': 'longitude', 'lat': 'latitude'})
+            ds = self.spatial_subset(ds, [4, 98, -3,  105])
+            dss.append(ds)
+        dataset = xr.concat(dss, dim = 'time')
+        dummy = self.create_ecosys_grid_dataset(times)
+        ds = dataset.interp_like(dummy, method = 'nearest')
+        dfr = self.prepare_ecosys_dataframe(ds['sm'])
+        lc.write_csv(dfr, '/mnt/data/soil_moisture/esa_cci_soil_moisture_riau_2015_0.05deg.csv', fl_prec = '%.3f')
+
+    def process_soil_moisture_SMAP(self):
+        fnames = glob.glob('/mnt/data/soil_moisture/SMAP/SMAP_L3*')
+        dss = []
+        gri = Gridder(bbox = 'riau', step = 0.05)
+        grid_x, grid_y = np.meshgrid(gri.lons, gri.lats)
+        for fname in fnames:
+            print(fname)
+            fo = h5py.File(fname, 'r')
+            lons = fo['Soil_Moisture_Retrieval_Data_PM']['longitude_pm'][()]
+            lats = fo['Soil_Moisture_Retrieval_Data_PM']['latitude_pm'][()]
+            sm = fo['Soil_Moisture_Retrieval_Data_PM']['soil_moisture_pm'][()]
+            inds = np.where((lats < 3.1)&(lats > -3.1)&(lons > 98.9)&(lons < 104.1))
+            #loninds = np.where((lons > 98.9)&(lons < 104.1))
+            if inds[0].size < 10:
+                continue
+            lons = lons[inds]
+            lats = lats[inds]
+            sm = sm[inds]
+            sm[sm == -9999] = np.nan
+            try:
+                sm_grid = scipy.interpolate.griddata((lons,lats), sm, (grid_x, grid_y))
+            except:
+                continue
+            sm_grid = np.expand_dims(np.flipud(sm_grid), axis = 2)
+            fdate = pd.to_datetime(fname.split('_')[-3])
+            dataset = xr.Dataset({'sm': (['latitude', 'longitude', 'time'], sm_grid)},
+                              coords={'latitude': gri.lats,
+                                     'longitude': gri.lons,
+                                     'time' : [fdate]})
+            dss.append(dataset)
+        dataset = xr.concat(dss, dim = 'time')
+        #dummy = self.create_ecosys_grid_dataset(times)
+        #ds = dataset.interp_like(dummy, method = 'nearest')
+        dfr = self.prepare_ecosys_dataframe(dataset['sm'])
+        lc.write_csv(dfr, '/mnt/data/soil_moisture/SMAP_PM_soil_moisture_riau_2015_0.05deg.csv', fl_prec = '%.3f')
+        return dataset
+
+    def prepare_ecosys_dataframe(self, ds):
+        dfr = ds.to_dataframe()
+        dfr.reset_index(inplace=True)
+
+        dfr.loc[:, 'Day'] = dfr['time'].dt.day
+        dfr.loc[:, 'Hour'] = dfr['time'].dt.hour
+        dfr.loc[:, 'Month'] = dfr['time'].dt.month
+        dfr.loc[:, 'Year'] = dfr['time'].dt.year
+        dfr.drop('time', axis=1, inplace=True)
+        dfr = dfr.dropna(axis = 0)
+
+        dfr = dfr[['latitude', 'longitude', 'Day', 'Hour',
+                             'Month', 'Year', 'sm']]
+        # converting total precipitation to mm from m
+        cols = ['lat', 'long', 'Day', 'Hour', 'Month', 'Year', 'Soil_moisture']
+        dfr.columns = cols
+        return dfr
+
 
 
 if __name__ == '__main__':
     #data_path = '/mnt/data/land_cover/mcd12c1'
     #data_path = '/mnt/data/land_cover/peatlands'
-    data_path = '/mnt/data/forest/gain'
+    data_path = '/mnt/data/forest/loss'
     #fname = '23_tt_6hourly.nc'
     #fname = 'MCD12C1.A2010001.051.2012264191019.hdf'
     #fname = 'Per-humid_SEA_LC_2015_CRISP_Geotiff_indexed_colour.tif'
@@ -392,7 +503,7 @@ if __name__ == '__main__':
 
     lc = LulcData(data_path, bbox=bbox, hour=None)
 
-    #ds_sum_kal = xr.open_rasterio('/mnt/data/land_cover/peat_depth/WI_peat_atlas/WIpeat.tif')
+    ds_sum_kal = xr.open_rasterio('/mnt/data/land_cover/peat_depth/WI_peat_atlas/WIpeat.tif')
     #ds_papua = xr.open_rasterio('/mnt/data/land_cover/peat_depth/WI_peat_atlas/WIpapua.tif')
     #ds_all = ds_sum_kal + ds_papua
     #ds_all = ds_all.to_dataset(name = 'depth')

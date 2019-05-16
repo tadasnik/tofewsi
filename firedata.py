@@ -874,10 +874,10 @@ if __name__ == '__main__':
     #TODO
     data_path = '/mnt/data/frp/'
     env = Envdata(data_path)
-    gri = Gridder(bbox = 'indonesia', step = 0.25)
+    gri = Gridder(bbox = 'indonesia', step = 0.01)
     dfr = pd.read_parquet('/mnt/data/frp/M6_indonesia.parquet')
-    dfrm = monthly_frp_dfr(dfr, gri)
-    dfrm.to_parquet('/mnt/data/frp/frp_count_indonesia_0.25deg_monthly_v2.parquet')
+    #dfrm = monthly_frp_dfr(dfr, gri)
+    #dfrm.to_parquet('/mnt/data/frp/frp_count_indonesia_0.25deg_monthly_v2.parquet')
 
     """
     #prepare M6 pixel data for indonesia

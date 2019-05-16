@@ -48,7 +48,7 @@ def lat_lon_grid_points(bbox, step):
 
 class Gridder(object):
     def __init__(self, lats=None, lons=None, bbox=None, step=None):
-        bboxes = {'indonesia': [8.0, 93.0, -13.0, 143.0], 'riau': [3, 99, -2, 104]}
+        self.bboxes = {'indonesia': [8.0, 93.0, -13.0, 143.0], 'riau': [3, 99, -2, 104]}
         if all(cord is not None for cord in [lats, lons]):
             self.lats, self.lons = lats, lons
             self.step = self.grid_step()
@@ -57,7 +57,7 @@ class Gridder(object):
             if isinstance(bbox, list):
                 self.lats, self.lons = lat_lon_grid_points(bbox, step)
             if isinstance(bbox, str):
-                self.lats, self.lons = lat_lon_grid_points(bboxes[bbox], step)
+                self.lats, self.lons = lat_lon_grid_points(self.bboxes[bbox], step)
         else:
             print('Please provide either lats + lons or bbox + step')
             return None
@@ -72,7 +72,7 @@ class Gridder(object):
         lon_min, lon_max = self.lons.min(), self.lons.max()
         self.lat_min = lat_min - self.step * 0.5
         self.lon_min = lon_min - self.step * 0.5
-        self.lat_max = lat_max - self.step * 0.5
+        self.lat_max = lat_max + self.step * 0.5
         self.lon_max = lon_max + self.step * 0.5
         return [self.lat_max, self.lon_min, self.lat_min, self.lon_max]
 
@@ -233,6 +233,11 @@ class Gridder(object):
                                     'ign_agg_4': {'dtype': 'int16', 'zlib': True},
                                     'ign_agg_8': {'dtype': 'int16', 'zlib': True},
                                     'ign_agg_16': {'dtype': 'int16', 'zlib': True}})
+
+    def add_coords_from_ind(self, dfr):
+        dfr['longitude'] = self.lons[dfr.lonind]
+        dfr['latitude'] = self.lats[dfr.latind]
+        return dfr
 
 if __name__ == '__main__':
     bboxes = {'indonesia': [8.0, 93.0, -13.0, 143.0], 'riau': [3, -2, 99, 104]}
