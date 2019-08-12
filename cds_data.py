@@ -19,7 +19,8 @@ ind_area = join_values([8.0, 93.0, -13.0, 143.0])
 c = cdsapi.Client()
 hincast_years = [str(year) for year in range(1993, 2019, 1)]
 
-for year in range(1985, 1993, 1):
+"""
+for year in range(2019, 2020, 1):
     for month in range(1, 13, 1):
         c.retrieve(
             'reanalysis-era5-single-levels',
@@ -57,7 +58,7 @@ for year in range(1985, 1993, 1):
                 ]
             },
             '/mnt/data/era5/glob/{0}_{1}.nc'.format(year, month))
-"""
+
 c.retrieve(
     'seasonal-monthly-single-levels',
     {
@@ -87,21 +88,22 @@ c.retrieve(
     'download.grib')
 
 
-for month in ['04', '05', '06', '07', '08', '09', '10', '11', '12']:
+for month in ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']:
     c.retrieve(
         'seasonal-monthly-single-levels',
         {
             'format':'netcdf',
             'originating_centre':'ecmwf',
             'system':'5',
-            'aria':ind_area,
+            'area':ind_area,
             'variable':[
                 '10m_wind_speed','2m_dewpoint_temperature',
                 '2m_temperature','total_precipitation', 'surface_solar_radiation_downwards'
             ],
             'product_type':[
-                'monthly_mean', 'monthly_standard_deviation'
+                'monthly_mean'
             ],
+
             'year':[
                 '1993','1994','1995',
                 '1996','1997','1998',
@@ -110,7 +112,7 @@ for month in ['04', '05', '06', '07', '08', '09', '10', '11', '12']:
                 '2005','2006','2007',
                 '2008','2009','2010',
                 '2011','2012','2013',
-                '2014','2015','2016'
+                '2014','2015','2016', '2017', '2018'
             ],
             'month':month,
             'leadtime_month':[
@@ -118,8 +120,9 @@ for month in ['04', '05', '06', '07', '08', '09', '10', '11', '12']:
                 '4','5','6'
             ]
         },
-        '/mnt/data/SEAS5/monthly/hindcasts/{0}.nc'.format(month))
+        '/mnt/data2/SEAS5/monthly/hindcasts/{0}_mean.nc'.format(month))
 
+"""
 c.retrieve(
     'seasonal-original-single-levels',
     {
@@ -131,8 +134,9 @@ c.retrieve(
             '2m_temperature','total_precipitation'
         ],
         'year':'2019',
-        'month':'03',
+        'month':'08',
         'day':'01',
+        'area':ind_area,
         'leadtime_hour':[
             '6','12','18',
             '24','30','36',
@@ -423,5 +427,4 @@ c.retrieve(
             '5154','5160'
         ]
     },
-    '/mnt/data/SEAS5/2019_03.grib')
-"""
+    '/mnt/data2/SEAS5/forecast/2019_08_ind.grib')

@@ -18,6 +18,23 @@ from envdata import Envdata
 from gridding import Gridder
 from dask.diagnostics import ProgressBar
 
+
+def calc_area(lat1, lon1, lat2, lon2):
+        """
+        Calculate the great circle distance between two points
+        on the earth (specified in decimal degrees)
+        """
+        # convert decimal degrees to radians 
+        lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
+        # haversine formula 
+        dlon = lon2 - lon1
+        dlat = lat2 - lat1
+        a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
+        c = 2 * asin(sqrt(a))
+        km = 6371 * c
+        return km
+
+
 def plot_dfr_column(gri, dfr, column):
     ds = gri.dfr_to_dataset(dfr, column, np.nan)
     fig = plt.figure(figsize = (12, 5))
@@ -99,7 +116,7 @@ class LulcData(Envdata):
         #for fname in fnames:
         #    self.preprocess_tiff_to_dfr(fname, 'gain')
         fnames = glob.glob(os.path.join(self.data_path, 'H*.parquet'))
-        self.grid_dfrs(fnames, 0.25, 'gain', '/mnt/data/forest/forest_loss_0.25deg_v2.parquet')
+        self.grid_dfrs(fnames, 0.01, 'gain', '/mnt/data/forest/forest_gain_01deg.parquet')
 
 
     def read_land_cover(self, dataset_path, sp_res):
@@ -260,6 +277,7 @@ class LulcData(Envdata):
             print(fname)
             dfr = pd.read_parquet(fname)
             print(dfr.columns)
+            print(dfr.columns)
             dfr['longitude'] /= 1e6
             dfr['latitude'] /= 1e6
             gri = Gridder(bbox = 'indonesia', step = res)
@@ -387,7 +405,7 @@ class LulcData(Envdata):
         #loss = loss[['lonind', 'latind', 'loss']]
 
         #gain.loc[:, 'gain'] = 1
-        gain.rename({'total': 'gain'}, axis = 1, inplace = True) 
+        gain.rename({'total': 'gain'}, axis = 1, inplace = True)
         gain = gain[['lonind', 'latind', 'gain']]
 
         tt = pd.merge(prim, loss, on=['lonind', 'latind'])
@@ -413,34 +431,52 @@ class LulcData(Envdata):
                                      'longitude': lons,
                                      'time' : times})
         return dataset
- 
+
     def process_soil_moisture_esa_cci(self):
         times = pd.date_range(start='2015-01-01', end='2015-12-31', freq='D')
         fnames = glob.glob('/mnt/data/soil_moisture/C3S*nc')
         dss = []
-        gri = Gridder(bbox = 'riau', step = 0.05)
+        lons = pd.read_csv('riau_lons.csv', header = None)[0].values
+        lats = pd.read_csv('riau_lats.csv', header = None)[0].values
+        gri = Gridder(lons = lons, lats = lats)
+        grid_x, grid_y = np.meshgrid(gri.lons, gri.lats)
         for fname in fnames:
             ds = xr.open_dataset(fname)
             ds = ds.rename({'lon': 'longitude', 'lat': 'latitude'})
             ds = self.spatial_subset(ds, [4, 98, -3,  105])
-            dss.append(ds)
+            dfr = ds['sm'].to_dataframe().reset_index()
+            sm_grid = scipy.interpolate.griddata((dfr.longitude.values,
+                                                  dfr.latitude.values),
+                                                 dfr.sm.values, (grid_x, grid_y), method = 'linear')
+            sm_grid = np.expand_dims(sm_grid, axis = 2)
+            fdate = pd.to_datetime(fname.split('-')[-3][:8])
+            dataset = xr.Dataset({'sm': (['latitude', 'longitude', 'time'], sm_grid)},
+                              coords={'latitude': gri.lats,
+                                     'longitude': gri.lons,
+                                     'time' : [fdate]})
+
+
+            dss.append(dataset)
         dataset = xr.concat(dss, dim = 'time')
+
         dummy = self.create_ecosys_grid_dataset(times)
         ds = dataset.interp_like(dummy, method = 'nearest')
         dfr = self.prepare_ecosys_dataframe(ds['sm'])
-        lc.write_csv(dfr, '/mnt/data/soil_moisture/esa_cci_soil_moisture_riau_2015_0.05deg.csv', fl_prec = '%.3f')
+        lc.write_csv(dfr, '/mnt/data/soil_moisture/esa_cci_soil_moisture_riau_2015_0.05deg_linear.csv', fl_prec = '%.3f')
 
     def process_soil_moisture_SMAP(self):
         fnames = glob.glob('/mnt/data/soil_moisture/SMAP/SMAP_L3*')
+        lons = pd.read_csv('riau_lons.csv', header = None)[0].values
+        lats = pd.read_csv('riau_lats.csv', header = None)[0].values
         dss = []
-        gri = Gridder(bbox = 'riau', step = 0.05)
+        gri = Gridder(lons = lons, lats = lats)
         grid_x, grid_y = np.meshgrid(gri.lons, gri.lats)
         for fname in fnames:
             print(fname)
             fo = h5py.File(fname, 'r')
-            lons = fo['Soil_Moisture_Retrieval_Data_PM']['longitude_pm'][()]
-            lats = fo['Soil_Moisture_Retrieval_Data_PM']['latitude_pm'][()]
-            sm = fo['Soil_Moisture_Retrieval_Data_PM']['soil_moisture_pm'][()]
+            lons = fo['Soil_Moisture_Retrieval_Data_AM']['longitude'][()]
+            lats = fo['Soil_Moisture_Retrieval_Data_AM']['latitude'][()]
+            sm = fo['Soil_Moisture_Retrieval_Data_AM']['soil_moisture'][()]
             inds = np.where((lats < 3.1)&(lats > -3.1)&(lons > 98.9)&(lons < 104.1))
             #loninds = np.where((lons > 98.9)&(lons < 104.1))
             if inds[0].size < 10:
@@ -453,7 +489,7 @@ class LulcData(Envdata):
                 sm_grid = scipy.interpolate.griddata((lons,lats), sm, (grid_x, grid_y))
             except:
                 continue
-            sm_grid = np.expand_dims(np.flipud(sm_grid), axis = 2)
+            sm_grid = np.expand_dims(sm_grid, axis = 2)
             fdate = pd.to_datetime(fname.split('_')[-3])
             dataset = xr.Dataset({'sm': (['latitude', 'longitude', 'time'], sm_grid)},
                               coords={'latitude': gri.lats,
@@ -464,7 +500,7 @@ class LulcData(Envdata):
         #dummy = self.create_ecosys_grid_dataset(times)
         #ds = dataset.interp_like(dummy, method = 'nearest')
         dfr = self.prepare_ecosys_dataframe(dataset['sm'])
-        lc.write_csv(dfr, '/mnt/data/soil_moisture/SMAP_PM_soil_moisture_riau_2015_0.05deg.csv', fl_prec = '%.3f')
+        lc.write_csv(dfr, '/mnt/data/soil_moisture/SMAP_AM_soil_moisture_riau_2015_0.05deg.csv', fl_prec = '%.3f')
         return dataset
 
     def prepare_ecosys_dataframe(self, ds):
@@ -503,7 +539,7 @@ if __name__ == '__main__':
 
     lc = LulcData(data_path, bbox=bbox, hour=None)
 
-    ds_sum_kal = xr.open_rasterio('/mnt/data/land_cover/peat_depth/WI_peat_atlas/WIpeat.tif')
+    #ds_sum_kal = xr.open_rasterio('/mnt/data/land_cover/peat_depth/WI_peat_atlas/WIpeat.tif')
     #ds_papua = xr.open_rasterio('/mnt/data/land_cover/peat_depth/WI_peat_atlas/WIpapua.tif')
     #ds_all = ds_sum_kal + ds_papua
     #ds_all = ds_all.to_dataset(name = 'depth')

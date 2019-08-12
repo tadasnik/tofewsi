@@ -117,6 +117,7 @@ class Climdata_dask(Envdata):
 
 if __name__ == '__main__':
 
+    """
     data_path = '/mnt/data/era5/indonesia'
     #fwi_varr = xr.open_dataset('/mnt/data/era5/indonesia/fwi_vars_{0}_{1}.nc'.format(year, month))
     ffmc0, dmc0, dc0 = None, None, None
@@ -141,7 +142,7 @@ if __name__ == '__main__':
     #fwi_arr, ffmc0, dmc0, dc0 = calc_fwi(fwi_vars)
     fwis = []
     fwivars = []
-    for nr, year in enumerate(range(2018, 2019, 1)):
+    for nr, year in enumerate(range(1985, 2000, 1)):
         for month in range(1, 13, 1):
             print(year, month)
             fname = os.path.join(data_path, '{0}_{1}.nc'.format(year, month))
@@ -149,9 +150,9 @@ if __name__ == '__main__':
             fwi_vars.to_netcdf('/mnt/data/era5/indonesia/fwi_vars_{0}_{1}.nc'.format(year, month))
             #fwi_arr, ffmc0, dmc0, dc0 = calc_fwi(fwi_vars, ffmc0, dmc0, dc0)
             #fwis.append(fwi_arr)
-            fwivars.append(fwi_vars)
+            #fwivars.append(fwi_vars)
     #fwi = xr.concat(fwis, dim='time')
-    fwi_var = xr.concat(fwivars, dim='time')
+    #fwi_var = xr.concat(fwivars, dim='time')
     #fwi_vars.to_netcdf('/mnt/data/SEAS5/2018_11_fwi_vars_indonesia.nc')
     #fwi_arr = xr.open_dataset('/mnt/data/SEAS5/2018_11_fwi_vars_indonesia.nc')
     #dataset.to_netcdf('/mnt/data/SEAS5/fwi/fwi_indonesia_2018_11_{0}.nc'.format(number))
@@ -159,7 +160,6 @@ if __name__ == '__main__':
     #for num in range(0, 51):
     #    ds = calc_fwi(fwi_arr.sel(number=num))
     #    dss.append(ds)
-    land_mask = 'data/era_land_mask.nc'
-    land_mask = xr.open_dataset(land_mask)
-    land_mask = cl.spatial_subset(land_mask, bbox)
-    """
+    #land_mask = 'data/era_land_mask.nc'
+    #land_mask = xr.open_dataset(land_mask)
+    #land_mask = cl.spatial_subset(land_mask, bbox)

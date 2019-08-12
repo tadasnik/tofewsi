@@ -20,6 +20,11 @@ def spatial_subset_dfr(dfr, bbox):
                             (dfr['longitude'] < bbox[3])]
     return dfr
 
+def dist_on_earth(dlon, dlat, lat1, lat2):
+        a = np.sin(dlat / 2) ** 2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon / 2) ** 2
+        c = 2 * np.arcsin(np.sqrt(a))
+        kmeters = 6371 * c
+        return kmeters
 
 def to_day_since(dtime_string):
     """
@@ -72,7 +77,10 @@ class Gridder(object):
         lon_min, lon_max = self.lons.min(), self.lons.max()
         self.lat_min = lat_min - self.step * 0.5
         self.lon_min = lon_min - self.step * 0.5
-        self.lat_max = lat_max + self.step * 0.5
+        if lat_max < 0:
+            self.lat_max = lat_max + self.step * 0.5
+        else:
+            self.lat_max = lat_max - self.step * 0.5
         self.lon_max = lon_max + self.step * 0.5
         return [self.lat_max, self.lon_min, self.lat_min, self.lon_max]
 
@@ -104,6 +112,30 @@ class Gridder(object):
         lonind, latind = self.binning(dfr['longitude'].values, dfr['latitude'].values)
         dfr.loc[:, 'lonind'] = lonind
         dfr.loc[:, 'latind'] = latind
+        return dfr
+
+    def add_coords_from_ind(self, dfr):
+        dfr['longitude'] = self.lons[dfr.lonind]
+        dfr['latitude'] = self.lats[dfr.latind]
+        return dfr
+
+    def calc_area(self, dfr):
+        """
+        Calculate area of the grid cells in the dataframe besed on
+        the great circle distance between two points
+        on the earth (specified in decimal degrees)
+        """
+        lon1 = np.deg2rad(0)
+        lon2 = np.deg2rad(self.step)
+        # convert decimal degrees to radians 
+        latitude = self.lats[dfr.latind]
+        lat1 = np.deg2rad(latitude)
+        # haversine formula 
+        dlon = lon2 - lon1
+        dist_lat = dist_on_earth(0, dlon, 0, 0)
+        dist_lon = dist_on_earth(dlon, 0, lat1, lat1)
+        area = dist_lat * dist_lon
+        dfr['cell_area'] = area
         return dfr
 
     def spatial_subset_ind_dfr(self, dfr, bbox):

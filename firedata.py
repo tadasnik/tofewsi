@@ -89,7 +89,7 @@ def spher_to_cartes(lon_rad, lat_rad):
 
 def get_days_since(dfr):
     basedate = pd.Timestamp('2002-01-01')
-    dates = pd.to_datetime(dfr.date.dt.year, format='%Y') + pd.to_timedelta(dfr.date, unit='d')
+    dates = pd.to_datetime(dfr.date)
     dfr.loc[:, 'day_since'] = (dates - basedate).dt.days
     return dfr#(dates - basedate).dt.days
 
@@ -109,6 +109,35 @@ def add_xyz(dfr):
     dfr.loc[:, 'y'] = xyz[:,1]
     dfr.loc[:, 'z'] = xyz[:,2]
     return dfr
+
+def monthly_frp_dfr_clustered(dfr, gri):
+    """
+    Grid frp pixel DataFrame dfr at given spatial resolution of the
+    passed Gridder instance and at monthly temporal freq, than prepare and return
+    frp monthly count feature DataFrame
+    """
+    data_path = '/mnt/data/frp/'
+    env = Envdata(data_path)
+    #dfr = pd.read_parquet('/mnt/data/frp/M6_indonesia.parquet')
+    #clustered
+    dfr = pd.read_parquet('/mnt/data/frp/M6_indonesia_clustered_v3.parquet')
+    dmin = dfr.groupby(['labs8'])['day_since'].transform('min')
+    dmax = dfr.groupby(['labs8'])['day_since'].transform('max')
+    dfr.loc[:, 'duration'] = (dmax - dmin) + 1
+    dfr['fsize'] = dfr.groupby('labs8')['labs8'].transform('size')
+    #dfrm = monthly_frp_dfr(dfr, gri)
+    #dfrm.to_parquet('/mnt/data/frp/frp_count_indonesia_0.25deg_monthly_v2.parquet')
+    dfr = gri.add_grid_inds(dfr)
+    dfr['year'] = dfr['date'].dt.year
+    dfr['month'] = dfr['date'].dt.month
+    dfr['mind'] = (dfr['year'] - dfr['year'].min()) * 12 + dfr['month']
+    grdfr = pd.DataFrame({'frp': dfr.groupby(['lonind', 'latind', 'mind'])['date'].count()})
+    #grdfr = pd.DataFrame({'frp': dfr.groupby(['lonind', 'latind'])['date'].count()})
+    grdfr['duration'] = dfr.groupby(['lonind', 'latind', 'mind'])['duration'].median()
+    grdfr['fsize'] = dfr.groupby(['lonind', 'latind', 'mind'])['fsize'].mean()
+    grdfr.drop('frp', axis = 1, inplace = True)
+    grdfr.reset_index(inplace = True)
+    return grdfr
 
 def monthly_frp_dfr(dfr, gri):
     """
@@ -146,10 +175,11 @@ class FireObs(object):
         self.earth_r = 6371007.181 # the radius of the idealized sphere representing the Earth
         self.years = list(range(2002, 2016))
         #DBSCAN eps in radians = 650 meters / earth radius
-        self.eps = 750 / self.earth_r
+        self.eps = 2770 / self.earth_r
         self.basedate = pd.Timestamp('2002-01-01')
 
-        self.labels = ['labs1', 'labs2', 'labs4', 'labs8', 'labs16']
+        #self.labels = ['labs1', 'labs2', 'labs4', 'labs8', 'labs16']
+        self.labels = ['labs1', 'labs8']
 
         self.regions_bounds = {'Am_tr': [-113, 31.5, -3.5, -55],
                                'Af_tr': [-18, 22.5, 52, -35],
@@ -447,7 +477,8 @@ class FireObs(object):
 
     def cluster_region(self, dfr, label_increment=None):
         labels_all = {}
-        for dur in [1, 2, 4, 8, 16]:
+        #for dur in [1, 2, 4, 8, 16]:
+        for dur in [1, 8]:
             print(dur)
             dfr.loc[:, 'day_since_tmp'] = dfr['day_since'] * (self.eps / dur)
             labels = cluster_euc(dfr[['x', 'y', 'z', 'day_since_tmp']].values, self.eps, min_samples=1)
@@ -535,18 +566,18 @@ class FireObs(object):
             self.cluster_region(dfr)
             self.add_labels_to_dfr(region_name)
 
-    def centroids_pandas(self, parq_name, dur):
-        store_name = os.path.join(self.data_path, '{0}.parquet'.format(parq_name))
-        dfr = self.read_dfr_from_parquet(parq_name, columns=['lon',
-                                                             'lat',
-                                                             'day_since',
-                                                             'labs1',
-                                                             'labs{0}'.format(dur)])
-        dates = pd.date_range('2002-01-01', periods=dfr.day_since.max(), freq='d')
+    def centroids_pandas(self, dfr, dur):
+        #store_name = os.path.join(self.data_path, '{0}.parquet'.format(parq_name))
+        #dfr = self.read_dfr_from_parquet(parq_name, columns=['lon',
+        #                                                     'lat',
+        #                                                     'day_since',
+        #                                                     'labs1',
+        #                                                     'labs{0}'.format(dur)])
+        dates = pd.date_range('2002-01-01', periods = dfr.day_since.max(), freq='d')
         gr = dfr.groupby(['labs{0}'.format(dur)])['day_since']
         condition_limit = gr.transform(min)
         reduced_dfr = dfr.query('day_since == @condition_limit')
-        centroids = reduced_dfr.groupby(['labs1', 'day_since']).agg({'lon':'mean', 'lat':'mean'})
+        centroids = reduced_dfr.groupby(['labs1', 'day_since']).agg({'longitude':'mean', 'latitude':'mean'})
         centroids.reset_index(level=1, inplace=True)
         centroids.reset_index(drop=True, inplace=True)
         centroids.loc[:, 'date'] = dates[centroids.day_since-1]
@@ -874,11 +905,14 @@ if __name__ == '__main__':
     #TODO
     data_path = '/mnt/data/frp/'
     env = Envdata(data_path)
-    gri = Gridder(bbox = 'indonesia', step = 0.01)
-    dfr = pd.read_parquet('/mnt/data/frp/M6_indonesia.parquet')
-    #dfrm = monthly_frp_dfr(dfr, gri)
-    #dfrm.to_parquet('/mnt/data/frp/frp_count_indonesia_0.25deg_monthly_v2.parquet')
+    gri = Gridder(bbox = 'indonesia', step = 0.25)
+    #dfr = pd.read_parquet('/mnt/data/frp/M6_indonesia.parquet')
+    #clustered
+    dfr = pd.read_parquet('/mnt/data/frp/M6_indonesia_clustered_v3.parquet')
+    #get monhtly duration and fire size
 
+    grdfr = monthly_frp_dfr_clustered(dfr, gri)
+    grdfr.to_parquet('/mnt/data/frp/monthly_fire_duration_size_0.25deg.parquet')
     """
     #prepare M6 pixel data for indonesia
     dts = []
@@ -897,11 +931,10 @@ if __name__ == '__main__':
 
     #cluster indonesia frp
     data_path = '/mnt/data/frp/'
-    fo = FireObs(data_path)
     dfr = pd.read_parquet('/mnt/data/frp/M6_indonesia.parquet')
     di = fo.preprocess(dfr)
     dc = fo.cluster_region(di)
-    di_labs = pd.concat([di[['longitude', 'latitude', 'frp', 'confidence', 'date']], dc], axis=1)
+    di_labs = pd.concat([dfrp[['longitude', 'latitude', 'frp', 'confidence', 'date', 'day_since']], dc], axis=1)
     """
 
 

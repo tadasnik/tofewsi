@@ -251,19 +251,17 @@ def do_roc(X, XX, y, clf):
         aucs.append(roc_auc)
     return tprs, tprsint, fprs, aucs, mean_fpr, score
 
-def class_labels(frpsel, threshold):
-    labels = np.zeros_like(frpsel['frp'].values)
-    labels[frpsel['frp'] > threshold] = 1
+def class_labels(frpsel, column, threshold):
+    labels = np.zeros_like(frpsel[column].values)
+    labels[frpsel[column] > threshold] = 1
     return labels
 
-def feature_selection(frpsel, max_fact):
-    frpsel = balance_classes(frpsel)
+def feature_selection(frpsel, feats, max_fact):
+    frpsel = balance_classes(frpsel, 'duration', 7)
     factor = subset_factor(frpsel.shape[0], max_fact)
     frpsel = frpsel.iloc[::factor, :]
-    labels = class_labels(frpsel, 10)
+    labels = class_labels(frpsel, 'duration', 7)
     custom_cv  = leave_year_split(frpsel)
-    features = frpsel.columns[4:,].tolist()
-    feats =  features + ['lonind', 'latind']
     print('features', feats)
     XS = frpsel[feats]
     X_scaled = preprocessing.scale(XS.values)
@@ -317,16 +315,16 @@ def predict_probability(x_train, y_train, x_test, y_test, clf):
     return probas, clf.score(x_test, y_test)
 
 def frp_data_subset():
-    #frp = pd.read_parquet('data/feature_frame_0.25deg_v2.parquet')
-    frp = pd.read_parquet('data/feature_frame_0.25deg_v2_no_volcanoes.parquet')
+    #frp = pd.read_parquet('data/feature_frame_0.25deg_v2_no_volcanoes.parquet')
+    frp = pd.read_parquet('data/feature_frame_0.25deg_v3.parquet')
     gri = Gridder(bbox = 'indonesia', step = 0.25)
     frp = gri.spatial_subset_ind_dfr(frp, gri.bbox)
     return frp
 
-def balance_classes(frp):
+def balance_classes(frp, column, threshold):
     #make sample sizes evenish
-    frp1 = frp[frp.frp > 10]
-    frp0 = frp[frp.frp == 0]
+    frp1 = frp[frp[column] > threshold]
+    frp0 = frp[frp[column] == 0]
     factor = int(frp0.shape[0] / (frp1.shape[0] * 2))
     frpsel = pd.concat([frp1, frp0.iloc[::factor, :]])
     return frpsel
@@ -391,16 +389,14 @@ def select_nn_params(frpsel, max_fact):
         print()
 
 
-def select_svm_params(frpsel, max_fact):
+def select_svm_params(frpsel, feats, max_fact):
     #features = ['fwi', 'dc', 'ffmc']
     #features = ['lonind', 'latind', 'loss_this', 'loss_last', 'loss_three', 'loss_accum', 'f_prim', 'gain', 'fwi', 'dc', 'ffmc']
-    frpsel = balance_classes(frpsel)
+    frpsel = balance_classes(frpsel, 'duration', 7)
     factor = subset_factor(frpsel.shape[0], max_fact)
     frpsel = frpsel.iloc[::factor, :]
-    features = frpsel.columns[4:,].tolist()
-    feats =  features + ['lonind', 'latind']
     scaler = preprocessing.StandardScaler().fit(frpsel[feats])
-    labels = class_labels(frpsel, 10)
+    labels = class_labels(frpsel, 'duration', 7)
     feats = frpsel.loc[:, feats]
     feats = scaler.transform(feats)
     #X_train, X_test, y_train, y_test = train_test_split(
@@ -574,16 +570,20 @@ clfs = {'Logistic': logist, 'NN': clfnn}
 
 max_fact = 4000
 frpsel = frp_data_subset()
-features = frpsel.columns[4:,].tolist()
-ffs = ['loss_last_sec', 'loss_this_prim', 'loss_accum_prim',
-       'loss_accum_sec', 'loss_three_prim', 'loss_three_sec', 'f_prim',
+#features = frpsel.columns[4:,].tolist()
+#ffs = ['loss_last_sec', 'loss_this_prim', 'loss_accum_prim',
+#       'loss_accum_sec', 'loss_three_prim', 'loss_three_sec', 'f_prim',
+#       'gain', 'dem', 'dc_med', 'ffmc_med', 'fwi_med', 'ffmc_75p',
+#       'fwi_75p', 'dc_7mm', 'ffmc_7mm', 'fwi_7mm', 'dc_3m', 'latind']
+feats = ['loss_last_prim', 'loss_last_sec', 'loss_prim_before', 'loss_sec_before',
+       'loss_three_prim', 'loss_three_sec', 'frp_acc', 'f_prim',
        'gain', 'dem', 'dc_med', 'ffmc_med', 'fwi_med', 'ffmc_75p',
-       'fwi_75p', 'dc_7mm', 'ffmc_7mm', 'fwi_7mm', 'dc_3m', 'latind']
-feats =  [ features + ['lonind', 'latind'], ffs]
+       'fwi_75p', 'dc_7mm', 'ffmc_7mm', 'fwi_7mm', 'dc_3m', 'lonind', 'latind']
+#feats =  [['lonind', 'latind'] + ffs]
 #features = ['dc_med', 'ffmc_med', 'fwi_med', 'ffmc_75p',
 #       'fwi_75p', 'dc_7mm', 'ffmc_7mm', 'fwi_7mm', 'dc_3m']
 
-#dfr = predict_years(clfs, frpsel, features + ['lonind', 'latind'], max_fact)
+#dfr = predict_years(clfs, frpsel, feats, max_fact)
 #dfrfwi = predict_years(clfs, frpsel, features, max_fact)
 
 #feats = [['lonind', 'latind', 'loss_this', 'loss_last',
