@@ -1,5 +1,6 @@
 from __future__ import print_function
 import geopandas as gpd
+import calendar
 import codecs, json
 import cartopy.crs as ccrs
 from cartopy.mpl.geoaxes import GeoAxes
@@ -8,6 +9,7 @@ from gridding import Gridder
 import numpy as np
 import pandas as pd
 from scipy import interp
+from random import randint
 import matplotlib.pyplot as plt
 from sklearn import svm
 from sklearn import linear_model
@@ -19,6 +21,7 @@ from sklearn.metrics import roc_curve, auc, accuracy_score, roc_auc_score, balan
 from sklearn.model_selection import StratifiedKFold
 from sklearn.ensemble import BaggingClassifier
 from sklearn.model_selection import cross_val_score
+from imblearn.under_sampling import RandomUnderSampler
 import rpy2.robjects as robj
 from rpy2.robjects.lib import grid
 from rpy2.robjects.packages import importr
@@ -82,6 +85,7 @@ def dfr_to_json(dfrs):
     json.dump(probd, codecs.open('data/probs.json', 'w', encoding='utf-8'))
     """
 
+
 def plot_year_probs(dfr, clfs, year):
     months = 12
     plot_y_size = months * 3
@@ -101,8 +105,8 @@ def plot_year_probs(dfr, clfs, year):
 
     #fig, axes = plt.subplots(nr ows = months, ncols = len(clfs) + 1,
     #                         figsize = (plot_y_size, plot_x_size),
-    #                         sharex = True, sharey = True,
-    #                         subplot_kw={'projection': ccrs.PlateCarree()})
+    #                         sharex = true, sharey = true,
+    #                         subplot_kw={'projection': ccrs.platecarree()})
     #fig.subplots_adjust(left=0.05, right=0.97, bottom=0.05, hspace=0.2, wspace=0.1)
     mod_names = list(clfs.keys())
     months = dfr.month.unique()
@@ -124,7 +128,7 @@ def plot_year_probs(dfr, clfs, year):
             ds[col_name].plot.pcolormesh(ax=colax, transform=ccrs.PlateCarree(),
                                          vmin = vmin, vmax = vmax, x = 'longitude', y='latitude',
                                          add_colorbar=False, add_labels=False)
-            #gl = colax.gridlines(ccrs.PlateCarree(), draw_labels=True)
+            #gl = colax.gridlines(ccrs.PlateCarree(), draw_labels=true)
             #gl.xlabels_top = False
             #colax.coastlines('50m')
             #colax.set_extent([9, 96, -10, 143], crs=ccrs.PlateCarree())
@@ -132,59 +136,286 @@ def plot_year_probs(dfr, clfs, year):
     plt.savefig('figs/models_probs_{}.png'.format(year), dpi=300)#, bbox_inches='tight', bbox_extra_artists=[tit])
     #plt.show()
 
-def roc_plots(frpsel, features, clfs, cv, name, max_fact):
-    plot_x_size = len(features) * 4
-    plot_y_size = len(clfs) * 4
-    fig, axes = plt.subplots(nrows=len(features), ncols=len(clfs),
-                             figsize = (plot_y_size, plot_x_size),
-                             sharex = True, sharey = True)
-    fig.subplots_adjust(left=0.05, right=0.97, bottom=0.05, hspace=0.2, wspace=0.1)
-    mod_names = list(clfs.keys())
-    for row_nr, rowax in enumerate(axes):
-        for col_nr, colax in enumerate(rowax):
-            #X = features[row_nr]
-            #XX = feats_unscaled[row_nr]
-            clf = clfs[mod_names[col_nr]]
-            print(clf)
-            tprs, tprsint, fprs, aucs, mean_fpr, score  = do_roc_year(frpsel, features[row_nr], clf, max_fact)
-            #tprs, tprsint, fprs, aucs, mean_fpr, score  = do_roc(X, XX, y, clf)
-            for item in zip(fprs, tprs):
-               colax.plot(item[0], item[1], lw=1, color='#5D5D5D', alpha=0.3)#,
-            #         label='ROC fold %d (AUC = %0.2f)' % (i, roc_auc))
+class FireMod():
+    def __init__(self, dfr, feature_columns, label_column, label_threshold, max_fact = None):
+        self.max_fact = max_fact
+        self.features = feature_columns
+        self.label_column = label_column
+        self.label_threshold = label_threshold
+        self.models = {
+            'svmlin': svm.SVC(kernel='linear', probability=True, C=1,
+                              random_state=random_state),
+            'svmrbf': svm.SVC(kernel='rbf', C=1, gamma=0.15, probability=True,
+                              random_state=random_state),
+            'logist': LogisticRegression(solver = 'liblinear', penalty='l1'),
+            'clfnn1': MLPClassifier(solver='lbfgs', alpha=1,
+                                    hidden_layer_sizes=(10),
+                                    activation='logistic', random_state=1),
+            'clfnn2': MLPClassifier(solver='lbfgs', alpha=2,
+                                    hidden_layer_sizes=(10),
+                                    activation='logistic', random_state=1),
+            'clfnn': MLPClassifier(solver='adam', alpha=1,
+                                   hidden_layer_sizes=(5, 2),  random_state=1)
+        }
+        self.cvms = {
+            'stratified': StratifiedKFold(n_splits=10, shuffle = True),
+        }
+        self.rus = RandomUnderSampler(random_state=0)
+        self.dfr = self.year_month(dfr)
+        self.dfr['labels'] = self.class_labels(dfr)
+        #self.dfr = self.dfr[self.dfr.peat_depth > 0]
 
-            #i += 1
-            colax.plot([0, 1], [0, 1], linestyle='--', lw=2, color='#464646', alpha = .8)
-            #         label='Chance', alpha=.8)
-            mean_tpr = np.mean(tprsint, axis=0)
-            mean_tpr[-1] = 1.0
-            mean_auc = auc(mean_fpr, mean_tpr)
-            std_auc = np.std(aucs)
-            colax.plot(mean_fpr, mean_tpr, color='#1A2D40',
-                     label=r'Mean ROC (AUC = %0.2f $\pm$ %0.2f)' % (mean_auc, std_auc),
-                     lw=2, alpha=.8)
-            #colax.text(0.7, .2, 'score {0:.2}'.format(score))
+    def year_month(self, dfr):
+        dfr['year'] = (((dfr.month.astype(int) - 1) // 12.) + 2002).astype(int)
+        dfr['month'] = (((dfr.month.astype(int) - 1) % 12.) + 1).astype(int)
+        return dfr
 
-            std_tpr = np.std(tprsint, axis=0)
-            tprs_upper = np.minimum(mean_tpr + std_tpr, 1)
-            tprs_lower = np.maximum(mean_tpr - std_tpr, 0)
-            colax.fill_between(mean_fpr, tprs_lower, tprs_upper, color='grey', alpha=.2,
-                             label=r'$\pm$ 1 std. dev.')
+    def class_labels(self, dfr):
+        labels = np.zeros_like(dfr[self.label_column].values)
+        labels[dfr[self.label_column] > self.label_threshold] = 1
+        return labels
 
-            colax.set_xlim([-0.05, 1.05])
-            colax.set_ylim([-0.05, 1.05])
-            if row_nr == 0:
-                colax.set_xlabel('False Positive Rate')
-            if col_nr == 0:
-                colax.set_ylabel('True Positive Rate')
-            if row_nr == 0:
-                colax.set_title(mod_names[col_nr])
-            colax.legend(loc="lower right")
-    #fig.text(0.5, 0.01, 'Mean {}'.format(fwi_ds), ha='center', fontsize = 14)
-    #fig.text(0.01, 0.5, 'Active fire pixel count', va='center', rotation='vertical', fontsize = 14)
-    tit = fig.suptitle('{0}'.format(name), y=.97, fontsize=18)
-    #plt.savefig('figs/rocs_{}_indonesia.png'.format(name), dpi=300)#, bbox_inches='tight', bbox_extra_artists=[tit])
-    plt.savefig('egu_poster/figures/rocs_{}_indonesia.png'.format(name), dpi=300)#, bbox_inches='tight', bbox_extra_artists=[tit])
-    plt.show()
+    def leave_year_split(self, dfr):
+        year = 2002
+        while year <= 2018:
+            train, test = self.get_year_train_test(dfr, year)
+            yield train, test
+            year += 1
+
+    def get_year_train_test(self, dfr, year):
+        X_train_inds = np.where(dfr.year != year)[0]
+        X_test_inds = np.where(dfr.year == year)[0]
+        if self.max_fact:
+            X_train_inds = np.random.choice(X_train_inds, size = self.max_fact)
+        return X_train_inds, X_test_inds
+
+    def equalize_classes(self, dfr):
+        data_array, labels = self.rus.fit_resample(dfr, dfr['labels'])
+        equalized_dfr = pd.DataFrame(data = data_array, columns = dfr.columns)
+        return equalized_dfr
+
+    def roc_plots(self, features, models, name):
+        dfr = self.equalize_classes(self.dfr)
+        feature_names = ['Fire weather', 'Land cover', 'Fire weather + land cover']
+        model_names = ['SVM', 'NN']
+        plot_x_size = len(features) * 4
+        plot_y_size = len(models) * 4
+        fig, axes = plt.subplots(nrows=len(features), ncols=len(models),
+                                 figsize = (plot_y_size, plot_x_size),
+                                 sharex = True, sharey = True)
+        fig.subplots_adjust(left=0.05, right=0.97, bottom=0.05, hspace=0.2, wspace=0.1)
+        for row_nr, rowax in enumerate(axes):
+            for col_nr, colax in enumerate(rowax):
+                #X = features[row_nr]
+                #XX = feats_unscaled[row_nr]
+                clf = self.models[models[col_nr]]
+                print(clf)
+                tprs, tprsint, fprs, aucs, mean_fpr, score  = self.do_roc_year(dfr, features[row_nr], clf, max_fact)
+                #tprs, tprsint, fprs, aucs, mean_fpr, score  = do_roc(X, XX, y, clf)
+                for item in zip(fprs, tprs):
+                   colax.plot(item[0], item[1], lw=1, color='#5D5D5D', alpha=0.3)#,
+                #         label='ROC fold %d (AUC = %0.2f)' % (i, roc_auc))
+
+                #i += 1
+                colax.plot([0, 1], [0, 1], linestyle='--', lw=2, color='#464646', alpha = .8)
+                #         label='Chance', alpha=.8)
+                mean_tpr = np.mean(tprsint, axis=0)
+                mean_tpr[-1] = 1.0
+                mean_auc = auc(mean_fpr, mean_tpr)
+                std_auc = np.std(aucs)
+                colax.plot(mean_fpr, mean_tpr, color='#1A2D40',
+                         label=r'Mean ROC (AUC = %0.2f $\pm$ %0.2f)' % (mean_auc, std_auc),
+                         lw=2, alpha=.8)
+                #colax.text(0.7, .2, 'score {0:.2}'.format(score))
+
+                std_tpr = np.std(tprsint, axis=0)
+                tprs_upper = np.minimum(mean_tpr + std_tpr, 1)
+                tprs_lower = np.maximum(mean_tpr - std_tpr, 0)
+                colax.fill_between(mean_fpr, tprs_lower, tprs_upper, color='grey', alpha=.2,
+                                 label=r'$\pm$ 1 std. dev.')
+
+                colax.set_xlim([-0.05, 1.05])
+                colax.set_ylim([-0.05, 1.05])
+                if row_nr == len(features) - 1:
+                    colax.set_xlabel('False Positive Rate')
+                if col_nr == 0:
+                    colax.set_ylabel('True Positive Rate')
+                #if row_nr == 0:
+                colax.set_title('{0} and {1} model'.format(feature_names[row_nr], model_names[col_nr]))
+                colax.legend(loc="lower right")
+        #fig.text(0.5, 0.01, 'Mean {}'.format(fwi_ds), ha='center', fontsize = 14)
+        #fig.text(0.01, 0.5, 'Active fire pixel count', va='center', rotation='vertical', fontsize = 14)
+        tit = fig.suptitle('ROC curves for different feature sets and models'.format(name), y=.97, fontsize=18)
+        #plt.savefig('figs/rocs_{}_indonesia.png'.format(name), dpi=300)#, bbox_inches='tight', bbox_extra_artists=[tit])
+        plt.savefig('figs/rocs_{0}_indonesia.png'.format(name), dpi=300)#, bbox_inches='tight', bbox_extra_artists=[tit])
+        plt.show()
+
+    def plot_forecast(self, features, clf, frp_clim, frp_s5, months, name):
+        titles = ['2019/{0} - {1} month lead'.format(x, y +1) for y, x in enumerate(months)]
+        ylabels = ['Climatology', 'SEAS5 model mean', 'Difference']
+        train = self.prepare_train(self.dfr)
+        print(train.columns)
+        trainf = train[features]
+        scaler = preprocessing.StandardScaler().fit(trainf)
+        train_scaled = scaler.transform(trainf.values)
+        clf = self.models[clf].fit(train_scaled, train['labels'])
+
+        clim_scaled = scaler.transform(frp_clim[features].values)
+        s5_scaled = scaler.transform(frp_s5[features].values)
+        frp_clim['probs'] = clf.predict_proba(clim_scaled)[:, 1]
+        frp_s5['probs'] = clf.predict_proba(s5_scaled)[:, 1]
+        frp_s5['probs_diff'] = frp_s5['probs'] - frp_clim['probs']
+
+        dss = [frp_clim, frp_s5, frp_s5]
+
+        plot_y_size = 3 * 2.8
+        plot_x_size = (len(months) ) * 6
+        projection = ccrs.PlateCarree()
+        axes_class = (GeoAxes,
+                      dict(map_projection = projection))
+        fig = plt.figure(figsize=(plot_x_size, plot_y_size))
+        axgr = AxesGrid(fig, 111, axes_class = axes_class,
+                        nrows_ncols=(3, len(months)),
+                        axes_pad=.3,
+                        cbar_mode='edge',
+                        cbar_location='right',
+                        cbar_pad=0.5,
+                        cbar_size='3%',
+                        label_mode='')
+        month_names = [calendar.month_abbr[x] for x in months]
+        gri = Gridder(bbox = 'indonesia', step = 0.25)
+        col_names = ['probs', 'probs', 'probs_diff']
+        for row_nr, rowax in enumerate(axgr.axes_row):
+            dfr = dss[row_nr]
+            for col_nr, colax in enumerate(rowax):
+                dfr_sub = dfr[dfr.month == months[col_nr]]
+                col_name = col_names[row_nr]
+                vmin = 0.0
+                vmax = 1.0
+                ds = gri.dfr_to_dataset(dfr_sub, col_name, np.nan)
+                print(col_name)
+                print(ds[col_name])
+                pl=ds[col_name].plot.pcolormesh(ax=colax, transform=ccrs.PlateCarree(),
+                                             vmin = vmin, vmax = vmax, x = 'longitude', y='latitude',
+                                             add_colorbar=False, add_labels=False)
+                colax.set_extent([94, 142, -11, 7], crs=ccrs.PlateCarree())
+                if row_nr == 0:
+                    colax.set_title(titles[col_nr])
+                #gl = colax.gridlines(ccrs.PlateCarree(), draw_labels=true)
+                #gl.xlabels_top = False
+                #colax.coastlines('50m')
+                #colax.set_extent([9, 96, -10, 143], crs=ccrs.PlateCarree())
+        axgr.cbar_axes[0].colorbar(pl)
+        axgr.cbar_axes[1].colorbar(pl)
+        axgr.cbar_axes[2].colorbar(pl)
+        #tit = fig.suptitle('{0}'.format(name), y=.97, fontsize=18)
+        plt.savefig('figs/models_probs_{0}.png'.format('all_f'), dpi=300, bbox_inches='tight')#, bbox_extra_artists=[tit])
+        plt.show()
+
+
+    def prepare_train(self, train):
+        train = self.equalize_classes(train)
+        train = train.sample(n = self.max_fact)
+        return train
+
+    def do_roc_year(self, dfr, features, clf, max_fact):
+        tprs = []
+        tprsint = []
+        fprs = []
+        aucs = []
+        mean_fpr = np.linspace(0, 1, 100)
+        for year in range(2002, 2019, 1):
+            probas_, score, y_test = self.predict_year(dfr, features, year, clf)
+            #if not score:
+            #    continue
+            if clf == 'maxent':
+                fpr, tpr, thresholds = roc_curve(y_test, probas_)
+            else:
+                fpr, tpr, thresholds = roc_curve(y_test, probas_[:, 1])
+            # Compute ROC curve and area the curve
+            fprs.append(fpr)
+            tprs.append(tpr)
+            tprsint.append(interp(mean_fpr, fpr, tpr))
+            tprsint[-1][0] = 0.0
+            roc_auc = auc(fpr, tpr)
+            print('roc_auc', roc_auc)
+            aucs.append(roc_auc)
+        return tprs, tprsint, fprs, aucs, mean_fpr, score
+
+
+    def predict_year(self, frpsel, features, year, clf):
+        x_train, test = self.get_year_train_test(frpsel, year)
+        #x_train = self.equalize_classes(frpsel.iloc[train, :])
+        x_train = frpsel.iloc[x_train, :]
+        y_train = x_train['labels']
+        scaler = preprocessing.StandardScaler().fit(x_train[features])
+        x_train_scaled = scaler.transform(x_train[features].values)
+        x_test = frpsel.iloc[test, :]
+        x_test_scaled = scaler.transform(x_test[features].values)
+        y_test = x_test['labels']
+        if clf == 'maxent':
+            try:
+                preds, score = fit_predict_maxent(x_train.loc[:, features], y_train, x_test.loc[:, features])
+                print('predict_probability', score)
+            except:
+                return None, None, None
+        else:
+            preds, score = predict_probability(x_train_scaled, y_train, x_test_scaled, y_test, clf)
+            print('predict_probability', score)
+        return preds, score, y_test
+
+    def predict(self, train, target, features, clf):
+        train = self.equalize_classes(train)
+        train = train.sample(n = self.max_fact)
+        trainf = train[features]
+        scaler = preprocessing.StandardScaler().fit(trainf)
+        train_scaled = scaler.transform(trainf.values)
+        target_scaled = scaler.transform(target[features].values)
+        clf = self.models[clf]
+        clf.fit(train_scaled, train['labels'])
+        probas = clf.predict_proba(target_scaled)
+        return probas
+
+    def feature_selection(self, dfr, feats):
+        dfrsel = self.equalize_classes(dfr)
+        print(dfrsel.columns)
+        custom_cv  = self.leave_year_split(dfrsel)
+        XS = dfrsel[feats]
+        X_scaled = preprocessing.scale(XS.values)
+        labels = dfrsel['labels']
+        rfe = RFE(estimator = self.models['logist'],
+                  n_features_to_select=1, step=1)
+        rfe.fit(X_scaled, dfrsel['labels'])
+        print('feature ranking RFE: ', list(zip(feats, rfe.ranking_)))
+        print("Optimal number of features : %d" % rfe.n_features_)
+        n_estimators = 20
+        clr = BaggingClassifier(self.models['logist'],
+                                max_samples = 1.0 / n_estimators,
+                                n_estimators=n_estimators, n_jobs=7)
+        scores = cross_val_score(clr, X_scaled, labels, cv=custom_cv)
+        print(scores)
+
+        custom_cv  = self.leave_year_split(dfrsel)
+        rfecv = RFECV(estimator = self.models['logist'], step=1, cv=custom_cv,
+                      scoring = 'accuracy', n_jobs=7)
+        #rfecv = RFECV(estimator=svmlin, step=1, cv=StratifiedKFold(9, shuffle = True),
+        #              scoring='accuracy', n_jobs=7)
+        rfecv.fit(X_scaled, dfrsel['labels'])
+        print('feature ranking RFECV: ', list(zip(feats, rfecv.ranking_)))
+        print("Optimal number of features : %d" % rfe.n_features_)
+        print("Optimal number of features : %d" % rfecv.n_features_)
+        print(rfecv.grid_scores_)
+        return list(zip(feats, rfecv.ranking_))
+
+    def get_scores(self, dfr, feats, model):
+        dfrsel = self.equalize_classes(dfr)
+        custom_cv  = self.leave_year_split(dfrsel)
+        XS = dfrsel[feats]
+        labels = dfrsel['labels']
+        X_scaled = preprocessing.scale(XS.values)
+        scores = cross_val_score(self.models[model], X_scaled, labels, cv=custom_cv)
+        print(scores)
+        print(np.mean(scores))
 
 def fit_predict_maxent(x_train, y_train, x_test):
     robj.pandas2ri.activate()
@@ -196,30 +427,6 @@ def fit_predict_maxent(x_train, y_train, x_test):
     probs = robj.r('predict')(mod, test_r, type="logistic")
     probs = np.array(probs).flatten()
     return probs, None
-
-def do_roc_year(frpsel, features, clf, max_fact):
-    tprs = []
-    tprsint = []
-    fprs = []
-    aucs = []
-    mean_fpr = np.linspace(0, 1, 100)
-    for year in range(2002, 2019, 1):
-        probas_, score, y_test = predict_year(frpsel, features, year, clf, max_fact)
-        #if not score:
-        #    continue
-        if clf == 'maxent':
-            fpr, tpr, thresholds = roc_curve(y_test, probas_)
-        else:
-            fpr, tpr, thresholds = roc_curve(y_test, probas_[:, 1])
-        # Compute ROC curve and area the curve
-        fprs.append(fpr)
-        tprs.append(tpr)
-        tprsint.append(interp(mean_fpr, fpr, tpr))
-        tprsint[-1][0] = 0.0
-        roc_auc = auc(fpr, tpr)
-        print('roc_auc', roc_auc)
-        aucs.append(roc_auc)
-    return tprs, tprsint, fprs, aucs, mean_fpr, score
 
 
 def do_roc(X, XX, y, clf):
@@ -257,15 +464,15 @@ def class_labels(frpsel, column, threshold):
     return labels
 
 def feature_selection(frpsel, feats, max_fact):
-    frpsel = balance_classes(frpsel, 'duration', 7)
+    frpsel = balance_classes(frpsel, 'frp', 10)
     factor = subset_factor(frpsel.shape[0], max_fact)
     frpsel = frpsel.iloc[::factor, :]
-    labels = class_labels(frpsel, 'duration', 7)
+    labels = class_labels(frpsel, 'frp', 10)
     custom_cv  = leave_year_split(frpsel)
     print('features', feats)
     XS = frpsel[feats]
     X_scaled = preprocessing.scale(XS.values)
-    rfe = RFE(estimator=svmlin, n_features_to_select=1, step=1)
+    rfe = RFE(estimator = svmlin, n_features_to_select=13, step=1)
     rfe.fit(X_scaled, labels)
     print('feature ranking RFE: ', list(zip(feats, rfe.ranking_)))
     print("Optimal number of features : %d" % rfe.n_features_)
@@ -300,13 +507,12 @@ def do_roc_auc(bboxes, clfs, max_fact):
         #         ['lonind', 'latind', 'loss_this', 'loss_last', 'loss_three', 'loss_accum', 'f_prim', 'gain', 'fwi', 'dc', 'ffmc']]
         roc_plots(frpsel, feats, clfs, cv, key, max_fact)
 
-def get_year_train_test(frpsel, year, max_fact=None):
+def get_year_train_test(frpsel, year, max_fact = None):
     years = (((frpsel.month.astype(int) - 1) // 12.) + 2002).astype(int)
     X_train_inds = np.where(years != year)[0]
     X_test_inds = np.where(years == year)[0]
     if max_fact:
-        factor = subset_factor(X_train_inds.shape[0], max_fact)
-        X_train_inds = X_train_inds[::factor]
+        X_train_inds = np.random.choice(X_train_inds, size = max_fact)
     return X_train_inds, X_test_inds
 
 def predict_probability(x_train, y_train, x_test, y_test, clf):
@@ -314,9 +520,7 @@ def predict_probability(x_train, y_train, x_test, y_test, clf):
     probas = clf.predict_proba(x_test)
     return probas, clf.score(x_test, y_test)
 
-def frp_data_subset():
-    #frp = pd.read_parquet('data/feature_frame_0.25deg_v2_no_volcanoes.parquet')
-    frp = pd.read_parquet('data/feature_frame_0.25deg_v3.parquet')
+def frp_data_subset(frp):
     gri = Gridder(bbox = 'indonesia', step = 0.25)
     frp = gri.spatial_subset_ind_dfr(frp, gri.bbox)
     return frp
@@ -447,36 +651,6 @@ def leave_year_split(frpsel):
         year += 1
 
 
-def predict_year(frpsel, features, year, clf, max_fact):
-    train, test = get_year_train_test(frpsel, year)
-    #features = ['fwi', 'dc', 'ffmc']
-    #features = ['lonind', 'latind', 'loss_this', 'loss_last', 'loss_three', 'loss_accum', 'f_prim', 'gain', 'fwi', 'dc', 'ffmc']
-    #scaler = preprocessing.StandardScaler().fit(frpsel[features])
-    x_train = balance_classes(frpsel.iloc[train, :])
-    y_train = class_labels(x_train, 10)
-    factor = subset_factor(x_train.shape[0], max_fact)
-    x_train = x_train.iloc[::factor, :]
-    y_train = y_train[::factor]
-    scaler = preprocessing.StandardScaler().fit(x_train[features])
-    x_train_scaled = scaler.transform(x_train[features].values)
-    x_test = frpsel.iloc[test, :]
-    y_test = class_labels(x_test, 10)
-    x_test_scaled = scaler.transform(x_test[features].values)
-    print(year)
-    print(x_train.shape)
-    if clf == 'maxent':
-        try:
-            preds, score = fit_predict_maxent(x_train.loc[:, features], y_train, x_test.loc[:, features])
-            print('predict_probability', score)
-        except:
-            return None, None, None
-    else:
-
-        preds, score = predict_probability(x_train_scaled, y_train, x_test_scaled, y_test, clf)
-        print('predict_probability', score)
-    return preds, score, y_test
-
-
 def year_pred_to_dfr(year, max_fact, clfs, frpsel, features):
     train, test = get_year_train_test(frpsel, year)
     #features = ['fwi', 'dc', 'ffmc']
@@ -544,41 +718,57 @@ random_state = np.random.RandomState(0)
 
 cv = StratifiedKFold(n_splits=10, shuffle = True)
 
-svmone = svm.OneClassSVM(nu=0.1, kernel="rbf", gamma=0.5)
-
-svmlin = svm.SVC(kernel='linear', probability=True, C=1,
-                     random_state=random_state)
-
-svmrbf = svm.SVC(kernel='rbf', C=1, gamma=0.15, probability=True,
-                     random_state=random_state)
-
-logist = LogisticRegression(solver = 'liblinear', penalty='l1')
-
-clfnn1 = MLPClassifier(solver='lbfgs', alpha=1,
-                     hidden_layer_sizes=(10), activation='logistic', random_state=1)
-
-clfnn2 = MLPClassifier(solver='lbfgs', alpha=2,
-                     hidden_layer_sizes=(10), activation='logistic', random_state=1)
-
-
-clfnn = MLPClassifier(solver='adam', alpha=1, hidden_layer_sizes=(5, 2),  random_state=1)
-
-clfs = {'Logistic': logist, 'NN': clfnn}
 #clfs = {'Logistic': logist, 'Maxent': 'maxent', 'SVC rbf': svmrbf, 'NeuralNet': clfnn2 }#, 'NN': clfnn}#, 'SVC': svmrbf}
 #clfs = {'logistic': logist, 'SVC rbf': svmrbf}
 #clfs = {'maxent': 'maxent', 'SVC' : svmrbf}
 
 max_fact = 4000
-frpsel = frp_data_subset()
+
+frp_train = pd.read_parquet('data/feature_train_fr_0.25deg_v4.parquet')
+frpsel = frp_data_subset(frp_train)
+
 #features = frpsel.columns[4:,].tolist()
-#ffs = ['loss_last_sec', 'loss_this_prim', 'loss_accum_prim',
-#       'loss_accum_sec', 'loss_three_prim', 'loss_three_sec', 'f_prim',
-#       'gain', 'dem', 'dc_med', 'ffmc_med', 'fwi_med', 'ffmc_75p',
-#       'fwi_75p', 'dc_7mm', 'ffmc_7mm', 'fwi_7mm', 'dc_3m', 'latind']
+ffs = ['loss_last_prim', 'loss_last_sec', 'loss_prim_before', 'loss_sec_before',
+       'loss_three_prim', 'loss_three_sec', 'frp_acc', 'f_prim', 'dem', 'peat_depth']
+
 feats = ['loss_last_prim', 'loss_last_sec', 'loss_prim_before', 'loss_sec_before',
        'loss_three_prim', 'loss_three_sec', 'frp_acc', 'f_prim',
        'gain', 'dem', 'dc_med', 'ffmc_med', 'fwi_med', 'ffmc_75p',
-       'fwi_75p', 'dc_7mm', 'ffmc_7mm', 'fwi_7mm', 'dc_3m', 'lonind', 'latind']
+       'fwi_75p', 'dc_7mm', 'ffmc_7mm', 'fwi_7mm', 'dc_3m', 'peat_depth', 'lonind', 'latind']
+
+ft = ['loss_prim_before', 'loss_sec_before',
+       'loss_three_prim', 'loss_three_sec', 'frp_acc', 'f_prim',
+       'gain', 'dc_med', 'ffmc_med', 'fwi_med',
+       'fwi_75p', 'dc_7mm', 'ffmc_7mm', 'fwi_7mm', 'dc_3m', 'latind']
+
+weather = ['tp_med', 't2m_med', 'w10_med', 'h2m_med',
+           'tp_75p', 't2m_75p', 'w10_med', 'h2m_75p',
+           'tp_7mm', 't2m_7mm', 'w10_7mm', 'h2m_7mm',
+           'tp_3sum', 't2m_3sum', 'w10_3sum', 'h2m_3sum',
+           'tp_3m']
+
+fwi = ['dc_med', 'ffmc_med', 'fwi_med', 'dc_75p', 'ffmc_75p',
+       'fwi_75p', 'dc_7mm', 'ffmc_7mm', 'fwi_7mm',
+       'dc_3sum', 'ffmc_3sum', 'fwi_3sum',
+       'dc_3m']
+
+lc = ['loss_last_prim', 'loss_last_sec', 'loss_prim_before', 'loss_sec_before',
+       'loss_three_prim', 'loss_three_sec', 'frp_acc', 'gain', 'f_prim', 'dem', 'peat_depth']
+
+fm = FireMod(frpsel, ft + weather, 'frp', 10, max_fact  = 4000)
+
+frp_clim = pd.read_parquet('data/feature_clim_fr_0.25deg_v4.parquet')
+frp_clim = fm.year_month(frp_clim)
+frp_s5 = pd.read_parquet('data/feature_s5_fr_0.25deg_v4.parquet')
+frp_s5 = fm.year_month(frp_s5)
+#frp_s5 = frp_s5[frp_s5.peat_depth > 0]
+
+features = fwi+lc
+clf = 'clfnn2'
+months = [8, 9, 10, 11]
+#fm.plot_probs_forecast(frp_clim, frp_s5, fwi+lc, [9, 10], 'svmlin')
+#feats = ['loss_last_prim', 'loss_last_sec', 'loss_prim_before', 'loss_sec_before',
+#       'loss_three_prim', 'loss_three_sec', 'frp_acc', 'f_prim', 'peat_depth']
 #feats =  [['lonind', 'latind'] + ffs]
 #features = ['dc_med', 'ffmc_med', 'fwi_med', 'ffmc_75p',
 #       'fwi_75p', 'dc_7mm', 'ffmc_7mm', 'fwi_7mm', 'dc_3m']
