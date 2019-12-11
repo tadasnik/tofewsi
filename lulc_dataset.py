@@ -9,7 +9,7 @@ import xarray as xr
 import pandas as pd
 from osgeo import gdal, ogr
 import matplotlib.pyplot as plt
-#from pyhdf.SD import SD
+from pyhdf.SD import SD
 import salem
 from salem.utils import get_demo_file
 from salem import wgs84
@@ -33,6 +33,12 @@ def calc_area(lat1, lon1, lat2, lon2):
         c = 2 * asin(sqrt(a))
         km = 6371 * c
         return km
+
+def get_tile_ref(fname):
+    hv = os.path.basename(fname).split('.')[-4]
+    tile_h = int(hv[1:3])
+    tile_v = int(hv[4:6])
+    return tile_v, tile_h
 
 
 def plot_dfr_column(gri, dfr, column):
@@ -104,6 +110,11 @@ def loss_primary_or_not(lc):
 class LulcData(Envdata):
     def __init__(self, data_path, bbox=None, hour=None):
         self.bbox = bbox
+        self.tile_size = 1111950 # height and width of MODIS tile in the projection plane (m)
+        self.x_min = -20015109 # the western linit ot the projection plane (m)
+        self.y_max = 10007555 # the northern linit ot the projection plane (m)
+        self.w_size = 463.31271653 # the actual size of a "500-m" MODIS sinusoidal grid cell
+        self.earth_r = 6371007.181 # the radius of the idealized sphere representing the Earth
         super().__init__(data_path, bbox=self.bbox, hour=None)
 
     def preproces_forest_loss(self):
@@ -118,6 +129,74 @@ class LulcData(Envdata):
         fnames = glob.glob(os.path.join(self.data_path, 'H*.parquet'))
         self.grid_dfrs(fnames, 0.01, 'gain', '/mnt/data/forest/forest_gain_01deg.parquet')
 
+    def pixel_lon_lat(self, tile_v, tile_h, idi, idj):
+        """
+        A method to calculate pixel lon lat, using the formulas
+        given in the MCD64A1 product ATBD document (Giglio)
+        """
+        # positions of centres of the grid cells on the global sinusoidal grid
+
+        x_pos = ((idj + 0.5) * self.w_size) + (tile_h * self.tile_size) + self.x_min
+        y_pos = self.y_max - ((idi + 0.5) * self.w_size) - (tile_v * self.tile_size)
+        # and then lon lat
+        lat = y_pos / self.earth_r
+        lon = x_pos / (self.earth_r * np.cos(lat))
+        return np.rad2deg(lon), np.rad2deg(lat)
+
+    def read_et(self, dataset_path, gri):
+        fnames = glob.glob(os.path.join(dataset_path, '*.hdf*'))
+        dfrs = []
+        for nr, fname in enumerate(fnames):
+            ds = self.read_hdf4(fname)
+            tile_v, tile_h = get_tile_ref(fname)
+            dfr = self.et_to_dataframe(ds, tile_v, tile_h)
+            dt_str = fname.split(".")[-5][1:]
+            date = pd.to_datetime(dt_str, format = '%Y%j')
+            dfr['time'] = date
+            dfrs.append(dfr)
+        dfr = pd.concat(dfrs)
+        return dfr
+
+    def prepare_et_ecosys(self):
+        dfr = self.read_et('/mnt/data2/et', gri)
+        sp_res = 0.05
+        lats = np.arange((-2 + sp_res/2.), 3., sp_res)
+        lons = np.arange((99 + sp_res/2.), 104., sp_res)
+        gri = Gridder(lats = lats[::-1], lons = lons)
+        dfr = gri.add_grid_inds(dfr)
+        dfrm = dfr.groupby(['lonind', 'latind', 'time'])['et'].mean()
+        dfrm = dfrm.reset_index()
+        #dfrm['time'] = pd.datetime(2015, 1, 1)
+        dfrm = gri.add_coords_from_ind(dfrm)
+        dfrm = self.prepare_ecosys_dataframe(dfrm)
+        outn = '/mnt/data2/et/terra_et_raiu_2015_update.csv'
+        lc.write_csv(dfrm, outn, fl_prec = '%.3f')
+        return dfrm
+
+    def et_to_dataframe(self, ds, tile_v, tile_h):
+        et = ds.select('ET_500m').get()
+        et_indy, et_indx = np.where(et < 32761)
+        et = et[et_indy, et_indx]
+        lons, lats = self.pixel_lon_lat(tile_v, tile_h, et_indy, et_indx)
+        dfr = pd.DataFrame({'et': et * 0.1,
+                            'longitude': lons,
+                            'latitude': lats})
+        dfr = self.spatial_subset_dfr(dfr, self.bbox)
+        return dfr
+
+
+    def read_ndvi(self, dataset_path, time, sp_res):
+        lc_names = ['CMG 0.05 Deg 16 days NDVI']
+        lc_data = self.read_hdf4(dataset_path, dataset = lc_names)
+        lc_data = np.expand_dims(lc_data[0], axis = 2)
+        #lc_data = np.flipud(lc_data)
+        lats = np.arange((-90 + sp_res/2.), 90., sp_res)[::-1]
+        lons = np.arange((-180 + sp_res/2.), 180., sp_res)
+        dataset = xr.Dataset({'ndvi': (['latitude', 'longitude', 'time'], lc_data)},
+                              coords={'latitude': lats,
+                                     'longitude': lons,
+                                      'time': [time]})
+        return dataset
 
     def read_land_cover(self, dataset_path, sp_res):
         lc_names = ['Majority_Land_Cover_Type_1',
@@ -503,10 +582,12 @@ class LulcData(Envdata):
         lc.write_csv(dfr, '/mnt/data/soil_moisture/SMAP_AM_soil_moisture_riau_2015_0.05deg.csv', fl_prec = '%.3f')
         return dataset
 
-    def prepare_ecosys_dataframe(self, ds):
-        dfr = ds.to_dataframe()
+    def prepare_ecosys_dataframe(self, dfr):
+        try:
+            dfr = dfr.to_dataframe()
+        except:
+            pass
         dfr.reset_index(inplace=True)
-
         dfr.loc[:, 'Day'] = dfr['time'].dt.day
         dfr.loc[:, 'Hour'] = dfr['time'].dt.hour
         dfr.loc[:, 'Month'] = dfr['time'].dt.month
@@ -515,18 +596,47 @@ class LulcData(Envdata):
         dfr = dfr.dropna(axis = 0)
 
         dfr = dfr[['latitude', 'longitude', 'Day', 'Hour',
-                             'Month', 'Year', 'sm']]
+                             'Month', 'Year', 'et']]
         # converting total precipitation to mm from m
-        cols = ['lat', 'long', 'Day', 'Hour', 'Month', 'Year', 'Soil_moisture']
+        cols = ['lat', 'long', 'Day', 'Hour', 'Month', 'Year', 'ET']
         dfr.columns = cols
         return dfr
 
+
+    def process_peat(self):
+        ds_sum_kal = xr.open_rasterio('/mnt/data/land_cover/peat_depth/WI_peat_atlas/WIpeat_0.01deg.tif')
+        ds_papua = xr.open_rasterio('/mnt/data/land_cover/peat_depth/WI_peat_atlas/WIpapua_0.01deg.tif')
+        kaldfr = ds_sum_kal.to_dataframe(name = 'peatd').reset_index()
+        padfr = ds_papua.to_dataframe(name = 'peatd').reset_index()
+        dfr = pd.concat([kaldfr, padfr])
+        dfr = dfr.drop('band', axis = 1)
+        dfr = dfr[dfr.peatd > 0]
+        dfr = dfr.rename({'x': 'longitude', 'y': 'latitude'}, axis = 1)
+        dfr['peatd'] = 1
+        dfr.to_parquet('/mnt/data/land_cover/peat_depth/peat_mask_0.01deg.parquet')
+
+    def prepare_ndvi_ecosys(self, fname, time):
+        nd = lc.read_ndvi(fname, time, 0.05)
+        ds = self.spatial_subset(nd, gri.bboxes['riau'])
+        #dummy = self.create_ecosys_grid_dataset([time])
+        #ds = ndriau.interp_like(dummy, method = 'nearest')
+        ds = ds['ndvi'].where(ds['ndvi'] >= 0) * .0001
+        ds = ds.fillna(0)
+        dfr = self.prepare_ecosys_dataframe(ds)
+        outn = '/mnt/data2/ndvi/terra_ndvi_{0}_{1}_{2}.csv'.format(time.year, time.month, time.day)
+        lc.write_csv(dfr, outn, fl_prec = '%.3f')
+
+
+    def process_ndvi(self):
+        fn = '/mnt/data2/ndvi/MYD13C1/MYD13C1.A2015185.006.2015303100038.hdf'
+        product = SD(fn)
 
 
 if __name__ == '__main__':
     #data_path = '/mnt/data/land_cover/mcd12c1'
     #data_path = '/mnt/data/land_cover/peatlands'
-    data_path = '/mnt/data/forest/loss'
+    #data_path = '/mnt/data/forest/loss'
+    data_path = '/mnt/data2/ndvi/MOD13C1'
     #fname = '23_tt_6hourly.nc'
     #fname = 'MCD12C1.A2010001.051.2012264191019.hdf'
     #fname = 'Per-humid_SEA_LC_2015_CRISP_Geotiff_indexed_colour.tif'
@@ -537,11 +647,18 @@ if __name__ == '__main__':
     # Indonesia bbox
     bbox = [8, 93, -13, 143]
 
-    lc = LulcData(data_path, bbox=bbox, hour=None)
+    gri = Gridder(bbox = 'riau', step = 0.05)
+    lc = LulcData(data_path, bbox=gri.bboxes['riau'], hour=None)
+    dfr = lc.prepare_et_ecosys()
+    #fname = '/mnt/data2/ndvi/MOD13C1/MOD13C1.A2015193.006.2015304063426.hdf'
+    #fname = '/mnt/data2/ndvi/MOD13C1/MOD13C1.A2015209.006.2015304082222.hdf'
+    #dt = datetime.datetime(2015, 7, 29)
+    #lc.prepare_ndvi_ecosys(fname, dt)
 
-    #ds_sum_kal = xr.open_rasterio('/mnt/data/land_cover/peat_depth/WI_peat_atlas/WIpeat.tif')
-    #ds_papua = xr.open_rasterio('/mnt/data/land_cover/peat_depth/WI_peat_atlas/WIpapua.tif')
-    #ds_all = ds_sum_kal + ds_papua
+
+
+
+   #ds_all = ds_sum_kal + ds_papua
     #ds_all = ds_all.to_dataset(name = 'depth')
     """
     input_shps = ['/mnt/data/land_cover/peatlands/Peatland_land_cover_1990.shp',

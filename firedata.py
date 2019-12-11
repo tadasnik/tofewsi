@@ -13,47 +13,38 @@ from multiprocessing import Pool, cpu_count
 import h5py
 from gridding import *
 from envdata import Envdata
+from fwi_fire import CompData
 import matplotlib.pyplot as plt
+import geopandas as gpd
 
-def spatial_subset(dataset, bbox):
-    """
-    Selects data within spatial bbox. bbox coords must be given as
-    positive values for the Northern hemisphere, and negative for
-    Southern. West and East both positive - Note - the method is
-    naive and will only work for bboxes fully fitting in the Eastern hemisphere!!!
-    Args:
-        dataset - xarray dataset
-        bbox - (list) [North, South, West, East]
-    Returns:
-        xarray dataset
-    """
-    lat_name = [x for x in list(dataset.coords) if 'lat' in x]
-    lon_name = [x for x in list(dataset.coords) if 'lon' in x]
-    print(lat_name, bbox)
-    dataset = dataset.where((dataset[lat_name[0]] < bbox[0]) &
-                            (dataset[lat_name[0]] > bbox[1]), drop=True)
-    dataset = dataset.where((dataset[lon_name[0]] > bbox[2]) &
-                            (dataset[lon_name[0]] < bbox[3]), drop=True)
-    return dataset
+def proc_fire_forest_1km():
+    dfr = pd.read_parquet('/mnt/data/frp/M6_indonesia_clustered.parquet')
+    #gri = Gridder(bbox = 'indonesia', step = 0.25)
+    #dfr = gri.add_grid_inds(dfr)
+    #dfr = filter_volcanoes(dfr, 0.25)
+    gri = Gridder(bbox = 'indonesia', step = 0.25)
+    dfr = gri.add_grid_inds(dfr)
+    dfr = filter_volcanoes(dfr, 0.25)
+    gri = Gridder(bbox = 'indonesia', step = 0.01)
+    dfr = gri.add_grid_inds(dfr)
+    dfr.to_parquet('data/frps_clust_indonesia_no_volcanoes_0.01deg_inds_v4.parquet')
 
-
-def spatial_subset_dfr(dfr, bbox):
-    """
-    Selects data within spatial bbox. bbox coords must be given as
-    positive values for the Northern hemisphere, and negative for
-    Southern. West and East both positive - Note - the method is
-    naive and will only work for bboxes fully fitting in the Eastern hemisphere!!!
-    Args:
-        dfr - pandas dataframe
-        bbox - (list) [North, South, West, East]
-    Returns:
-        pandas dataframe
-    """
-    dfr = dfr[(dfr['lat'] < bbox[0]) &
-                            (dfr['lat'] > bbox[1])]
-    dfr = dfr[(dfr['lon'] > bbox[2]) &
-                            (dfr['lon'] < bbox[3])]
-    return dfr
+def filter_volcanoes(frp, dist):
+    en = Envdata('dummy')
+    fnames = glob.glob('data/volcanoes/*.shp')
+    dfs = []
+    for fn in fnames:
+        df = gpd.read_file(fn)
+        for nr, row in df.iterrows():
+            poly = row.geometry.buffer(dist)
+            bbox = [poly.bounds[3], poly.bounds[0], poly.bounds[1], poly.bounds[2]]
+            frpsel = en.spatial_subset_dfr(frp, bbox)
+            if len(frpsel) > 0:
+                dfs.append(frpsel)
+    dfr = pd.concat(dfs)
+    dfr = dfr.drop_duplicates()
+    frpsel = frp[~frp.labs8.isin(dfr.labs8)]
+    return frpsel
 
 def cluster_haversine(dfr):
     db = DBSCAN(eps=0.8/6371., min_samples=2, algorithm='ball_tree',
@@ -110,33 +101,34 @@ def add_xyz(dfr):
     dfr.loc[:, 'z'] = xyz[:,2]
     return dfr
 
-def monthly_frp_dfr_clustered(dfr, gri):
+def monthly_frp_dfr_clustered(gri, out_name):
     """
     Grid frp pixel DataFrame dfr at given spatial resolution of the
     passed Gridder instance and at monthly temporal freq, than prepare and return
     frp monthly count feature DataFrame
     """
-    data_path = '/mnt/data/frp/'
-    env = Envdata(data_path)
-    #dfr = pd.read_parquet('/mnt/data/frp/M6_indonesia.parquet')
     #clustered
-    dfr = pd.read_parquet('/mnt/data/frp/M6_indonesia_clustered_v3.parquet')
+    dfr = pd.read_parquet('/mnt/data/frp/M6_indonesia_clustered_no_volcanoes.parquet')
     dmin = dfr.groupby(['labs8'])['day_since'].transform('min')
     dmax = dfr.groupby(['labs8'])['day_since'].transform('max')
     dfr.loc[:, 'duration'] = (dmax - dmin) + 1
     dfr['fsize'] = dfr.groupby('labs8')['labs8'].transform('size')
-    #dfrm = monthly_frp_dfr(dfr, gri)
-    #dfrm.to_parquet('/mnt/data/frp/frp_count_indonesia_0.25deg_monthly_v2.parquet')
+    dfrm = monthly_frp_dfr(dfr, gri)
+    dfrm.to_parquet('/mnt/data/frp/monthly_frp_count_indonesia_0.25deg_{0}.parquet'.format(out_name))
     dfr = gri.add_grid_inds(dfr)
     dfr['year'] = dfr['date'].dt.year
     dfr['month'] = dfr['date'].dt.month
     dfr['mind'] = (dfr['year'] - dfr['year'].min()) * 12 + dfr['month']
-    grdfr = pd.DataFrame({'frp': dfr.groupby(['lonind', 'latind', 'mind'])['date'].count()})
+    grdfr = pd.DataFrame({'frp': dfr.groupby(['lonind', 'latind', dfr.year, dfr.month])['date'].count()})
+    grdfr['frpD'] = dfr[dfr.daynight=='D'].groupby(['lonind', 'latind', dfr.year, dfr.month])['date'].count()
+    grdfr['frpN'] = dfr[dfr.daynight=='N'].groupby(['lonind', 'latind', dfr.year, dfr.month])['date'].count()
     #grdfr = pd.DataFrame({'frp': dfr.groupby(['lonind', 'latind'])['date'].count()})
-    grdfr['duration'] = dfr.groupby(['lonind', 'latind', 'mind'])['duration'].median()
-    grdfr['fsize'] = dfr.groupby(['lonind', 'latind', 'mind'])['fsize'].mean()
-    grdfr.drop('frp', axis = 1, inplace = True)
+    grdfr['duration'] = dfr.groupby(['lonind', 'latind', dfr.year, dfr.month])['duration'].median()
+    grdfr['fsize'] = dfr.groupby(['lonind', 'latind', dfr.year, dfr.month])['fsize'].median()
+    #grdfr.drop('frp', axis = 1, inplace = True)
     grdfr.reset_index(inplace = True)
+    grdfr['mind'] = (grdfr['year'] - grdfr['year'].min()) * 12 + grdfr['month']
+    grdfr.to_parquet('/mnt/data/frp/monthly_fire_duration_size_daynight_0.25deg_{0}.parquet'.format(out_name))
     return grdfr
 
 def monthly_frp_dfr(dfr, gri):
@@ -363,12 +355,12 @@ class FireObs(object):
                 parq_name = '{0}.parquet'.format(reg)
                 self.preprocess(dfr, os.path.join(self.data_path, '{0}.parquet'))
 
-    def preprocess(self, dfr, out_name):
+    def preprocess(self, dfr):
         dfr = get_days_since(dfr)
         dfr = add_xyz(dfr)
         dfr.sort_values(by='day_since', inplace=True)
         dfr.reset_index(drop=True, inplace=True)
-        dfr.to_parquet(out_name, engine='pyarrow')
+        return dfr
 
     def add_labels_to_dfr(self, reg):
         store_name = os.path.join(self.data_path, '{}.parquet'.format(reg))
@@ -905,36 +897,74 @@ if __name__ == '__main__':
     #TODO
     data_path = '/mnt/data/frp/'
     env = Envdata(data_path)
-    gri = Gridder(bbox = 'indonesia', step = 0.25)
-    #dfr = pd.read_parquet('/mnt/data/frp/M6_indonesia.parquet')
-    #clustered
-    dfr = pd.read_parquet('/mnt/data/frp/M6_indonesia_clustered_v3.parquet')
-    #get monhtly duration and fire size
+    #rusb = [85, 70, 40, 179]
+    #rusb1 = [85, -180, 40, -168]
+    #gri = Gridder(bbox = [90, -180, -90, 180], step = 0.25)
+    #ins = pd.read_parquet('data/siberia_25km_full_ins.parquet')
+    #ins = gri.add_grid_inds(ins)
 
-    grdfr = monthly_frp_dfr_clustered(dfr, gri)
-    grdfr.to_parquet('/mnt/data/frp/monthly_fire_duration_size_0.25deg.parquet')
-    """
+
+    c_data_path = '/mnt/data/'
+    res = 0.25
+    gri = Gridder(bbox = 'indonesia', step = res)
+    #res = 0.01
+    #data_path = '/home/tadas/data/'
+    cc = CompData(c_data_path, res)
+
+    out_name = '2019_11'
+    #cc.read_forest_change()
+
     #prepare M6 pixel data for indonesia
     dts = []
-    for year in range(2002, 2019, 1):
+    for year in range(2002, 2020, 1):
         print(year)
         #ds = fo.read_dfr_from_parquet('M6_{0}'.format(year))
-        ds = pd.read_parquet(os.path.join(data_path, 'M6_{0}.parquet'.format(year)))
+        #ds = pd.read_parquet(os.path.join(data_path, 'M6_{0}.parquet'.format(year)))
+        ds = pd.read_csv(os.path.join(data_path, 'M6_raw', 'fire_archive_M6_{0}.csv'.format(year)))
         ds.rename({'lat': 'latitude', 'lon': 'longitude'}, axis = 1, inplace = True)
         if 'date' not in ds.columns:
             ds.rename({'acq_date': 'date'}, axis = 1, inplace = True)
             ds['date'] =  pd.to_datetime(ds['date'])
-            print(ds.columns)
-        am = env.spatial_subset_dfr(ds[['latitude', 'longitude', 'frp', 'date', 'confidence']], gri.bbox)
+        am = env.spatial_subset_dfr(ds, gri.bboxes['indonesia'])
         dts.append(am)
-    di = pd.concat(dts)
+    nrt_fname = glob.glob('/mnt/data/frp/M6_raw/fire_nrt*csv')
+    ds = pd.read_csv(nrt_fname[0])
+    ds.rename({'lat': 'latitude', 'lon': 'longitude'}, axis = 1, inplace = True)
+    if 'date' not in ds.columns:
+        ds.rename({'acq_date': 'date'}, axis = 1, inplace = True)
+        ds['date'] =  pd.to_datetime(ds['date'])
+    am = env.spatial_subset_dfr(ds, gri.bboxes['indonesia'])
+    dts.append(am)
+
+    dt = pd.concat(dts)
+    dt = dt.drop(['type', 'version'], axis = 1)
+    dt.to_parquet('/mnt/data/frp/M6_indonesia.parquet')
+
+
+
+    """
+    #calculate sum up to a date
+    dsl = {}
+    for year in range(2002, 2020, 1):
+        dfs = mm[mm.year == year]
+        dfs = dfs[dfs.date <= pd.datetime(year, 9, 19)]
+        print(dfs.date.max())
+        dsl[year] = len(dfs)
+    df = pd.DataFrame.from_dict(dsl, orient = 'index')
+    """
 
     #cluster indonesia frp
-    data_path = '/mnt/data/frp/'
+
+    fo = FireObs('none')
     dfr = pd.read_parquet('/mnt/data/frp/M6_indonesia.parquet')
     di = fo.preprocess(dfr)
     dc = fo.cluster_region(di)
-    di_labs = pd.concat([dfrp[['longitude', 'latitude', 'frp', 'confidence', 'date', 'day_since']], dc], axis=1)
-    """
-
+    di_labs = pd.concat([di[['longitude', 'latitude', 'frp',
+                             'confidence', 'date', 'day_since',
+                             'daynight', 'satellite']], dc], axis=1)
+    di_labs.to_parquet('/mnt/data/frp/M6_indonesia_clustered.parquet')
+    dfr = pd.read_parquet('/mnt/data/frp/M6_indonesia_clustered.parquet')
+    dfr = filter_volcanoes(dfr, 0.25)
+    dfr.to_parquet('/mnt/data/frp/M6_indonesia_clustered_no_volcanoes.parquet')
+    grdfr = monthly_frp_dfr_clustered(gri, out_name)
 

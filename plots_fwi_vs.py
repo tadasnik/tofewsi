@@ -47,7 +47,7 @@ def spatial_subset_dfr(dfr, bbox):
 
 
 def ds_monthly_means(darray, land_mask):
-    darray_m = darray.groupby('time.month').mean() 
+    darray_m = darray.groupby('time.month').mean()
     darray_masked = darray_m.where(land_mask.values)
     return darray_masked
 

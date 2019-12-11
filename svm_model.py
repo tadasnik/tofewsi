@@ -1,4 +1,5 @@
 from __future__ import print_function
+import os
 import geopandas as gpd
 import calendar
 import codecs, json
@@ -14,13 +15,15 @@ import matplotlib.pyplot as plt
 from sklearn import svm
 from sklearn import linear_model
 from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_selection import RFE
 from sklearn.feature_selection import RFECV
 from sklearn import preprocessing
 from sklearn.metrics import roc_curve, auc, accuracy_score, roc_auc_score, balanced_accuracy_score, average_precision_score, precision_recall_curve, brier_score_loss
+from sklearn import metrics
 from sklearn.model_selection import StratifiedKFold
 from sklearn.ensemble import BaggingClassifier
-from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import cross_val_score, cross_validate
 from imblearn.under_sampling import RandomUnderSampler
 import rpy2.robjects as robj
 from rpy2.robjects.lib import grid
@@ -31,6 +34,12 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import classification_report
 from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
+
+def spatial_subset_dfr(dfr, bbox):
+    dfr = dfr[(dfr['latitude'] < bbox[0]) &(dfr['latitude'] > bbox[2])]
+    dfr = dfr[(dfr['longitude'] > bbox[1]) &(dfr['longitude'] < bbox[3])]
+    return dfr
+
 
 def dfr_to_json(dfrs):
     gri = Gridder(bbox = 'indonesia', step = 0.25)
@@ -142,20 +151,24 @@ class FireMod():
         self.features = feature_columns
         self.label_column = label_column
         self.label_threshold = label_threshold
+        self.forecast_path = '/mnt/data2/SEAS5/forecast'
         self.models = {
             'svmlin': svm.SVC(kernel='linear', probability=True, C=1,
                               random_state=random_state),
             'svmrbf': svm.SVC(kernel='rbf', C=1, gamma=0.15, probability=True,
                               random_state=random_state),
-            'logist': LogisticRegression(solver = 'liblinear', penalty='l1'),
+            'logist': LogisticRegression(solver = 'liblinear', penalty='l1', class_weight={0:1,1:5}),
             'clfnn1': MLPClassifier(solver='lbfgs', alpha=1,
                                     hidden_layer_sizes=(10),
                                     activation='logistic', random_state=1),
             'clfnn2': MLPClassifier(solver='lbfgs', alpha=2,
                                     hidden_layer_sizes=(10),
                                     activation='logistic', random_state=1),
-            'clfnn': MLPClassifier(solver='adam', alpha=1,
-                                   hidden_layer_sizes=(5, 2),  random_state=1)
+            'randf': RandomForestClassifier(n_estimators=100, max_depth=2,
+                                 random_state=0),
+            'clfnn': MLPClassifier(solver='lbfgs', alpha=2,
+                                   hidden_layer_sizes=(14),
+                                   activation='logistic', random_state=1)
         }
         self.cvms = {
             'stratified': StratifiedKFold(n_splits=10, shuffle = True),
@@ -166,8 +179,10 @@ class FireMod():
         #self.dfr = self.dfr[self.dfr.peat_depth > 0]
 
     def year_month(self, dfr):
-        dfr['year'] = (((dfr.month.astype(int) - 1) // 12.) + 2002).astype(int)
-        dfr['month'] = (((dfr.month.astype(int) - 1) % 12.) + 1).astype(int)
+        dfr['year'] = dfr.date.dt.year
+        dfr['month'] = dfr.date.dt.month
+        #dfr['year'] = (((dfr.month.astype(int) - 1) // 12.) + 2002).astype(int)
+        #dfr['month'] = (((dfr.month.astype(int) - 1) % 12.) + 1).astype(int)
         return dfr
 
     def class_labels(self, dfr):
@@ -250,16 +265,67 @@ class FireMod():
         plt.savefig('figs/rocs_{0}_indonesia.png'.format(name), dpi=300)#, bbox_inches='tight', bbox_extra_artists=[tit])
         plt.show()
 
-    def plot_forecast(self, features, clf, frp_clim, frp_s5, months, name):
-        titles = ['2019/{0} - {1} month lead'.format(x, y +1) for y, x in enumerate(months)]
+    def plot_features(self, features, dfr, months):
+        year = dfr.year.values[0]
+        titles = ['{0}/{1} - {2} month lead'.format(year, x, y +1) for y, x in enumerate(months)]
         ylabels = ['Climatology', 'SEAS5 model mean', 'Difference']
-        train = self.prepare_train(self.dfr)
-        print(train.columns)
+        #train = self.prepare_train(self.dfr)
+        plot_y_size = len(features) * 5
+        plot_x_size = (len(months) ) * 10
+        projection = ccrs.PlateCarree()
+        axes_class = (GeoAxes,
+                      dict(map_projection = projection))
+        fig = plt.figure(figsize=(plot_x_size, plot_y_size))
+        axgr = AxesGrid(fig, 111, axes_class = axes_class,
+                        nrows_ncols=(len(features), len(months)),
+                        axes_pad=.3,
+                        cbar_mode='edge',
+                        cbar_location='right',
+                        cbar_pad=0.5,
+                        cbar_size='3%',
+                        label_mode='')
+        month_names = [calendar.month_abbr[x] for x in months]
+        gri = Gridder(bbox = 'indonesia', step = 0.25)
+        col_names = features
+        for row_nr, rowax in enumerate(axgr.axes_row):
+            for col_nr, colax in enumerate(rowax):
+                dfr_sub = dfr[dfr.month == months[col_nr]]
+                col_name = col_names[row_nr]
+                vmin = 0.0
+                vmax = 1.0
+                ds = gri.dfr_to_dataset(dfr_sub, col_name, np.nan)
+                pl=ds[col_name].plot.pcolormesh(ax=colax, transform=ccrs.PlateCarree(),
+                                             x = 'longitude', y='latitude',
+                                             add_colorbar=False, add_labels=False)
+                colax.set_extent([94, 142, -11, 7], crs=ccrs.PlateCarree())
+                if row_nr == 0:
+                    colax.set_title(titles[col_nr])
+                if col_nr == 0:
+                    pass
+                    #colax.set_ylabel(ylabels[row_nr])
+        axgr.cbar_axes[0].colorbar(pl)
+        axgr.cbar_axes[1].colorbar(pl)
+        axgr.cbar_axes[2].colorbar(pl)
+        #tit = fig.suptitle('{0}'.format(name), y=.97, fontsize=18)
+        plt.show()
+
+
+    def fit_model(self, train, features, model):
+        train['labels'] = train['labels'].astype(int)
         trainf = train[features]
         scaler = preprocessing.StandardScaler().fit(trainf)
         train_scaled = scaler.transform(trainf.values)
-        clf = self.models[clf].fit(train_scaled, train['labels'])
+        clf = self.models[model].fit(train_scaled, train['labels'])
+        return clf, scaler
 
+#
+
+    def plot_forecast(self, features, clf, frp_clim, frp_s5, months, name):
+        titles = ['2019/{0} - {1} month lead'.format(x, y +1) for y, x in enumerate(months)]
+        ylabels = ['Climatology', 'SEAS5 model mean', 'Difference']
+        #train = self.prepare_train(self.dfr)
+        train, test = get_year_train_test_select(self.dfr, 2019)
+        clf, scaler = self.fit_model(train, features, clf)
         clim_scaled = scaler.transform(frp_clim[features].values)
         s5_scaled = scaler.transform(frp_s5[features].values)
         frp_clim['probs'] = clf.predict_proba(clim_scaled)[:, 1]
@@ -268,8 +334,8 @@ class FireMod():
 
         dss = [frp_clim, frp_s5, frp_s5]
 
-        plot_y_size = 3 * 2.8
-        plot_x_size = (len(months) ) * 6
+        plot_y_size = 3 * 5
+        plot_x_size = (len(months) ) * 10
         projection = ccrs.PlateCarree()
         axes_class = (GeoAxes,
                       dict(map_projection = projection))
@@ -292,15 +358,18 @@ class FireMod():
                 col_name = col_names[row_nr]
                 vmin = 0.0
                 vmax = 1.0
+                if row_nr == 2:
+                    vmin = -1.0
+                    vmax = 1.0
                 ds = gri.dfr_to_dataset(dfr_sub, col_name, np.nan)
-                print(col_name)
-                print(ds[col_name])
                 pl=ds[col_name].plot.pcolormesh(ax=colax, transform=ccrs.PlateCarree(),
                                              vmin = vmin, vmax = vmax, x = 'longitude', y='latitude',
                                              add_colorbar=False, add_labels=False)
                 colax.set_extent([94, 142, -11, 7], crs=ccrs.PlateCarree())
                 if row_nr == 0:
                     colax.set_title(titles[col_nr])
+                if col_nr == 0:
+                    colax.set_ylabel(ylabels[row_nr])
                 #gl = colax.gridlines(ccrs.PlateCarree(), draw_labels=true)
                 #gl.xlabels_top = False
                 #colax.coastlines('50m')
@@ -309,12 +378,12 @@ class FireMod():
         axgr.cbar_axes[1].colorbar(pl)
         axgr.cbar_axes[2].colorbar(pl)
         #tit = fig.suptitle('{0}'.format(name), y=.97, fontsize=18)
-        plt.savefig('figs/models_probs_{0}.png'.format('all_f'), dpi=300, bbox_inches='tight')#, bbox_extra_artists=[tit])
+        plt.savefig('figs/models_probs_{0}.png'.format(name), dpi=300, bbox_inches='tight')#, bbox_extra_artists=[tit])
         plt.show()
 
 
     def prepare_train(self, train):
-        train = self.equalize_classes(train)
+        #train = self.equalize_classes(train)
         train = train.sample(n = self.max_fact)
         return train
 
@@ -407,13 +476,83 @@ class FireMod():
         print(rfecv.grid_scores_)
         return list(zip(feats, rfecv.ranking_))
 
+    def equalize_classes_max(self, dfr):
+        ones = dfr[dfr.labels == 1]
+        if len(ones) > 2000:
+            ones = ones.sample(n = 2000)
+        zeros = dfr[dfr.labels == 0]
+        if self.max_fact > len(ones):
+            zeros_nr = self.max_fact - len(ones)
+        else:
+            print('to many ones, can not equalize')
+            return None
+        select = pd.concat([ones, zeros.sample(n = int(len(ones) * 1))])
+        return select
+
+
+    def leave_year_split_(self, dfr):
+        year = 2002
+        while year <= 2018:
+            train, test = self.get_year_train_test_(dfr, year)
+            yield train, test
+            year += 1
+
+    def get_year_train_test_(self, dfr, year):
+        X_train = dfr[dfr.year != year]
+        X_test = dfr[dfr.year == year]
+        X_train = self.equalize_classes(X_train)
+        #X_train = X_train.sample(n = self.max_fact)
+        #if self.max_fact:
+        #    X_train_inds = np.random.choice(X_train_inds, size = self.max_fact)
+        return X_train.index.values, X_test.index.values
+
+
+    def get_scores_(self, dfr, feats, model):
+        #dfrsel = self.equalize_classes(dfr)
+        #dfrsel = self.prepare_train(dfr)
+        #dfrsel = dfrsel.sample(n = self.max_fact)
+        dfrsel = dfr.copy()
+        custom_cv  = self.leave_year_split_(dfrsel)
+        cv = StratifiedKFold(n_splits=5, shuffle = True)
+        XS = dfrsel[feats]
+        labels = dfrsel['labels'].astype(int)
+        X_scaled = preprocessing.scale(XS.values)
+        scoring = {'AUC': 'roc_auc',
+                   'bal_acc': metrics.make_scorer(metrics.balanced_accuracy_score),
+                   'acc': metrics.make_scorer(metrics.accuracy_score),
+                   'precision': metrics.make_scorer(metrics.precision_score),
+                   'recall': metrics.make_scorer(metrics.recall_score),
+                   'kappa': metrics.make_scorer(metrics.cohen_kappa_score)
+                   }
+        #scorer = metrics.make_scorer(metrics.recall_score)
+        scores = cross_validate(self.models[model], X_scaled,
+                                 labels, scoring = scoring, cv = cv)
+        for key, item in scores.items():
+            print(key, np.mean(item))
+
+    def run_analysis(self, year, dfr, feats, model):
+        train, test = self.get_year_train_test_(dfrsel, year)
+        x_train = dfr.iloc[train, :][feats]
+        x_test = dfr.iloc[test, :][feats]
+        y_train = dfr.iloc[train, :]['labels'].astype(int)
+        y_test = dfr.iloc[test, :]['labels'].astype(int)
+        scaler = preprocessing.StandardScaler().fit(x_train)
+        x_train_scaled = preprocessing.scale(x_train.values)
+        x_test_scaled = preprocessing.scale(x_train.values)
+        clf = self.models[model]
+        clf.fit(x_train_scaled, y_train)
+        probas = clf.predict_proba()
+
+
+
     def get_scores(self, dfr, feats, model):
         dfrsel = self.equalize_classes(dfr)
         custom_cv  = self.leave_year_split(dfrsel)
         XS = dfrsel[feats]
         labels = dfrsel['labels']
         X_scaled = preprocessing.scale(XS.values)
-        scores = cross_val_score(self.models[model], X_scaled, labels, cv=custom_cv)
+        scorer = metrics.make_scorer(metrics.precision_score)
+        scores = cross_val_score(self.models[model],  X_scaled, labels, scoring = scorer, cv=custom_cv)
         print(scores)
         print(np.mean(scores))
 
@@ -689,7 +828,34 @@ def predict_years(clsf, frpsel, features, max_fact):
         dfr['month'] = (dfr['month'] - dfr['month'].min()) + 1
         dfrs.append(dfr)
     dfrs = pd.concat(dfrs)
-    return dfrs
+    return dfr
+
+def get_year_train_test_select(dfr, year):
+    X_train = dfr[dfr.year != year]
+    X_test = dfr[dfr.year == year]
+    poss = dfr[dfr.labels == 1]
+    negs = dfr[dfr.labels == 0].sample(n = poss.shape[0] * 4)
+    X_train = pd.concat([poss, negs])
+    return X_train, X_test
+
+def forecast_validation(self, features, clf, month, name):
+    frpfr = pd.read_parquet('/mnt/data/frp/monthly_frp_count_indonesia_{0}deg_2019_09.parquet'.format(self.res))
+    frp_train = pd.read_parquet('data/feature_train_fr_0.25deg_v4.parquet')
+    fm = FireMod(frp_train, features, 'frp', 10, max_fact  = 4000)
+    train, test = get_year_train_test_select(fm.dfr, 2019)
+    clf, scaler = fm.fit_model(train, 'clfnn1')
+    year = 2019
+    res = {}
+    frp_s5 = pd.read_parquet(os.path.join(fm.forecast_path,
+                                          '{0}_{1:02}/s5_features.parquet'.format(year, start_month)))
+    frp_s5 = fm.year_month(frp_s5_new)
+    frp_clim = pd.read_parquet(os.path.join(fm.forecast_path,
+                                            '{0}_{1:02}/clim_features.parquet'.format(year, start_month)))
+    frp_clim = fm.year_month(frp_clim)
+    s5_scaled = scaler.transform(frp_s5[features].values)
+    frp_s5_probs = clf.predict_proba(s5_scaled)[:, 1]
+    clim_probs = clf.predict_proba(s5_scaled)[:, 1]
+    res['init'] = '{0}-{1}'.format(year, start_month)
 
 sumatra = [6, 96, -6, 106]
 java = [-5.8, 105, -9.3, 119]
@@ -718,67 +884,123 @@ random_state = np.random.RandomState(0)
 
 cv = StratifiedKFold(n_splits=10, shuffle = True)
 
-#clfs = {'Logistic': logist, 'Maxent': 'maxent', 'SVC rbf': svmrbf, 'NeuralNet': clfnn2 }#, 'NN': clfnn}#, 'SVC': svmrbf}
-#clfs = {'logistic': logist, 'SVC rbf': svmrbf}
-#clfs = {'maxent': 'maxent', 'SVC' : svmrbf}
-
-max_fact = 4000
-
 frp_train = pd.read_parquet('data/feature_train_fr_0.25deg_v4.parquet')
-frpsel = frp_data_subset(frp_train)
+#frpsel = frp_data_subset(frp_train)
+#frpsel = frp_train[frp_train.duration < 150]
+#frpsel = frp_train[frp_train.year < 2019]
+#frpsel = frpsel.reset_index()
+
 
 #features = frpsel.columns[4:,].tolist()
-ffs = ['loss_last_prim', 'loss_last_sec', 'loss_prim_before', 'loss_sec_before',
-       'loss_three_prim', 'loss_three_sec', 'frp_acc', 'f_prim', 'dem', 'peat_depth']
+misc = ['lonind', 'latind', 'month']
 
-feats = ['loss_last_prim', 'loss_last_sec', 'loss_prim_before', 'loss_sec_before',
-       'loss_three_prim', 'loss_three_sec', 'frp_acc', 'f_prim',
-       'gain', 'dem', 'dc_med', 'ffmc_med', 'fwi_med', 'ffmc_75p',
-       'fwi_75p', 'dc_7mm', 'ffmc_7mm', 'fwi_7mm', 'dc_3m', 'peat_depth', 'lonind', 'latind']
+weather_this = ['tp_med', 't2m_med', 'w10_med', 'h2m_med',
+           't2m_75p', 'w10_med', 'h2m_75p']
 
-ft = ['loss_prim_before', 'loss_sec_before',
-       'loss_three_prim', 'loss_three_sec', 'frp_acc', 'f_prim',
-       'gain', 'dc_med', 'ffmc_med', 'fwi_med',
-       'fwi_75p', 'dc_7mm', 'ffmc_7mm', 'fwi_7mm', 'dc_3m', 'latind']
+weather = ['tp_sum', 'tp_1', 'tp_2', 'tp_3', 'tp_4', 'tp_5', 't2m_med', 'h2m_med',
+           'h2m_75p', 't2m_7mm', 'h2m_7mm',
+           't2m_3sum', 'h2m_3sum']
 
-weather = ['tp_med', 't2m_med', 'w10_med', 'h2m_med',
-           'tp_75p', 't2m_75p', 'w10_med', 'h2m_75p',
-           'tp_7mm', 't2m_7mm', 'w10_7mm', 'h2m_7mm',
-           'tp_3sum', 't2m_3sum', 'w10_3sum', 'h2m_3sum',
+weather_past = ['tp_7mm', 't2m_7mm', 'w10_7mm', 'h2m_7mm',
+           'tp_3sum', 't2m_3sum',  'h2m_3sum',
            'tp_3m']
+
+fwi_this = ['dc_med', 'ffmc_med', 'fwi_med', 'dc_75p', 'ffmc_75p',
+       'fwi_75p']
+
+fwi_past = ['dc_7mm', 'ffmc_7mm', 'fwi_7mm',
+       'dc_3sum', 'dc_6sum', 'ffmc_3sum', 'fwi_3sum']
 
 fwi = ['dc_med', 'ffmc_med', 'fwi_med', 'dc_75p', 'ffmc_75p',
        'fwi_75p', 'dc_7mm', 'ffmc_7mm', 'fwi_7mm',
-       'dc_3sum', 'ffmc_3sum', 'fwi_3sum',
-       'dc_3m']
+       'dc_3sum', 'ffmc_3sum', 'fwi_3sum']
 
 lc = ['loss_last_prim', 'loss_last_sec', 'loss_prim_before', 'loss_sec_before',
-       'loss_three_prim', 'loss_three_sec', 'frp_acc', 'gain', 'f_prim', 'dem', 'peat_depth']
+       'loss_three_prim', 'loss_three_sec', 'frp_acc', 'gain', 'f_prim', 'dem', 'peatd']
 
-fm = FireMod(frpsel, ft + weather, 'frp', 10, max_fact  = 4000)
+month = 7
+year = 2019
+features = weather+lc
+model = 'clfnn1'
+months = [7, 8, 9, 10, 11, 12]
 
-frp_clim = pd.read_parquet('data/feature_clim_fr_0.25deg_v4.parquet')
+#frp_train = pd.read_parquet('data/feature_train_fr_0.25deg_v4.parquet')
+fm = FireMod(frp_train, features, 'frp', 10, max_fact  = 4000)
+frp = pd.read_parquet('/mnt/data2/SEAS5/forecast/frp_features_2019_10.parquet')
+train, test = get_year_train_test_select(fm.dfr, 2019)
+clf, scaler = fm.fit_model(train, features, 'clfnn1')
+res = {}
+#frp_s5 = pd.read_parquet(os.path.join(fm.forecast_path,
+#                                      '{0}_{1:02}/s5_features.parquet'.format(year, month)))
+#frp_s5 = fm.year_month(frp_s5)
+#frp_clim = pd.read_parquet(os.path.join(fm.forecast_path,
+#                                        '{0}_{1:02}/clim_features.parquet'.format(year, month)))
+#frp_clim = fm.year_month(frp_clim)
+gri = Gridder(bbox = 'indonesia', step = 0.25)
+"""
+frp_s5 = pd.read_parquet('/mnt/data2/SEAS5/forecast/{0}_{1:02}/s5_features.parquet'.format(year, month))
+frp_clim = pd.read_parquet('/mnt/data2/SEAS5/forecast/{0}_{1:02}/clim_features.parquet'.format(year, month))
 frp_clim = fm.year_month(frp_clim)
-frp_s5 = pd.read_parquet('data/feature_s5_fr_0.25deg_v4.parquet')
 frp_s5 = fm.year_month(frp_s5)
-#frp_s5 = frp_s5[frp_s5.peat_depth > 0]
+s5_scaled = scaler.transform(frp_s5[features].values)
+clim_scaled = scaler.transform(frp_clim[features].values)
+frp_s5.loc[:, 'probs'] = clf.predict_proba(s5_scaled)[:, 1]
+frp_s5.loc[:, 'clim_probs'] = clf.predict_proba(clim_scaled)[:, 1]
+"""
+"""
 
-features = fwi+lc
-clf = 'clfnn2'
-months = [8, 9, 10, 11]
-#fm.plot_probs_forecast(frp_clim, frp_s5, fwi+lc, [9, 10], 'svmlin')
-#feats = ['loss_last_prim', 'loss_last_sec', 'loss_prim_before', 'loss_sec_before',
-#       'loss_three_prim', 'loss_three_sec', 'frp_acc', 'f_prim', 'peat_depth']
-#feats =  [['lonind', 'latind'] + ffs]
-#features = ['dc_med', 'ffmc_med', 'fwi_med', 'ffmc_75p',
-#       'fwi_75p', 'dc_7mm', 'ffmc_7mm', 'fwi_7mm', 'dc_3m']
+for month in months:
+    init = '{0}-{1}'.format(year, month)
+    res[init] = {}
+    res[init]['forecast'] = {}
 
-#dfr = predict_years(clfs, frpsel, feats, max_fact)
-#dfrfwi = predict_years(clfs, frpsel, features, max_fact)
+for month in months:
 
-#feats = [['lonind', 'latind', 'loss_this', 'loss_last',
-#         'loss_three', 'loss_accum', 'f_prim', 'gain', 'fwi', 'dc', 'ffmc'], ['dc', 'fwi', 'ffmc']]
-#roc_plots(frpsel, feats, clfs, cv, 'test_v2_dem_2018_roll_sel_peat_depth', 8000)
+    #clim
+    frp_clim = pd.read_parquet('/mnt/data2/SEAS5/forecast/{0}_{1:02}/clim_features.parquet'.format(year, month))
+    frp_clim = frp_clim.dropna()
+    frp_clim = fm.year_month(frp_clim)
+    clim_scaled = scaler.transform(frp_clim[features].values)
+    frp_clim.loc[:, 'clim_probs'] = clf.predict_proba(clim_scaled)[:, 1]
+    init = '{0}-{1}'.format(year, month)
+    frp_clim['clim_probs'] = (frp_clim.clim_probs.values * 100).astype(int).tolist()
+    res[init]['climatology'] = frp_clim[frp_clim.month == month]['clim_probs'].tolist()
 
-#XS = frpsel[['lonind', 'latind', 'loss_last', 'loss_accum', 'loss_three', 'loss_this', 'f_prim', 'gain', 'fwi', 'dc', 'ffmc']]
-#X_scaled = preprocessing.scale(XS.values)
+    #forecast
+    try:
+        frp_s5 = pd.read_parquet('/mnt/data2/SEAS5/forecast/{0}_{1:02}/s5_features.parquet'.format(year, month))
+    except:
+        continue
+    frp_s5 = fm.year_month(frp_s5)
+    s5_scaled = scaler.transform(frp_s5[features].values)
+    frp_s5.loc[:, 'probs'] = clf.predict_proba(s5_scaled)[:, 1]
+    frps = frp[(frp.year == year) & (frp.month == month)][['lonind', 'latind', 'frp']]
+    frps = pd.merge(frp_s5[frp_s5.month == month][['lonind', 'latind']], frps,
+                                              on = ['lonind', 'latind'], how = 'left')
+    frps = frps.fillna(0)
+    if len(frps) > 0:
+        res[init]['frp'] = frps['frp'].values.tolist()
+    else:
+        res[init]['frp'] = []
+    for lead, month in enumerate(frp_s5['month'].unique()[:4], 1):
+        #res[init]['forecast'][str(lead)] = {}
+        probs = frp_s5[frp_s5.month == month]['probs']
+        lead_res = (probs.values * 100).astype(int).tolist()
+        init = '{0}-{1}'.format(year, month)
+        try:
+            res[init]['forecast'][str(lead)] = lead_res
+        except KeyError:
+            res[init] = {}
+            res[init]['forecast'] = {}
+            res[init]['forecast'][str(lead)] = lead_res
+        #if (month == 7) & (lead == 1):
+        #    frps['latitude'] = gri.lat_bins[frps.latind.values + 1]
+        #    frps['longitude'] = gri.lon_bins[frps.lonind.values]
+        #    frps[['longitude', 'latitude']].to_json('/home/tadas/tofewsi/website/assets/geo/lonlats_fore.json', orient="values")
+
+with open('/home/tadas/tofewsi/website/assets/forecast_.json', 'w') as outfile:
+    json.dump(res, outfile)
+
+
+#fm.plot_forecast(features, 'clfnn1', frp_clim, frp_s5,  [9, 10, 11], 'clfnn_test')
+"""

@@ -152,6 +152,7 @@ if __name__ == '__main__':
     cl = Climdata_dask(data_path, bbox=bbox, hour=None)
     fname = 'corrected_2019_07.nc'
     ds = xr.open_dataset(fname)
+    """
     fwi_vars = cl.prepare_s5_fwi(ds)
     #client = cl.dask_client()
     #fnames = glob.glob(os.path.join(data_path, '2019_07_*.nc'))
@@ -171,3 +172,4 @@ if __name__ == '__main__':
     land_mask = 'data/era_land_mask.nc'
     land_mask = xr.open_dataset(land_mask)
     land_mask = cl.spatial_subset(land_mask, bbox)
+    """

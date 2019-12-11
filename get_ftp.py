@@ -31,11 +31,21 @@ def download(fileName, opath, ipath):
     lf.close()
     ftp.quit()
 
-opath = '/mnt/data/mopitt'
-ftp = ftplib.FTP(host='l5ftl01.larc.nasa.gov', user='anonymous')
-ftp.cwd('MOPITT')
-ftp.cwd('MOP03J.007')
-dr = pd.date_range('2008-01-29', '2016-01-01', freq='D')
+#opath = '/mnt/data/mopitt'
+opath = '/mnt/data2/SEAS5/highres'
+#ftp = ftplib.FTP(host='l5ftl01.larc.nasa.gov', user='anonymous')
+ftp = ftplib.FTP(host='dissemination.ecmwf.int', user='ecmwf.fwi', passwd = 'X%W7l3')
+#ftp.cwd('MOPITT')
+#ftp.cwd('MOP03J.007')
+#dr = pd.date_range('2008-01-29', '2016-01-01', freq='D')
+fnames = ftp.nlst()
+for fn in fnames:
+    with open(os.path.join(opath, fn), 'wb') as fl:
+        ftp.retrbinary('RETR %s' % fn, fl.write, 8 * 1024)
+        print('retrieving {}'.format(fn))
+ftp.cwd('..')
+
+"""
 for dd in dr:
     try:
         ftp.cwd('{0}.{1:02}.{2:02}'.format(dd.year, dd.month, dd.day))
@@ -48,4 +58,5 @@ for dd in dr:
     except:
         pass
 ftp.quit()
+"""
 

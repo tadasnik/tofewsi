@@ -12,6 +12,15 @@ from envdata import Envdata
 from gridding import Gridder
 import matplotlib.pyplot as plt
 
+def add_rolling_features(ds):
+    rollsum3dc = ds['dc_med'].rolling(time=3,min_periods = 1).sum()
+    rollsum3tp = ds['tp_med'].rolling(time=3,min_periods = 1).sum()
+    rollsum3fwi = ds['fwi_med'].rolling(time=3,min_periods = 1).sum()
+    ds['dc_3m'] = rollsum3dc
+    ds['tp_3m'] = rollsum3tp
+    ds['fwi_3m'] = rollsum3fwi
+    return ds
+
 def unique_cells(frp):
     fr = frp[(frp.f_prim > 0.8)]
     uni = fr.groupby(['lonind', 'latind'])['fire'].sum().reset_index()
@@ -64,59 +73,41 @@ def dem_ds_to_dfr(cc):
     ds = xr.open_dataset('/mnt/data/dem/era5_dem.nc')
     dem = (ds.z / 9.80665)
     dem = cc.spatial_subset(dem, cc.region_bbox['indonesia'])
-    lon_lat_fr = cc.fc[['lonind', 'latind']]
-    lon_lat_fr.reset_index(drop = True, inplace = True)
-    fr = dem.values[:, lon_lat_fr.latind, lon_lat_fr.lonind]
-    dfr = pd.concat([lon_lat_fr[['latind', 'lonind']],
-                     pd.DataFrame(fr.T, columns = [str(x) for x in range(1, fr.shape[0] + 1)])],
-                     axis = 1)
-    return dfr
-
-def peat_depth_ds_to_dfr(cc):
-    ds = xr.open_dataset('/mnt/data/land_cover/peat_depth/peat_depth_ind.nc')
-    ds = ds.rename({'x':'longitude', 'y':'latitude'})
-    depth = cc.spatial_subset(ds.depth, cc.region_bbox['indonesia'])
-    lon_lat_fr = cc.fc[['lonind', 'latind']]
-    lon_lat_fr.reset_index(drop = True, inplace = True)
-    fr = depth.values[:, lon_lat_fr.latind, lon_lat_fr.lonind]
-    dfr = pd.concat([lon_lat_fr[['latind', 'lonind']],
-                     pd.DataFrame(fr.T, columns = [str(x) for x in range(1, fr.shape[0] + 1)])],
-                     axis = 1)
-    return dfr
-
-def proc_fire_forest_1km():
-    dfr = pd.read_parquet('/mnt/data/frp/M6_indonesia_clustered_v3.parquet')
-    #gri = Gridder(bbox = 'indonesia', step = 0.25)
-    #dfr = gri.add_grid_inds(dfr)
-    #dfr = filter_volcanoes(dfr, 0.25)
-    gri = Gridder(bbox = 'indonesia', step = 0.5)
-    dfr = gri.add_grid_inds(dfr)
-    dfr = filter_volcanoes(dfr, 0.5)
-    gri = Gridder(bbox = 'indonesia', step = 0.01)
-    dfr = gri.add_grid_inds(dfr)
-    dfr.to_parquet('data/frps_clust_indonesia_no_volcanoes_0.01deg_inds_v3.parquet')
-
-def filter_volcanoes(frpsel, res):
+    dem = dem.to_dataframe().reset_index()
     gri = Gridder(bbox = 'indonesia', step = res)
-    frps = gri.add_grid_inds(frpsel)
-    fnames = glob.glob('data/volcanoes/*.shp')
-    dfs = []
-    for fn in fnames:
-        df = gpd.read_file(fn)
-        dfr = pd.DataFrame({'longitude': df.geometry.x, 'latitude': df.geometry.y})
-        dfs.append(dfr)
-    dfs = pd.concat(dfs)
-    dfs = gri.add_grid_inds(dfs)
-    mask = frps[['lonind', 'latind']].apply(tuple, 1).isin(dfs[['lonind', 'latind']].apply(tuple, 1))
-    return frpsel[~mask]
+    dem = gri.add_grid_inds(dem)
+    dem = dem.rename({'z': 'dem'}, axis = 1)
+    return dem[['lonind', 'latind', 'dem']]
+
+def deforestation_before_after_all(dfr):
+    years = range(2002, 2020, 1)
+    dfrs = []
+    loss_prim = dfr.filter(like = 'loss_prim', axis = 1)
+    loss_sec = dfr.filter(regex = '^(?=.*loss)(?!.*prim).*', axis = 1)
+    for nr, year in enumerate(years):
+        print(year)
+        dfrsel = dfr[dfr.year == year]
+        print(dfrsel.shape)
+        for sh in range(-3, 4, 1):
+            print(sh)
+            loss = loss_prim.shift(sh, axis = 1)[dfr.year == year].iloc[:, nr]
+            lossec = loss_sec.shift(sh, axis = 1)[dfr.year == year].iloc[:, nr]
+            dfrsel[str(-(sh))] = loss
+            dfrsel[str(-(sh))+'sec'] = lossec
+        dfrs.append(dfrsel)
+    dfrall = pd.concat(dfrs)
+    dfrall.sort_index(inplace = True)
+    return dfrall
+
 
 def deforestation_before_after(dfr):
-    years = range(2002, 2019, 1)
+    years = range(2002, 2020, 1)
     dfrs = []
     loss_prim = dfr.filter(like = 'loss_prim', axis = 1)
     loss_sec = dfr.filter(regex = '^(?=.*loss)(?!.*prim).*', axis = 1)
     for nr, year in enumerate(years, start = -2):
         dfrsel = dfr[dfr.year == year]
+        print(year)
         if (year > 2004) & (year < 2016):
             print(year)
             print(nr)
@@ -136,36 +127,40 @@ def deforestation_before_after(dfr):
     return dfrall
 
 def prepare_features_mod_fire_forest_loss(cc, current_year):
-    first_year = 2001
+    ##USED this
+    #first_year = 2001
     #cc.frpfr = pd.read_parquet('data/frps_clust_indonesia_no_volcanoes_0.01deg_inds_v3.parquet')
-    cc.frpfr = pd.read_parquet('/mnt/data/frp/M6_indonesia_clustered_v3.parquet')
+    cc.frpfr = pd.read_parquet('/mnt/data/frp/M6_indonesia_clustered_no_volcanoes.parquet')
     #cc.frpfr = cc.frpfr[cc.frpfr.confidence >= 30]
-    gri = Gridder(bbox = 'indonesia', step = .25)
+    gri = Gridder(bbox = 'indonesia', step = .01)
     cc.frpfr = gri.add_grid_inds(cc.frpfr)
-    prim = pd.read_parquet('/mnt/data/forest/forest_primary_0.25deg_clean.parquet')
+    prim = pd.read_parquet('/mnt/data/forest/forest_primary_0.01deg_v2.parquet')
     prim['f_prim'] = prim['2'] / prim['total']
     prim['f_sec'] = prim['1'] / prim['total']
-    loss = pd.read_parquet('/mnt/data/forest/forest_loss_type_0.25deg_v2.parquet')
-    gain = pd.read_parquet('/mnt/data/forest/forest_gain_0.25deg_v2.parquet')
+    loss = pd.read_parquet('/mnt/data/forest/forest_loss_type_0.01deg_v3.parquet')
+    gain = pd.read_parquet('/mnt/data/forest/forest_gain_0.01deg.parquet')
     gain = gain.rename({'total': 'gain'}, axis = 1)
     gain = gain.drop('1', axis = 1)
     change = pd.merge(prim[['lonind', 'latind', 'total', 'f_prim', 'f_sec']], loss, on=['lonind', 'latind'], how='left')
     change = pd.merge(change, gain, on=['lonind', 'latind'], how='left')
+    change = change.fillna(0)
+
     peat = pd.read_parquet('data/indonesia_peatlands.parquet')
 
     cc.frpfr['year'] = cc.frpfr.date.dt.year
+    cc.frpfr['month'] = cc.frpfr.date.dt.month
     dmin = cc.frpfr.groupby(['labs8'])['day_since'].transform('min')
     dmax = cc.frpfr.groupby(['labs8'])['day_since'].transform('max')
     cc.frpfr.loc[:, 'duration'] = dmax - dmin
     #frp = cc.frpfr.groupby(['lonind', 'latind', 'year']).size().reset_index(name = 'count')
-    frp = cc.frpfr[['lonind', 'latind', 'frp', 'year', 'labs1', 'labs8', 'day_since', 'duration', 'confidence']]
+    frp = cc.frpfr[['lonind', 'latind', 'frp', 'year', 'month', 'labs1', 'labs8', 'day_since', 'duration', 'confidence', 'daynight']]
     frp['fsize'] = frp.groupby('labs8')['labs8'].transform('size')
     frp = pd.merge(change, frp, on=['lonind', 'latind'], how='left')
     frp = pd.merge(frp, peat[['lonind', 'latind', 'peat']], on=['lonind', 'latind'], how='left')
     #fc = pd.merge(frp[['lonind', 'latind']], cc.fc, on=['lonind', 'latind'], how='left')
 
     frp.fillna(value=0, inplace=True)
-    frpd = deforestation_before_after(frp[frp.frp > 0])
+    frpd = deforestation_before_after_all(frp[frp.frp > 0])
     frp = pd.concat([frp[frp.frp == 0], frpd])
     frp.fillna(value=0, inplace=True)
     #frp = frp.set_index(['lonind', 'latind'])
@@ -173,6 +168,28 @@ def prepare_features_mod_fire_forest_loss(cc, current_year):
     #frp['year'] = frp.date.dt.year
     #frp = frp.stack()
     #frp = frp.reset_index(name = 'frp')
+
+    #f_prim the year before fire
+    accum_loss_prim = frp.filter(like = '_loss_prim', axis = 1)
+    accum_loss_prim = accum_loss_prim.cumsum(axis = 1)
+    years = accum_loss_prim.columns.str.extract('(\d+)').astype(int) + 1
+    accum_loss_prim.columns = years[0].tolist()
+    accum_loss_prim[0] = 0
+    frp['f_prim_before'] = (frp.f_prim.values - (accum_loss_prim.lookup(accum_loss_prim.index, frp.year.values) / frp.total))
+
+    loss_prim_before_fire = accum_loss_prim.lookup(accum_loss_prim.index, (frp.year).astype(int).values)
+
+
+    #f_sec the year before fire
+    accum_loss_sec = frp.filter(regex = '^(?=.*loss)(?!.*prim).*', axis = 1)
+    accum_loss_sec = accum_loss_sec.cumsum(axis = 1)
+    years = accum_loss_sec.columns.str.extract('(\d+)').astype(int) + 1
+    accum_loss_sec.columns = years[0].tolist()
+    accum_loss_sec[0] = 0
+    frp['f_sec_before'] = (frp.f_sec.values - (accum_loss_sec.lookup(accum_loss_sec.index, frp.year.values) / frp.total))
+
+    loss_sec_before_fire = accum_loss_sec.lookup(accum_loss_sec.index, (frp.year).astype(int).values)
+
 
     #accum loss primary
     loss_prim = frp.filter(like = 'loss_prim', axis = 1)
@@ -183,7 +200,6 @@ def prepare_features_mod_fire_forest_loss(cc, current_year):
     frp['max_loss_prim_year'] = max_loss_prim_year[0]
     frp['frp_max_prim_loss'] =  frp.year - frp['max_loss_prim_year']
     frp['prim_loss_sum'] = loss_prim.sum(axis = 1)
-
     accum_loss_prim = loss_prim.iloc[:, :].cumsum(axis = 1)
     frp['loss_before_max_prim'] = accum_loss_prim.lookup(accum_loss_prim.index, max_loss_prim)
 
@@ -200,13 +216,11 @@ def prepare_features_mod_fire_forest_loss(cc, current_year):
     frp['loss_before_max_sec'] = accum_loss_sec.lookup(accum_loss_sec.index, max_loss_sec)
     frp['loss_after_max_sec'] = frp['sec_loss_sum'] - frp['loss_before_max_sec']
 
-    frp['loss_sec_before_fire'] = 0
-    accum_loss_sec.columns = list(range(2001, 2019, 1))
-    accum_loss_sec[1] = 0
-    accum_loss_sec[2019] = 0
-    loss_sec_before_fire = accum_loss_sec.lookup(accum_loss_sec.index, (frp.year + 1).astype(int).values)
+    frp['loss_prim_before_fire'] = loss_prim_before_fire
     frp['loss_sec_before_fire'] = loss_sec_before_fire
+
     frp['loss_sec_after_fire'] = frp['sec_loss_sum'] - frp['loss_sec_before_fire']
+    frp['loss_prim_after_fire'] = frp['prim_loss_sum'] - frp['loss_prim_before_fire']
 
 
     frp['loss_total'] = frp['prim_loss_sum'] + frp['sec_loss_sum']
@@ -221,6 +235,9 @@ def prepare_features_mod_fire_forest_loss(cc, current_year):
     frp['peat_any'] = frp.groupby('labs8')['peat'].transform('sum')
     frp['peat_any'][frp.peat_any > 0] = 1
     frp = add_coords_from_ind(frp, gri)
+    frp['daynight'] = frp.daynight.astype(str)
+    #STOPS HERE!!!
+
 
 
     #fc = cc.fc.copy()
@@ -281,7 +298,6 @@ def prepare_features_mod_fire_forest_loss(cc, current_year):
 
     #accum loss primary
     loss_prim = frp.filter(like = 'loss_prim', axis = 1)
-    loss_prim = loss_prim.rolling(window = 3, min_periods = 2, axis = 1).sum()
     max_loss_prim = loss_prim.idxmax(axis = 1)
     max_loss_prim_year = max_loss_prim.str.extract('(\d+)').astype(int)
     #max_loss_prim_year.reset_index(drop = True, inplace = True)
@@ -296,7 +312,6 @@ def prepare_features_mod_fire_forest_loss(cc, current_year):
     frp['max_loss_sec_year'] = max_loss_sec_year[0]
     frp['frp_max_sec_loss'] = frp['max_loss_sec_year'] - frp.date.dt.year
     frp['sec_loss_sum'] = loss_sec.sum(axis = 1)
-
 
     accum_loss_sec.iloc[: ,:] = accum_loss_sec.iloc[:, :].cumsum(axis = 1)
     accum_loss_sec.drop('{0}_loss'.format(first_year), axis = 1, inplace = True)
@@ -342,7 +357,7 @@ def prepare_features_mod_fire_forest_loss(cc, current_year):
     dem = dem_ds_to_dfr(cc)
 
     #peat depth
-    depth = peat_depth_ds_to_dfr(cc)
+    depth = peat_depth_dfr(cc)
 
     frp.loc[:, 'loss_last_prim'] = last_year_prim.values
     frp.loc[:, 'loss_last_sec'] = last_year_sec.values
@@ -354,8 +369,8 @@ def prepare_features_mod_fire_forest_loss(cc, current_year):
     frp.loc[:, 'loss_three_sec'] = three_year_sec.values
     frp.loc[:, 'f_prim'] = prim_frac.values
     frp.loc[:, 'gain'] = gain.repeat(12 * (current_year - first_year)).values
-    frp.loc[:, 'dem'] = dem['1'].repeat(12 * (current_year - first_year)).values
-    frp.loc[:, 'peat_depth'] = depth['1'].repeat(12 * (current_year - first_year)).values
+    frp = pd.merge(frp, dem, on = ['lonind', 'latind'], how = 'left')
+    frp = pd.merge(frp, depth, on = ['lonind', 'latind'], how = 'left')
 
     cc.fwi_m = xr.open_dataset(os.path.join(cc.data_path, 'fwi',
                                  'fwi_indonesia_{}deg_monthly_v2.nc'.format(cc.res)))
@@ -370,9 +385,12 @@ def prepare_features_mod_fire_forest_loss(cc, current_year):
     return frp
 
 def prepare_features_fire_forest_loss(cc, current_year):
+    current_year = 2018
     first_year = 2001
     #cc.frpfr = pd.read_parquet('data/frps_clust_indonesia_no_volcanoes_0.01deg_inds_v3.parquet')
-    cc.frpfr = pd.read_parquet('/mnt/data/frp/M6_indonesia_clustered_v3.parquet')
+    cc.frpfr = pd.read_parquet('/mnt/data/frp/M6_indonesia_clustered.parquet')
+    cc.frpfr['year'] = cc.frpfr.date.dt.year
+    #cc.frpfr = cc.frpfr[cc.frpfr.year < 2019]
     #cc.frpfr = cc.frpfr[cc.frpfr.confidence >= 30]
     gri = Gridder(bbox = 'indonesia', step = .01)
     cc.frpfr = gri.add_grid_inds(cc.frpfr)
@@ -387,12 +405,11 @@ def prepare_features_fire_forest_loss(cc, current_year):
     change = pd.merge(change, gain, on=['lonind', 'latind'], how='left')
     peat = pd.read_parquet('data/indonesia_peatlands.parquet')
 
-    cc.frpfr['year'] = cc.frpfr.date.dt.year
     dmin = cc.frpfr.groupby(['labs8'])['day_since'].transform('min')
     dmax = cc.frpfr.groupby(['labs8'])['day_since'].transform('max')
     cc.frpfr.loc[:, 'duration'] = dmax - dmin
     #frp = cc.frpfr.groupby(['lonind', 'latind', 'year']).size().reset_index(name = 'count')
-    frp = cc.frpfr[['lonind', 'latind', 'frp', 'year', 'labs1', 'labs8', 'day_since', 'duration', 'confidence']]
+    frp = cc.frpfr[['lonind', 'latind', 'frp', 'date', 'year', 'labs1', 'labs8', 'day_since', 'duration', 'confidence', 'daynight']]
     frp['fsize'] = frp.groupby('labs8')['labs8'].transform('size')
     frp = pd.merge(change, frp, on=['lonind', 'latind'], how='left')
     frp = pd.merge(frp, peat[['lonind', 'latind', 'peat']], on=['lonind', 'latind'], how='left')
@@ -409,7 +426,7 @@ def prepare_features_fire_forest_loss(cc, current_year):
     #frp = frp.reset_index(name = 'frp')
 
     #accum loss primary
-    loss_prim = frp.filter(like = 'loss_prim', axis = 1)
+    loss_prim = cc.fc.filter(like = 'loss_prim', axis = 1)
     #loss_prim = loss_prim.rolling(window = 3, min_periods = 1, axis = 1).mean()
     max_loss_prim = loss_prim.idxmax(axis = 1)
     max_loss_prim_year = max_loss_prim.str.extract('(\d+)').astype(int)
@@ -418,8 +435,18 @@ def prepare_features_fire_forest_loss(cc, current_year):
     frp['frp_max_prim_loss'] =  frp.year - frp['max_loss_prim_year']
     frp['prim_loss_sum'] = loss_prim.sum(axis = 1)
 
+    loss_sec = cc.fc.filter(regex = '^(?=.*loss)(?!.*prim).*', axis = 1)
+    max_loss_sec = loss_sec.idxmax(axis = 1)
+    max_loss_sec_year = max_loss_sec.str.extract('(\d+)').astype(int)
+    #max_loss_sec_year.reset_index(drop = True, inplace = True)
+    frp['max_loss_sec_year'] = max_loss_sec_year[0]
+    frp['frp_max_sec_loss'] = frp['max_loss_sec_year'] - frp.date.dt.year
+    frp['sec_loss_sum'] = loss_sec.sum(axis = 1)
+
+
     accum_loss_prim = loss_prim.iloc[:, :].cumsum(axis = 1)
     frp['loss_before_max_prim'] = accum_loss_prim.lookup(accum_loss_prim.index, max_loss_prim)
+
 
     #frp['loss_prim_before_fire'] = 0
     #frpsel = frp[frp.year > 0]
@@ -451,7 +478,7 @@ def prepare_features_fire_forest_loss(cc, current_year):
 
     frp['loss_sec_before_fire'] = 0
     accum_loss_sec.columns = list(range(2001, 2019, 1))
-    accum_loss_sec[1] = 0
+    accum_loss_sec[-1] = 0
     accum_loss_sec[2019] = 0
     loss_sec_before_fire = accum_loss_sec.lookup(accum_loss_sec.index, (frp.year + 1).astype(int).values)
     frp['loss_sec_before_fire'] = loss_sec_before_fire
@@ -528,24 +555,6 @@ def prepare_features_fire_forest_loss(cc, current_year):
     three_year_sec = loss_to_features(pd.concat([cc.fc[['lonind', 'latind']],
                       three_year_sec / cc.fc.total.values[:, None]], axis = 1))
 
-    #accum loss primary
-    loss_prim = frp.filter(like = 'loss_prim', axis = 1)
-    loss_prim = loss_prim.rolling(window = 3, min_periods = 2, axis = 1).sum()
-    max_loss_prim = loss_prim.idxmax(axis = 1)
-    max_loss_prim_year = max_loss_prim.str.extract('(\d+)').astype(int)
-    #max_loss_prim_year.reset_index(drop = True, inplace = True)
-    frp['max_loss_prim_year'] = max_loss_prim_year[0]
-    frp['frp_max_prim_loss'] = frp['max_loss_prim_year'] - frp.date.dt.year
-    frp['prim_loss_sum'] = loss_prim.sum(axis = 1)
-
-    loss_sec = frp.filter(regex = '^(?=.*loss)(?!.*prim).*', axis = 1)
-    max_loss_sec = loss_sec.idxmax(axis = 1)
-    max_loss_sec_year = max_loss_sec.str.extract('(\d+)').astype(int)
-    #max_loss_sec_year.reset_index(drop = True, inplace = True)
-    frp['max_loss_sec_year'] = max_loss_sec_year[0]
-    frp['frp_max_sec_loss'] = frp['max_loss_sec_year'] - frp.date.dt.year
-    frp['sec_loss_sum'] = loss_sec.sum(axis = 1)
-
 
     accum_loss_sec.iloc[: ,:] = accum_loss_sec.iloc[:, :].cumsum(axis = 1)
     accum_loss_sec.drop('{0}_loss'.format(first_year), axis = 1, inplace = True)
@@ -558,7 +567,6 @@ def prepare_features_fire_forest_loss(cc, current_year):
     prim_frac = frp.f_prim.values[:, None] - (accum_loss_prim / frp.total.values[:, None])
     indss = frp.year.astype(str) + '_loss_prim'
     prim_loss_frp = prim_frac.lookup(accum_loss_prim.index, indss)
-
     frp['prim_loss_frp'] = prim_loss_frp
 
     #accum loss secondary
@@ -618,307 +626,6 @@ def prepare_features_fire_forest_loss(cc, current_year):
     frp.rename({'level_2': 'month'}, axis = 1, inplace = True)
     return frp
 
-
-def prepare_features_forecast(cc, current_year):
-    first_year = 2001
-    cc.read_forest_change()
-    cc.frpfr = pd.read_parquet('/mnt/data/frp/frp_count_indonesia_{}deg_monthly_v2_no_volcanoes.parquet'.format(cc.res))
-    #cc.frpfr = filter_volcanoes(cc.frpfr)
-    #cc.frpfr = cc.frpfr[cc.frpfr.frp < 6001]
-    frp = pd.merge(cc.fc[['lonind', 'latind']], cc.frpfr, on=['lonind', 'latind'], how='left')
-    #fc = pd.merge(frp[['lonind', 'latind']], cc.fc, on=['lonind', 'latind'], how='left')
-
-    frp.fillna(value=0, inplace=True)
-    frp = frp.set_index(['lonind', 'latind'])
-    frp.drop('frp', axis = 1, inplace = True)
-    frp = frp.stack()
-    frp = frp.reset_index(name = 'frp')
-
-    #fc = cc.fc.copy()
-    #fc = pd.merge(frp[['lonind', 'latind']], cc.fc, on=['lonind', 'latind'], how='left')
-
-    #last year loss
-    last_year = cc.fc.drop(['total', 'f_prim', 'gain',
-                         '{0}_loss_prim'.format(current_year),
-                         '{0}_loss'.format(current_year)], axis = 1)
-    last_year_prim = last_year.filter(regex = '^(?=.*prim)', axis = 1)
-    last_year_prim = loss_to_features(pd.concat([cc.fc[['lonind', 'latind']],
-                     last_year_prim / cc.fc.total.values[:, None]], axis = 1))
-
-    last_year_sec = last_year.filter(regex = '^(?=.*loss)(?!.*prim).*', axis = 1)
-    last_year_sec = loss_to_features(pd.concat([cc.fc[['lonind', 'latind']],
-                  last_year_sec / cc.fc.total.values[:, None]], axis = 1))
-
-
-    #lost this year
-    this_year = cc.fc.drop(['total', 'f_prim', 'gain',
-                         '{0}_loss_prim'.format(first_year),
-                         '{0}_loss'.format(first_year)], axis = 1)
-    this_year_prim = this_year.filter(regex = '^(?=.*prim)', axis = 1)
-    this_year_prim = loss_to_features(pd.concat([cc.fc[['lonind', 'latind']],
-                      this_year_prim / cc.fc.total.values[:, None]], axis = 1))
-
-    this_year_sec = this_year.filter(regex = '^(?=.*loss)(?!.*prim).*', axis = 1)
-    this_year_sec = loss_to_features(pd.concat([cc.fc[['lonind', 'latind']],
-                  this_year_sec / cc.fc.total.values[:, None]], axis = 1))
-
-    #three year loss
-    loss_three = cc.fc.drop(['total', 'f_prim', 'gain'], axis = 1)
-    three_year_prim = loss_three.filter(regex = '^(?=.*prim)', axis = 1)
-    three_year_prim = three_year_prim.rolling(window = 3, min_periods = 2, axis = 1).sum()
-    three_year_prim.drop('{0}_loss_prim'.format(first_year), axis = 1, inplace = True)
-    three_year_prim = loss_to_features(pd.concat([cc.fc[['lonind', 'latind']],
-                      three_year_prim / cc.fc.total.values[:, None]], axis = 1))
-
-    three_year_sec = loss_three.filter(regex = '^(?=.*loss)(?!.*prim).*', axis = 1)
-    three_year_sec = three_year_sec.rolling(window = 3, min_periods = 2, axis = 1).sum()
-    three_year_sec.drop('{0}_loss'.format(first_year), axis = 1, inplace = True)
-    three_year_sec = loss_to_features(pd.concat([cc.fc[['lonind', 'latind']],
-                      three_year_sec / cc.fc.total.values[:, None]], axis = 1))
-
-    #accum loss primary
-    accum_loss_prim = cc.fc.filter(like = 'loss_prim', axis = 1)
-    accum_loss_prim.iloc[: ,:] = accum_loss_prim.iloc[:, :].cumsum(axis = 1)
-    accum_loss_prim.drop('{0}_loss_prim'.format(first_year), axis = 1, inplace = True)
-    #get prim fraction for each year
-    prim_frac = cc.fc.f_prim.values[:, None] - (accum_loss_prim / cc.fc.total.values[:, None])
-    prim_frac = loss_to_features(pd.concat([cc.fc[['lonind', 'latind']],
-                                                  prim_frac], axis = 1))
-
-    accum_loss_prim = loss_to_features(pd.concat([cc.fc[['lonind', 'latind']],
-                      accum_loss_prim / cc.fc.total.values[:, None]], axis = 1))
-
-    #accum loss secondary
-    accum_loss_sec = cc.fc.filter(regex = '^(?=.*loss)(?!.*prim).*', axis = 1)
-    accum_loss_sec.iloc[: ,:] = accum_loss_sec.iloc[:, :].cumsum(axis = 1)
-    accum_loss_sec.drop('{0}_loss'.format(first_year), axis = 1, inplace = True)
-    accum_loss_sec = loss_to_features(pd.concat([cc.fc[['lonind', 'latind']],
-                      accum_loss_sec / cc.fc.total.values[:, None]], axis = 1))
-
-    #gain
-    gain = cc.fc['gain'] / cc.fc['total']
-    dem = dem_ds_to_dfr(cc)
-
-    #peat depth
-    depth = peat_depth_ds_to_dfr(cc)
-
-    frp.loc[:, 'loss_last_prim'] = last_year_prim.values
-    frp.loc[:, 'loss_last_sec'] = last_year_sec.values
-    frp.loc[:, 'loss_this_prim'] = this_year_prim.values
-    frp.loc[:, 'loss_this_sec'] = this_year_sec.values
-    frp.loc[:, 'loss_accum_prim'] = accum_loss_prim.values
-    frp.loc[:, 'loss_accum_sec'] = accum_loss_sec.values
-    frp.loc[:, 'loss_three_prim'] = three_year_prim.values
-    frp.loc[:, 'loss_three_sec'] = three_year_sec.values
-    frp.loc[:, 'f_prim'] = prim_frac.values
-    frp.loc[:, 'gain'] = gain.repeat(12 * (current_year - first_year)).values
-    frp.loc[:, 'dem'] = dem['1'].repeat(12 * (current_year - first_year)).values
-    frp.loc[:, 'peat_depth'] = depth['1'].repeat(12 * (current_year - first_year)).values
-
-    cc.fwi_m = xr.open_dataset(os.path.join(cc.data_path, 'fwi',
-                                 'fwi_indonesia_{}deg_monthly_v2.nc'.format(cc.res)))
-    rollsum3dc = cc.fwi_m['dc_med'].rolling(time=3,min_periods = 1).sum()
-    rollsum3fwi = cc.fwi_m['fwi_med'].rolling(time=3,min_periods = 1).sum()
-    cc.fwi_m['dc_3m'] = rollsum3dc
-    cc.fwi_m['fwi_3m'] = rollsum3fwi
-    cc.fwi_m = cc.fwi_m.sel(time = slice('{0}-01-01'.format(first_year + 1),
-                                           '{0}-12-31'.format(current_year)))
-    frp = cc.add_fwi_features(list(cc.fwi_m.data_vars.keys()), cc.fc[['lonind', 'latind']], frp)
-    frp.rename({'level_2': 'month'}, axis = 1, inplace = True)
-    return frp
-
-def prepare_features(cc, current_year):
-    first_year = 2001
-    cc.read_forest_change()
-    cc.frpfr = pd.read_parquet('/mnt/data/frp/frp_count_indonesia_{}deg_monthly_v2_no_volcanoes.parquet'.format(cc.res))
-    grdfr = pd.read_parquet('/mnt/data/frp/monthly_fire_duration_size_0.25deg.parquet')
-    #cc.frpfr = filter_volcanoes(cc.frpfr)
-    #cc.frpfr = cc.frpfr[cc.frpfr.frp < 6001]
-    frp = pd.merge(cc.fc[['lonind', 'latind']], cc.frpfr, on=['lonind', 'latind'], how='left')
-    #fc = pd.merge(frp[['lonind', 'latind']], cc.fc, on=['lonind', 'latind'], how='left')
-
-    frp.fillna(value=0, inplace=True)
-    frp = frp.set_index(['lonind', 'latind'])
-    frp.drop('frp', axis = 1, inplace = True)
-
-    #accum fire counts
-    frp_acc = frp.cumsum(axis = 1)
-    frp_acc = frp_acc.shift(1, axis = 1, fill_value = 0)
-
-    frp_acc = frp_acc.stack()
-    frp_acc = frp_acc.reset_index(name = 'frp_acc')
-    frp = frp.stack()
-    frp = frp.reset_index(name = 'frp')
-    frp.rename({'level_2': 'mind'}, axis = 1, inplace = True)
-    frp['mind'] = frp['mind'].astype(int)
-    frp = pd.merge(frp, grdfr, on=['lonind', 'latind', 'mind'], how='left')
-    frp.fillna(value=0, inplace=True)
-
-    current_year = 2018
-    last_year_prim = cc.fc.filter(regex = '^(?!{0})(.*loss_prim)'.format(current_year), axis = 1)
-    last_year_prim = loss_to_features(pd.concat([cc.fc[['lonind', 'latind']],
-                     last_year_prim / cc.fc.total.values[:, None]], axis = 1))
-
-    last_year_sec = cc.fc.filter(regex = '^(?!{0})(.*loss$)'.format(current_year), axis = 1)
-    last_year_sec = loss_to_features(pd.concat([cc.fc[['lonind', 'latind']],
-                  last_year_sec / cc.fc.total.values[:, None]], axis = 1))
-
-
-    #lost this year
-    this_year_prim = cc.fc.filter(regex = '^(?!{0})(.*loss_prim)'.format(first_year), axis = 1)
-    this_year_prim = loss_to_features(pd.concat([cc.fc[['lonind', 'latind']],
-                      this_year_prim / cc.fc.total.values[:, None]], axis = 1))
-
-    this_year_sec = cc.fc.filter(regex = '^(?!{0})(.*loss$)'.format(first_year), axis = 1)
-    this_year_sec = loss_to_features(pd.concat([cc.fc[['lonind', 'latind']],
-                  this_year_sec / cc.fc.total.values[:, None]], axis = 1))
-
-    #three year loss
-    loss_three = cc.fc.drop(['total', 'f_prim', 'gain'], axis = 1)
-    three_year_prim = loss_three.filter(regex = '^(?=.*prim)', axis = 1)
-    three_year_prim = three_year_prim.rolling(window = 3, min_periods = 1, axis = 1).sum()
-    three_year_prim.drop('{0}_loss_prim'.format(current_year), axis = 1, inplace = True)
-    three_year_prim = loss_to_features(pd.concat([cc.fc[['lonind', 'latind']],
-                      three_year_prim / cc.fc.total.values[:, None]], axis = 1))
-
-    three_year_sec = loss_three.filter(regex = '^(?=.*loss)(?!.*prim).*', axis = 1)
-    three_year_sec = three_year_sec.rolling(window = 3, min_periods = 1, axis = 1).sum()
-    three_year_sec.drop('{0}_loss'.format(current_year), axis = 1, inplace = True)
-    three_year_sec = loss_to_features(pd.concat([cc.fc[['lonind', 'latind']],
-                      three_year_sec / cc.fc.total.values[:, None]], axis = 1))
-
-    #accum loss primary excluding this
-    accum_loss_prim = cc.fc.filter(like = 'loss_prim', axis = 1)
-    accum_loss_prim.drop('{0}_loss_prim'.format(current_year), axis = 1, inplace = True)
-    accum_loss_prim = accum_loss_prim.cumsum(axis = 1)
-    #accum_loss_prim = accum_loss_prim.shift(1, axis = 1, fill_value = 0)
-    ac_loss_prim = loss_to_features(pd.concat([cc.fc[['lonind', 'latind']],
-                      accum_loss_prim / cc.fc.total.values[:, None]], axis = 1))
-
-    #accum loss secondary excluding this
-    accum_loss_sec = cc.fc.filter(regex = '^(?=.*loss)(?!.*prim).*', axis = 1)
-    accum_loss_sec.drop('{0}_loss'.format(current_year), axis = 1, inplace = True)
-    accum_loss_sec = accum_loss_sec.cumsum(axis = 1)
-    #accum_loss_sec = accum_loss_sec.shift(1, axis = 1, fill_value = 0)
-    ac_loss_sec = loss_to_features(pd.concat([cc.fc[['lonind', 'latind']],
-                      accum_loss_sec / cc.fc.total.values[:, None]], axis = 1))
-
-    #accum loss primary
-    accum_loss_prim = cc.fc.filter(like = 'loss_prim', axis = 1)
-    accum_loss_prim.iloc[: ,:] = accum_loss_prim.iloc[:, :].cumsum(axis = 1)
-    accum_loss_prim.drop('{0}_loss_prim'.format(first_year), axis = 1, inplace = True)
-
-    #get prim fraction for each year
-    prim_frac = cc.fc.f_prim.values[:, None] - (accum_loss_prim / cc.fc.total.values[:, None])
-    prim_frac = loss_to_features(pd.concat([cc.fc[['lonind', 'latind']],
-                                                  prim_frac], axis = 1))
-
-    accum_loss_prim = loss_to_features(pd.concat([cc.fc[['lonind', 'latind']],
-                      accum_loss_prim / cc.fc.total.values[:, None]], axis = 1))
-
-    #accum loss secondary
-    accum_loss_sec = cc.fc.filter(regex = '^(?=.*loss)(?!.*prim).*', axis = 1)
-    accum_loss_sec.iloc[: ,:] = accum_loss_sec.iloc[:, :].cumsum(axis = 1)
-    accum_loss_sec.drop('{0}_loss'.format(first_year), axis = 1, inplace = True)
-    accum_loss_sec = loss_to_features(pd.concat([cc.fc[['lonind', 'latind']],
-                      accum_loss_sec / cc.fc.total.values[:, None]], axis = 1))
-
-    #gain
-    gain = cc.fc['gain'] / cc.fc['total']
-    dem = dem_ds_to_dfr(cc)
-
-    #peat depth
-    depth = peat_depth_ds_to_dfr(cc)
-
-    frp.loc[:, 'loss_last_prim'] = last_year_prim.values
-    frp.loc[:, 'loss_last_sec'] = last_year_sec.values
-    frp.loc[:, 'loss_this_prim'] = this_year_prim.values
-    frp.loc[:, 'loss_this_sec'] = this_year_sec.values
-    frp.loc[:, 'loss_accum_prim'] = accum_loss_prim.values
-    frp.loc[:, 'loss_prim_before'] = ac_loss_prim.values
-    frp.loc[:, 'loss_accum_sec'] = accum_loss_sec.values
-    frp.loc[:, 'loss_sec_before'] = ac_loss_sec.values
-    frp.loc[:, 'loss_three_prim'] = three_year_prim.values
-    frp.loc[:, 'loss_three_sec'] = three_year_sec.values
-    frp.loc[:, 'frp_acc'] = frp_acc['frp_acc'].values
-    frp.loc[:, 'f_prim'] = prim_frac.values
-    frp.loc[:, 'gain'] = gain.repeat(12 * (current_year - first_year)).values
-    frp.loc[:, 'dem'] = dem['1'].repeat(12 * (current_year - first_year)).values
-    frp.loc[:, 'peat_depth'] = depth['1'].repeat(12 * (current_year - first_year)).values
-
-    cc.fwi_m = xr.open_dataset(os.path.join(cc.data_path, 'fwi',
-                                 'fwi_indonesia_{}deg_monthly_v2.nc'.format(cc.res)))
-    rollsum3dc = cc.fwi_m['dc_med'].rolling(time=3,min_periods = 1).sum()
-    rollsum3fwi = cc.fwi_m['fwi_med'].rolling(time=3,min_periods = 1).sum()
-    cc.fwi_m['dc_3m'] = rollsum3dc
-    cc.fwi_m['fwi_3m'] = rollsum3fwi
-    cc.fwi_m = cc.fwi_m.sel(time = slice('{0}-01-01'.format(first_year + 1),
-                                           '{0}-12-31'.format(current_year)))
-    frp = cc.add_fwi_features(list(cc.fwi_m.data_vars.keys()), cc.fc[['lonind', 'latind']], frp)
-    frp.rename({'mind': 'month'}, axis = 1, inplace = True)
-    return frp
-
-def prepare_features_5km(cc):
-    frp = pd.merge(cc.cc.fc[['lonind', 'latind']], cc.frpfr, on=['lonind', 'latind'], how='inner')
-    cc.fc = pd.merge(frp[['lonind', 'latind']], cc.cc.fc, on=['lonind', 'latind'], how='left')
-
-    frp.fillna(value=0, inplace=True)
-    frp = frp.set_index(['lonind', 'latind'])
-    frp.drop('frp', axis = 1, inplace = True)
-    frp = frp.stack()
-    frp = frp.reset_index(name = 'frp')
-
-    #cc.fc = cc.cc.fc.copy()
-    #cc.fc = pd.merge(frp[['lonind', 'latind']], cc.cc.fc, on=['lonind', 'latind'], how='left')
-    part = cc.fc[['f_prim', 'gain']]
-
-    #last year loss
-    last_year = cc.fc.drop(['total', 'f_prim', 'gain', 'loss', '17'], axis = 1)
-    last_year = loss_to_features(last_year)
-
-    #lost this year
-    this_year = cc.fc.drop(['total', 'f_prim', 'gain', 'loss', '1'], axis = 1)
-    this_year = loss_to_features(this_year)
-
-    #lost this year
-    this_year = fc.drop(['total', 'f_prim', 'gain', 'loss', '1'], axis = 1)
-    this_year = loss_to_features(this_year)
-
-
-
-    #accum loss
-    accum_loss = fc.drop(['total', 'f_prim', 'gain', 'loss'], axis = 1)
-    accum_loss.iloc[: ,2:] = accum_loss.iloc[:, 2:].cumsum(axis = 1)
-    accum_loss.drop('1', axis = 1, inplace = True)
-    accum_loss = loss_to_features(accum_loss)
-
-    #three year loss
-    loss_three = fc.drop(['total', 'f_prim', 'gain', 'loss'], axis = 1)
-    loss_three.iloc[: ,2:] = loss_three.iloc[:, 2:].rolling(window = 3, min_periods = 2, axis = 1).sum()
-    loss_three.drop('1', axis = 1, inplace = True)
-    loss_three = loss_to_features(loss_three)
-
-
-    frp.loc[:, 'loss_last'] = last_year.values
-    frp.loc[:, 'loss_this'] = this_year.values
-    frp.loc[:, 'loss_three'] = loss_three.values
-    frp.loc[:, 'loss_accum'] = accum_loss.values
-    frp.loc[:, 'f_prim'] = part['f_prim'].repeat(192).values
-    frp.loc[:, 'gain'] = part['gain'].repeat(192).values
-
-
-    cc.fwi_m = xr.open_dataset(os.path.join(cc.data_path, 'fwi',
-                                 'fwi_indonesia_{}deg_monthly_v2.nc'.format(cc.res)))
-    rollsum3dc = cc.fwi_m['dc_med'].rolling(time=3,min_periods = 1).sum()
-    rollsum3fwi = cc.fwi_m['fwi_med'].rolling(time=3,min_periods = 1).sum()
-    cc.fwi_m['dc_3m'] = rollsum3dc
-    cc.fwi_m['fwi_3m'] = rollsum3fwi
-    cc.fwi_m = cc.fwi_m.sel(time = slice('{0}-01-01'.format(first_year + 1),
-                                           '{0}-12-31'.format(current_year)))
-    frp = cc.add_fwi_features(list(cc.fwi_m.data_vars.keys()), fc[['lonind', 'latind']], frp)
-    frp.rename({'level_2': 'month'}, axis = 1, inplace = True)
-    return frp
-
 def spatial_subset_dfr(dfr, bbox):
     """
     Selects data within spatial bbox. bbox coords must be given as
@@ -936,43 +643,6 @@ def spatial_subset_dfr(dfr, bbox):
     dfr = dfr[(dfr['longitude'] > bbox[1]) &
                             (dfr['longitude'] < bbox[3])]
     return dfr
-
-def modis_frp_proc(data_path, years, lats, lons):
-    dfrs = []
-    gr = Gridder(bbox = 'indonesia', step = 0.25)
-    for year in years:
-        fname = os.path.join(data_path, 'frp', 'M6_{}.csv'.format(year))
-        dfr = pd.read_csv(fname, sep = ',')
-        dfr = dfr[['latitude', 'longitude', 'acq_date']]
-        dfr.rename({'acq_date': 'date'}, axis = 'columns', inplace = True)
-        dfr = spatial_subset_dfr(dfr, [x.values for x in gr.bbox])
-        dfrs.append(dfr)
-    dfr_all = pd.concat(dfrs, ignore_index = True)
-    return dfr_all
-
-def monthly_frp_dfr(frp_file, bbox, res, ds):
-    dfr = pd.read_parquet(frp_file)
-    gri = Gridder(bbox = 'indonesia', step = res)
-    dfr = spatial_subset_dfr(dfr, gri.bbox)
-    dfr = gri.add_grid_inds(dfr)
-    dfr['year'] = dfr['date'].dt.year
-    dfr['month'] = dfr['date'].dt.month
-    dfr['mind'] = (dfr['year'] - dfr['year'].min()) * 12 + dfr['month']
-    grdfr = pd.DataFrame({'frp': dfr.groupby(['lonind', 'latind', 'mind'])['date'].count()})
-    #grdfr = pd.DataFrame({'frp': dfr.groupby(['lonind', 'latind'])['date'].count()})
-    grdfr.reset_index(inplace = True)
-    grid = np.zeros((gri.lats.shape[0], gri.lons.shape[0], grdfr.mind.max()), dtype=int)
-    grid[grdfr.latind, grdfr.lonind, grdfr.mind - 1] = grdfr['frp'].astype(int)
-    prim = pd.read_parquet('/mnt/data/forest/forest_primary_{}deg_clean.parquet'.format(res))
-    grdfr_agg = pd.DataFrame({'frp': dfr.groupby(['lonind', 'latind'])['date'].count()})
-    prim_frp = pd.merge(prim, grdfr_agg, how='inner', on=['lonind', 'latind'])
-    frp_m = grid[prim_frp.latind, prim_frp.lonind, :]
-    df = pd.concat([prim_frp[['lonind', 'latind', 'frp']], pd.DataFrame(frp_m, columns=[str(x) for x in range(1, 193)])], axis = 1)
-    #grid = np.flip(grid, axis = 0)
-    #dataset = xr.Dataset({'count': (['latitude', 'longitude', 'time'], grids)},
-    #                      coords={'latitude': self.lats,
-    #                              'longitude': self.lons,
-    #                              'time': dates})
 
 def fit_piecewise(dfr, n_cpu):
     t0 = datetime.datetime.now()
@@ -1111,6 +781,7 @@ class CompData(Envdata):
 
     def read_forest_change(self):
         fc = pd.read_parquet('/mnt/data/forest/forest_change_{}deg_v3.parquet'.format(self.res))
+        fc = fc[fc.total > (fc.total.max() * 0.8)]
         self.fc = fc.fillna(value = 0)
 
     def digitize_values(self, dfr, columns, bins):
@@ -1123,8 +794,8 @@ class CompData(Envdata):
         last_year_ind = ((dfr.month.astype(int) - 1) // 12) - 1
         last_year_loss = cc.fc
 
-    def fwi_ds_to_dfr(self, prod, lon_lat_fr):
-        ds = self.fwi_m[prod]
+    def fwi_ds_to_dfr(self, prod, fwi, lon_lat_fr):
+        ds = fwi[prod]
         lon_lat_fr.reset_index(drop = True, inplace = True)
         fr = ds.values[:, lon_lat_fr.latind, lon_lat_fr.lonind]
         dfr = pd.concat([lon_lat_fr[['latind', 'lonind']],
@@ -1137,10 +808,14 @@ class CompData(Envdata):
         dfr = dfr.stack()
         return dfr
 
-    def add_fwi_features(self, products, lon_lat_fr, dfr):
+    def add_fwi_features(self, products, fwi, lon_lat_fr, dfr):
         for prod in products:
-            df = self.fwi_ds_to_dfr(prod, lon_lat_fr)
+            print(prod)
+            df = self.fwi_ds_to_dfr(prod, fwi, lon_lat_fr)
+            print(df.shape)
             df = self.stack_dfr(df)
+            print(df.shape)
+            print(dfr.shape)
             dfr.loc[:, prod] = df.values
         return dfr
 
@@ -1155,22 +830,162 @@ class CompData(Envdata):
 
 
 
+    def frp_lc_features(self, out_name):
+        first_year = 2001
+        self.frpfr = pd.read_parquet('/mnt/data/frp/monthly_frp_count_indonesia_0.25deg_2019_10.parquet'.format(self.res, out_name))
+        grdfr = pd.read_parquet('/mnt/data/frp/monthly_fire_duration_size_daynight_0.25deg_2019_10.parquet'.format(self.res, out_name))
+        grdfr = grdfr.fillna(0)
+        current_year = grdfr.year.max()
+        self.read_forest_change()
+        self.fc = self.fc[self.fc.total > 800000]
+        self.fc['{}_loss'.format(current_year)] = 0
+        self.fc['{}_loss_prim'.format(current_year)] = 0
+        months_to_fill = 12 - grdfr[grdfr.year == current_year].month.max()
+        dummy_year = np.zeros_like(self.frpfr.iloc[:, :months_to_fill])
+        last_month = int(self.frpfr.columns[-1]) + 1
+        columns = [str(x) for x in range(last_month, last_month + months_to_fill, 1)]
+        frpfr_plus = pd.concat([self.frpfr, pd.DataFrame(data = dummy_year, columns = columns)], axis = 1)
+        #self.frpfr = filter_volcanoes(self.frpfr)
+        #self.frpfr = self.frpfr[self.frpfr.frp < 6001]
+        frp = pd.merge(self.fc[['lonind', 'latind']], frpfr_plus, on=['lonind', 'latind'], how = 'left')
+        #fc = pd.merge(frp[['lonind', 'latind']], self.fc, on=['lonind', 'latind'], how='left')
+
+        frp.fillna(value=0, inplace=True)
+        frp = frp.set_index(['lonind', 'latind'])
+        frp.drop('frp', axis = 1, inplace = True)
+
+        #accum fire counts
+        frp_acc = frp.cumsum(axis = 1)
+        frp_acc = frp_acc.shift(1, axis = 1, fill_value = 0)
+
+        frp_acc = frp_acc.stack()
+        frp_acc = frp_acc.reset_index(name = 'frp_acc')
+        frp = frp.stack()
+        frp = frp.reset_index(name = 'frp')
+        frp.rename({'level_2': 'mind'}, axis = 1, inplace = True)
+        frp['mind'] = frp['mind'].astype(int)
+        grdfr = grdfr.drop(['frp'], axis = 1)
+        frp = pd.merge(frp, grdfr, on=['lonind', 'latind', 'mind'], how='left')
+        frp.fillna(value=0, inplace=True)
+
+        last_year_prim = self.fc.filter(regex = '^(?!{0})(.*loss_prim)'.format(current_year), axis = 1)
+        last_year_prim = loss_to_features(pd.concat([self.fc[['lonind', 'latind']],
+                         last_year_prim / self.fc.total.values[:, None]], axis = 1))
+
+        last_year_sec = self.fc.filter(regex = '^(?!{0})(.*loss$)'.format(current_year), axis = 1)
+        last_year_sec = loss_to_features(pd.concat([self.fc[['lonind', 'latind']],
+                      last_year_sec / self.fc.total.values[:, None]], axis = 1))
+
+        #lost this year
+        this_year_prim = self.fc.filter(regex = '^(?!{0})(.*loss_prim)'.format(first_year), axis = 1)
+        this_year_prim = loss_to_features(pd.concat([self.fc[['lonind', 'latind']],
+                          this_year_prim / self.fc.total.values[:, None]], axis = 1))
+
+        this_year_sec = self.fc.filter(regex = '^(?!{0})(.*loss$)'.format(first_year), axis = 1)
+        this_year_sec = loss_to_features(pd.concat([self.fc[['lonind', 'latind']],
+                      this_year_sec / self.fc.total.values[:, None]], axis = 1))
+
+        #three year loss
+        loss_three = self.fc.drop(['total', 'f_prim', 'gain'], axis = 1)
+        three_year_prim = loss_three.filter(regex = '^(?=.*prim)', axis = 1)
+        three_year_prim = three_year_prim.rolling(window = 3, min_periods = 1, axis = 1).sum()
+        three_year_prim.drop('{0}_loss_prim'.format(current_year), axis = 1, inplace = True)
+        three_year_prim = loss_to_features(pd.concat([self.fc[['lonind', 'latind']],
+                          three_year_prim / self.fc.total.values[:, None]], axis = 1))
+
+        three_year_sec = loss_three.filter(regex = '^(?=.*loss)(?!.*prim).*', axis = 1)
+        three_year_sec = three_year_sec.rolling(window = 3, min_periods = 1, axis = 1).sum()
+        three_year_sec.drop('{0}_loss'.format(current_year), axis = 1, inplace = True)
+        three_year_sec = loss_to_features(pd.concat([self.fc[['lonind', 'latind']],
+                          three_year_sec / self.fc.total.values[:, None]], axis = 1))
+
+        #accum loss primary excluding this
+        accum_loss_prim = self.fc.filter(like = 'loss_prim', axis = 1)
+        accum_loss_prim.drop('{0}_loss_prim'.format(current_year), axis = 1, inplace = True)
+        accum_loss_prim = accum_loss_prim.cumsum(axis = 1)
+        #accum_loss_prim = accum_loss_prim.shift(1, axis = 1, fill_value = 0)
+        ac_loss_prim = loss_to_features(pd.concat([self.fc[['lonind', 'latind']],
+                          accum_loss_prim / self.fc.total.values[:, None]], axis = 1))
+
+        #accum loss secondary excluding this
+        accum_loss_sec = self.fc.filter(regex = '^(?=.*loss)(?!.*prim).*', axis = 1)
+        accum_loss_sec.drop('{0}_loss'.format(current_year), axis = 1, inplace = True)
+        accum_loss_sec = accum_loss_sec.cumsum(axis = 1)
+        #accum_loss_sec = accum_loss_sec.shift(1, axis = 1, fill_value = 0)
+        ac_loss_sec = loss_to_features(pd.concat([self.fc[['lonind', 'latind']],
+                          accum_loss_sec / self.fc.total.values[:, None]], axis = 1))
+
+        #accum loss primary
+        accum_loss_prim = self.fc.filter(like = 'loss_prim', axis = 1)
+        accum_loss_prim.iloc[: ,:] = accum_loss_prim.iloc[:, :].cumsum(axis = 1)
+        accum_loss_prim.drop('{0}_loss_prim'.format(first_year), axis = 1, inplace = True)
+
+        #get prim fraction for each year
+        prim_frac = self.fc.f_prim.values[:, None] - (accum_loss_prim / self.fc.total.values[:, None])
+        prim_frac = loss_to_features(pd.concat([self.fc[['lonind', 'latind']],
+                                                      prim_frac], axis = 1))
+
+        accum_loss_prim = loss_to_features(pd.concat([self.fc[['lonind', 'latind']],
+                          accum_loss_prim / self.fc.total.values[:, None]], axis = 1))
+
+        #accum loss secondary
+        accum_loss_sec = self.fc.filter(regex = '^(?=.*loss)(?!.*prim).*', axis = 1)
+        accum_loss_sec.iloc[: ,:] = accum_loss_sec.iloc[:, :].cumsum(axis = 1)
+        accum_loss_sec.drop('{0}_loss'.format(first_year), axis = 1, inplace = True)
+        accum_loss_sec = loss_to_features(pd.concat([self.fc[['lonind', 'latind']],
+                          accum_loss_sec / self.fc.total.values[:, None]], axis = 1))
+
+        #gain
+        gain = self.fc['gain'] / self.fc['total']
+        dem = dem_ds_to_dfr(self)
+
+        #peat depth
+        depth = self.peat_depth_dfr()
+
+        frp.loc[:, 'loss_last_prim'] = last_year_prim.values
+        frp.loc[:, 'loss_last_sec'] = last_year_sec.values
+        frp.loc[:, 'loss_this_prim'] = this_year_prim.values
+        frp.loc[:, 'loss_this_sec'] = this_year_sec.values
+        frp.loc[:, 'loss_accum_prim'] = accum_loss_prim.values
+        frp.loc[:, 'loss_prim_before'] = ac_loss_prim.values
+        frp.loc[:, 'loss_accum_sec'] = accum_loss_sec.values
+        frp.loc[:, 'loss_sec_before'] = ac_loss_sec.values
+        frp.loc[:, 'loss_three_prim'] = three_year_prim.values
+        frp.loc[:, 'loss_three_sec'] = three_year_sec.values
+        frp.loc[:, 'frp_acc'] = frp_acc['frp_acc'].values
+        frp.loc[:, 'f_prim'] = prim_frac.values
+        frp.loc[:, 'gain'] = gain.repeat(12 * (current_year - first_year)).values
+        frp = pd.merge(frp, dem, on = ['lonind', 'latind'], how = 'left')
+        frp = pd.merge(frp, depth, on = ['lonind', 'latind'], how = 'left')
+        frp = frp.fillna(0)
+        frp.to_parquet('/mnt/data2/SEAS5/forecast/frp_features_{0}.parquet'.format(out_name))
+
+    def peat_depth_dfr(self):
+        pdfr = pd.read_parquet('/mnt/data/land_cover/peat_depth/peat_mask_0.01deg.parquet')
+        gri = Gridder(bbox = 'indonesia', step = self.res)
+        pdfr = gri.add_grid_inds(pdfr)
+        pdfr = pdfr.groupby(['lonind', 'latind'])['peatd'].sum()
+        return pdfr
+
+    def add_rolling_features(self, ds):
+        rollsum3dc = ds['dc_med'].rolling(time=3,min_periods = 1).sum()
+        rollsum3tp = ds['tp_med'].rolling(time=3,min_periods = 1).sum()
+        rollsum3fwi = ds['fwi_med'].rolling(time=3,min_periods = 1).sum()
+        ds['dc_3m'] = rollsum3dc
+        ds['tp_3m'] = rollsum3tp
+        ds['fwi_3m'] = rollsum3fwi
+        return ds
+
 if __name__ == '__main__':
     data_path = '/mnt/data/'
-    res = 0.25
+    res = 0.01
+    out_name = '2019_12'
     #res = 0.01
     #data_path = '/home/tadas/data/'
     cc = CompData(data_path, res)
-    #cc.read_forest_change()
+    current_year = 2019
+    first_year = 2001
+    cc.read_forest_change()
 
-    #Sumatra only!
-    #cc.frpfr = cc.frpfr[(cc.frpfr.lonind > 43) & (cc.frpfr.lonind < 275)]
-    #cc.frpfr = cc.frpfr[(cc.frpfr.latind > 141) & (cc.frpfr.latind < 380)]
+    #cc.frp_lc_features(out_name)
 
-    #cc.frpfr = cc.frpfr[cc.frpfr.frp < 1001]
-    #cc.fc = cc.fc[cc.fc.total > 35000]
-
-    #do 25 km
-    #cc.read_features(0.25, 6001, 700000)
-
-    #res = cc.do_piecewise(cc.ffmcfr)
