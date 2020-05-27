@@ -53,7 +53,10 @@ def lat_lon_grid_points(bbox, step):
 
 class Gridder(object):
     def __init__(self, lats=None, lons=None, bbox=None, step=None):
-        self.bboxes = {'indonesia': [8.0, 93.0, -13.0, 143.0], 'riau': [3, 99, -2, 104]}
+        self.bboxes = {'indonesia': [8.0, 93.0, -13.0, 143.0],
+                       'riau': [3, 99, -2, 104],
+                       'canada': [83, -141, 41.67, -52.6],
+                       'canada_usa': [83, -171.8, 20.67, -52.6]}
         if all(cord is not None for cord in [lats, lons]):
             self.lats, self.lons = lats, lons
             self.step = self.grid_step()

@@ -25,10 +25,6 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.ensemble import BaggingClassifier
 from sklearn.model_selection import cross_val_score, cross_validate
 from imblearn.under_sampling import RandomUnderSampler
-import rpy2.robjects as robj
-from rpy2.robjects.lib import grid
-from rpy2.robjects.packages import importr
-from rpy2.robjects import pandas2ri
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import classification_report
@@ -160,6 +156,7 @@ class FireMod():
             'logist': LogisticRegression(solver = 'liblinear', penalty='l1', class_weight={0:1,1:5}),
             'clfnn1': MLPClassifier(solver='lbfgs', alpha=1,
                                     hidden_layer_sizes=(10),
+                                    max_iter = 1000,
                                     activation='logistic', random_state=1),
             'clfnn2': MLPClassifier(solver='lbfgs', alpha=2,
                                     hidden_layer_sizes=(10),
@@ -922,7 +919,7 @@ month = 7
 year = 2019
 features = weather+lc
 model = 'clfnn1'
-months = [7, 8, 9, 10, 11, 12]
+months = [7, 8, 9, 10, 11]
 
 #frp_train = pd.read_parquet('data/feature_train_fr_0.25deg_v4.parquet')
 fm = FireMod(frp_train, features, 'frp', 10, max_fact  = 4000)
@@ -946,7 +943,6 @@ s5_scaled = scaler.transform(frp_s5[features].values)
 clim_scaled = scaler.transform(frp_clim[features].values)
 frp_s5.loc[:, 'probs'] = clf.predict_proba(s5_scaled)[:, 1]
 frp_s5.loc[:, 'clim_probs'] = clf.predict_proba(clim_scaled)[:, 1]
-"""
 """
 
 for month in months:
@@ -1003,4 +999,3 @@ with open('/home/tadas/tofewsi/website/assets/forecast_.json', 'w') as outfile:
 
 
 #fm.plot_forecast(features, 'clfnn1', frp_clim, frp_s5,  [9, 10, 11], 'clfnn_test')
-"""

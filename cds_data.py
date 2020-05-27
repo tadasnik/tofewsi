@@ -21,8 +21,9 @@ c = cdsapi.Client()
 hincast_years = [str(year) for year in range(1993, 2019, 1)]
 lead_hours = [str(x) for x in range(6, 5161, 6)]
 
+"""
 for year in range(2019, 2020, 1):
-    for month in range(11, 12, 1):
+    for month in range(12, 13, 1):
         print(year, month)
         c.retrieve(
             'reanalysis-era5-single-levels',
@@ -63,7 +64,6 @@ for year in range(2019, 2020, 1):
             },
             '/mnt/data/era5/glob/{0}_{1}.nc'.format(year, month))
 
-"""
 c.retrieve(
     'seasonal-monthly-single-levels',
     {
@@ -127,6 +127,7 @@ for month in ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', 
         },
         '/mnt/data2/SEAS5/monthly/hindcasts/{0}_mean.nc'.format(month))
 
+"""
 c.retrieve(
     'seasonal-original-single-levels',
     {
@@ -144,4 +145,3 @@ c.retrieve(
         'leadtime_hour': lead_hours
     },
     '/mnt/data2/SEAS5/forecast/2019_12_ind.grib')
-"""

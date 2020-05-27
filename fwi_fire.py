@@ -4,9 +4,8 @@ import datetime
 import numpy as np
 import xarray as xr
 import pandas as pd
-import dask.dataframe as dd
-import swifter
-import pwlf
+#import dask.dataframe as dd
+#import pwlf
 import geopandas as gpd
 from envdata import Envdata
 from gridding import Gridder
@@ -979,7 +978,7 @@ class CompData(Envdata):
 if __name__ == '__main__':
     data_path = '/mnt/data/'
     res = 0.01
-    out_name = '2019_12'
+    out_name = '2019_12_31'
     #res = 0.01
     #data_path = '/home/tadas/data/'
     cc = CompData(data_path, res)

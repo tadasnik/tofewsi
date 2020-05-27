@@ -10,12 +10,21 @@ from sklearn.cluster import DBSCAN
 from multiprocessing import Pool, cpu_count
 #from gridding import Gridder
 #from pyhdf import SD
-import h5py
+#import h5py
 from gridding import *
 from envdata import Envdata
-from fwi_fire import CompData
+#from fwi_fire import CompData
 import matplotlib.pyplot as plt
-import geopandas as gpd
+#import geopandas as gpd
+
+def get_sin_coords(self, dfr):
+    lon_rad = np.deg2rad(dfr.longitude)
+    lat_rad = np.deg2rad(dfr.latitude)
+    x = self.earth_r * lon_rad * np.cos(lat_rad)
+    y = self.earth_r * lon_rad
+    tile_h = np.floor((x - self.x_min) / self.tile_size)
+    tile_v = np.floor((y.max() - y) / self.tile_size)
+
 
 def proc_fire_forest_1km():
     dfr = pd.read_parquet('/mnt/data/frp/M6_indonesia_clustered.parquet')
@@ -161,8 +170,8 @@ class FireObs(object):
         self.bbox = bbox
         self.hour = hour
         self.tile_size = 1111950 # height and width of MODIS tile in the projection plane (m)
-        self.x_min = -20015109 # the western linit ot the projection plane (m)
-        self.y_max = 10007555 # the northern linit ot the projection plane (m)
+        self.x_min = -20015109 # the western limit ot the projection plane (m)
+        self.y_max = 10007555 # the northern limit ot the projection plane (m)
         self.w_size = 463.31271653 # the actual size of a "500-m" MODIS sinusoidal grid cell
         self.earth_r = 6371007.181 # the radius of the idealized sphere representing the Earth
         self.years = list(range(2002, 2016))
@@ -395,6 +404,19 @@ class FireObs(object):
         lon_rad, lat_rad = np.deg2rad(dfr.lon), np.deg2rad(dfr.lat)
         xyz = spher_to_cartes(lon_rad, lat_rad)
         return xyz
+
+    def add_sinusoidal_coords(self, dfr):
+        lon_rad = np.deg2rad(dfr.lon)
+        lat_rad = np.deg2rad(dfr.lat)
+        x = self.earth_r * lon_rad * np.cos(lat_rad)
+        y = self.earth_r * lat_rad
+        dfr['tile_h'] = (np.floor((x - self.x_min) / self.tile_size)).astype(int)
+        dfr['tile_v'] = (np.floor((self.y_max - y) / self.tile_size)).astype(int)
+        i_top = (self.y_max - y) % self.tile_size
+        j_top = (x - self.x_min) % self.tile_size
+        dfr['indx'] = (np.floor((i_top / self.w_size) - 0.5)).astype(int)
+        dfr['indy'] = (np.floor((j_top / self.w_size) - 0.5)).astype(int)
+        return dfr
 
     def write_xyz_day_since(self, store_objects):
         for obj in store_objects:
@@ -906,26 +928,41 @@ if __name__ == '__main__':
 
     c_data_path = '/mnt/data/'
     res = 0.25
-    gri = Gridder(bbox = 'indonesia', step = res)
+    #gri = Gridder(bbox = 'indonesia', step = res)
+    #gri = Gridder(bbox = 'canada_usa', step = res)
     #res = 0.01
     #data_path = '/home/tadas/data/'
-    cc = CompData(c_data_path, res)
+    #cc = CompData(c_data_path, res)
 
-    out_name = '2019_11'
+    out_name = 'ca_2019_12_31'
     #cc.read_forest_change()
 
     #prepare M6 pixel data for indonesia
     dts = []
-    for year in range(2002, 2020, 1):
+    year = 2019
+    #for year in range(2002, 2019, 1):
+    #ds = pd.read_parquet(os.path.join(data_path, 'M6_{0}.parquet'.format(year)))
+    #dts.append([year, ds.shape[0], ds.frp.sum()])
+
+       #dfr[['lon', 'lat']].to_csv('input.csv', sep = ' ', index = False, header = False)
+        #os.system(r'gdallocationinfo -valonly -wgs84 "%s" <%s >%s' % ('data/gpw_v4_national_identifier_grid_rev11_30_sec.tif',
+        #                                                                  'input.csv','output.csv'))
+        #dfr['cn'] = pd.read_csv('output.csv')
+        #dfr = dfr[dfr.cn > -1]
+
+    for year in range(2016, 2020, 1):
         print(year)
         #ds = fo.read_dfr_from_parquet('M6_{0}'.format(year))
         #ds = pd.read_parquet(os.path.join(data_path, 'M6_{0}.parquet'.format(year)))
         ds = pd.read_csv(os.path.join(data_path, 'M6_raw', 'fire_archive_M6_{0}.csv'.format(year)))
-        ds.rename({'lat': 'latitude', 'lon': 'longitude'}, axis = 1, inplace = True)
+        #ds.rename({'lat': 'latitude', 'lon': 'longitude'}, axis = 1, inplace = True)
         if 'date' not in ds.columns:
             ds.rename({'acq_date': 'date'}, axis = 1, inplace = True)
             ds['date'] =  pd.to_datetime(ds['date'])
-        am = env.spatial_subset_dfr(ds, gri.bboxes['indonesia'])
+        ds.to_parquet(os.path.join(data_path, 'M6_{}.parquet'.format(year)))
+
+    """
+        am = env.spatial_subset_dfr(ds, gri.bboxes['canada_usa'])
         dts.append(am)
     nrt_fname = glob.glob('/mnt/data/frp/M6_raw/fire_nrt*csv')
     ds = pd.read_csv(nrt_fname[0])
@@ -933,38 +970,38 @@ if __name__ == '__main__':
     if 'date' not in ds.columns:
         ds.rename({'acq_date': 'date'}, axis = 1, inplace = True)
         ds['date'] =  pd.to_datetime(ds['date'])
-    am = env.spatial_subset_dfr(ds, gri.bboxes['indonesia'])
+    #am = env.spatial_subset_dfr(ds, gri.bboxes['indonesia'])
+    am = env.spatial_subset_dfr(ds, gri.bboxes['canada_usa'])
     dts.append(am)
 
     dt = pd.concat(dts)
     dt = dt.drop(['type', 'version'], axis = 1)
-    dt.to_parquet('/mnt/data/frp/M6_indonesia.parquet')
+    dt.to_parquet('/mnt/data/frp/M6_canada_usa.parquet')
 
 
 
-    """
     #calculate sum up to a date
-    dsl = {}
-    for year in range(2002, 2020, 1):
-        dfs = mm[mm.year == year]
-        dfs = dfs[dfs.date <= pd.datetime(year, 9, 19)]
-        print(dfs.date.max())
-        dsl[year] = len(dfs)
-    df = pd.DataFrame.from_dict(dsl, orient = 'index')
-    """
+    #dsl = {}
+    #for year in range(2002, 2020, 1):
+    #    dfs = mm[mm.year == year]
+    #    dfs = dfs[dfs.date <= pd.datetime(year, 9, 19)]
+    #    print(dfs.date.max())
+    #    dsl[year] = len(dfs)
+    #df = pd.DataFrame.from_dict(dsl, orient = 'index')
 
     #cluster indonesia frp
 
     fo = FireObs('none')
-    dfr = pd.read_parquet('/mnt/data/frp/M6_indonesia.parquet')
+    #dfr = pd.read_parquet('/mnt/data/frp/M6_indonesia.parquet')
+    dfr = pd.read_parquet('/mnt/data/frp/M6_canada_usa.parquet')
     di = fo.preprocess(dfr)
     dc = fo.cluster_region(di)
     di_labs = pd.concat([di[['longitude', 'latitude', 'frp',
-                             'confidence', 'date', 'day_since',
+                             'confidence', 'date', 'x', 'y', 'z', 'day_since',
                              'daynight', 'satellite']], dc], axis=1)
-    di_labs.to_parquet('/mnt/data/frp/M6_indonesia_clustered.parquet')
-    dfr = pd.read_parquet('/mnt/data/frp/M6_indonesia_clustered.parquet')
-    dfr = filter_volcanoes(dfr, 0.25)
-    dfr.to_parquet('/mnt/data/frp/M6_indonesia_clustered_no_volcanoes.parquet')
+    di_labs.to_parquet('/mnt/data/frp/M6_canada_usa_clustered.parquet')
+    dfr = pd.read_parquet('/mnt/data/frp/M6_canada_usa_clustered.parquet')
+    #dfr = filter_volcanoes(dfr, 0.25)
+    #dfr.to_parquet('/mnt/data/frp/M6_indonesia_clustered_no_volcanoes.parquet')
     grdfr = monthly_frp_dfr_clustered(gri, out_name)
-
+    """

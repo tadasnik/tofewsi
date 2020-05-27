@@ -11,24 +11,28 @@ import matplotlib.pyplot as plt
 from fwi.fwi_vectorized import FWI
 
 def is_amj(month):
-    return month <= 8
+    return month <= 11
 
 def get_precipitation(bbox):
-    bbox = [5.8, 95, -5.935, 119]
-    ds = xr.open_dataset('/mnt/data/era5/indonesia/combined_fwi_vars.nc')
-    ds = ds.sel(time = slice('2002-01-01', '2020-01-01'))['tp']
+    bbox = [2, 95, -5.935, 119]
+    #ds = xr.open_dataset('/mnt/data/era5/indonesia/combined_fwi_vars.nc')
+    ds = xr.open_dataset('/mnt/data/fwi/forecast/era5_obs_all_vars.nc')
+    ds = ds.sel(time = slice('2002-01-01', '2020-01-01'))#['dc']
     land_mask = 'data/era_land_mask.nc'
     land_mask = xr.open_dataset(land_mask)
     land_mask = land_mask.sel(longitude = slice(bbox[1], bbox[3]))
     land_mask = land_mask.sel(latitude = slice(bbox[0], bbox[2]))
     ds = ds.sel(longitude = slice(bbox[1], bbox[3]))
     ds = ds.sel(latitude = slice(bbox[0], bbox[2]))
-    ds = ds.isel(ds['time.month'] < 9)
-    ds = ds.sel(time=is_amj(ds['time.month']))
+    #ds = ds.isel(ds['time.month'] < 9)
+    #ds = ds.sel(time=is_amj(ds['time.month']))
     tps = ds.where(land_mask['lsm'][0, :, :].values)
-    tpm = tps.resample(time = '1M', closed = 'right').sum(dim = 'time')
-    tpy = tps.groupby('time.year').mean(dim = 'time')
-    med  = tps.where(tpm != 0).median(dim = ['longitude', 'latitude'])
+    tpy = tps.groupby('time.year').sum('time')
+    tpm = tps.resample(time = 'MS', closed = 'right').median(dim = 'time')
+    suma  = tpm.where(tpm != 0).sum(dim = ['longitude', 'latitude'])
+    med  = tpy.where(tpy != 0).mean(dim = ['longitude', 'latitude'])
+    high  = tpm.where(tpm != 0).quantile(.75, dim = ['longitude', 'latitude'])
+    low  = tpm.where(tpm != 0).quantile(.25, dim = ['longitude', 'latitude'])
     suma  = tpy.sum(dim = ['longitude', 'latitude'])
     low  = tpm.where(tpm != 0).quantile(.25, dim = ['longitude', 'latitude'])
     high  = tpm.where(tpm != 0).quantile(.75, dim = ['longitude', 'latitude'])
@@ -220,7 +224,6 @@ class Weather(Envdata):
         fname = '/mnt/data/era5/glob/{0}_{1}.nc'.format(year, month)
         fwi_vars = self.prepare_xarray_fwi(fname)
         fwi_vars.to_netcdf('/mnt/data/era5/indonesia/fwi_vars_{0}_{1}.nc'.format(year, month))
-        self.combine_fwi_vars(to_disk = True)
 
     def combine_fwi_vars(self, to_disk = False):
         fnames = glob.glob(self.data_path + '/fwi_vars*')
@@ -375,8 +378,9 @@ if __name__ == '__main__':
     data_path = '/mnt/data/era5/indonesia'
     bbox = [8.0, 93.0, -13.0, 143.0]
     cl = Weather(data_path, bbox = bbox)
-    tpm = get_precipitation(bbox)
+    #tpm = get_precipitation(bbox)
 
     #if new era5 data available:
-    #cl.update_fwi_vars(2019, 8)
+    #cl.update_fwi_vars(2019, 12)
+    #cl.combine_fwi_vars(to_disk = True)
 

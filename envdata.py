@@ -3,7 +3,7 @@ import os
 import datetime
 import numpy as np
 import xarray as xr
-from pyhdf.SD import SD
+#from pyhdf.SD import SD
 
 class Envdata(metaclass=abc.ABCMeta):
     def __init__(self, data_path, bbox=None, hour=None):
