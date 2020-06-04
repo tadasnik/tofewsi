@@ -158,10 +158,10 @@ class FireMod():
                                     hidden_layer_sizes=(10),
                                     max_iter = 1000,
                                     activation='logistic', random_state=1),
-            'clfnn2': MLPClassifier(solver='lbfgs', alpha=2,
-                                    hidden_layer_sizes=(10),
+            'clfnn2': MLPClassifier(solver='lbfgs', alpha=1,
+                                    hidden_layer_sizes=(100),
                                     activation='logistic', random_state=1),
-            'randf': RandomForestClassifier(n_estimators=100, max_depth=2,
+            'randf': RandomForestClassifier(n_estimators=100, max_depth=4,
                                  random_state=0),
             'clfnn': MLPClassifier(solver='lbfgs', alpha=2,
                                    hidden_layer_sizes=(14),
@@ -831,7 +831,8 @@ def get_year_train_test_select(dfr, year):
     X_train = dfr[dfr.year != year]
     X_test = dfr[dfr.year == year]
     poss = dfr[dfr.labels == 1]
-    negs = dfr[dfr.labels == 0].sample(n = poss.shape[0] * 4)
+    #negs = dfr[dfr.labels == 0].sample(n = poss.shape[0] * 10)
+    negs = dfr[dfr.labels == 0]#.sample(n = poss.shape[0] * 10)
     X_train = pd.concat([poss, negs])
     return X_train, X_test
 
@@ -897,6 +898,11 @@ weather_this = ['tp_med', 't2m_med', 'w10_med', 'h2m_med',
 weather = ['tp_sum', 'tp_1', 'tp_2', 'tp_3', 'tp_4', 'tp_5', 't2m_med', 'h2m_med',
            'h2m_75p', 't2m_7mm', 'h2m_7mm',
            't2m_3sum', 'h2m_3sum']
+weather_sub = ['tp_sum', 'tp_1', 'tp_2', 'tp_3', 'tp_4', 'tp_5',
+                't2m_med', 't2m_1', 't2m_2', 't2m_3', 't2m_4', 't2m_5',
+                'w10_med', 'w10_1', 'w10_2', 'w10_3', 'w10_4', 'w10_5',
+                'h2m_med', 'h2m_1', 'h2m_2', 'h2m_3', 'h2m_4', 'h2m_5']
+
 
 weather_past = ['tp_7mm', 't2m_7mm', 'w10_7mm', 'h2m_7mm',
            'tp_3sum', 't2m_3sum',  'h2m_3sum',
@@ -915,18 +921,18 @@ fwi = ['dc_med', 'ffmc_med', 'fwi_med', 'dc_75p', 'ffmc_75p',
 lc = ['loss_last_prim', 'loss_last_sec', 'loss_prim_before', 'loss_sec_before',
        'loss_three_prim', 'loss_three_sec', 'frp_acc', 'gain', 'f_prim', 'dem', 'peatd']
 
-month = 7
-year = 2019
-features = weather+lc
-model = 'clfnn1'
-months = [7, 8, 9, 10, 11]
+#month = 7
+#year = 2019
+#features = weather+lc
+#model = 'clfnn1'
+#months = [7, 8, 9, 10, 11]
 
 #frp_train = pd.read_parquet('data/feature_train_fr_0.25deg_v4.parquet')
-fm = FireMod(frp_train, features, 'frp', 10, max_fact  = 4000)
-frp = pd.read_parquet('/mnt/data2/SEAS5/forecast/frp_features_2019_10.parquet')
-train, test = get_year_train_test_select(fm.dfr, 2019)
-clf, scaler = fm.fit_model(train, features, 'clfnn1')
-res = {}
+#fm = FireMod(frp_train, features, 'frp', 10, max_fact  = 4000)
+#frp = pd.read_parquet('/mnt/data2/SEAS5/forecast/frp_features_2019_10.parquet')
+#train, test = get_year_train_test_select(fm.dfr, 2019)
+#clf, scaler = fm.fit_model(train, features, 'clfnn1')
+#res = {}
 #frp_s5 = pd.read_parquet(os.path.join(fm.forecast_path,
 #                                      '{0}_{1:02}/s5_features.parquet'.format(year, month)))
 #frp_s5 = fm.year_month(frp_s5)
@@ -945,6 +951,7 @@ frp_s5.loc[:, 'probs'] = clf.predict_proba(s5_scaled)[:, 1]
 frp_s5.loc[:, 'clim_probs'] = clf.predict_proba(clim_scaled)[:, 1]
 """
 
+"""
 for month in months:
     init = '{0}-{1}'.format(year, month)
     res[init] = {}
@@ -999,3 +1006,4 @@ with open('/home/tadas/tofewsi/website/assets/forecast_.json', 'w') as outfile:
 
 
 #fm.plot_forecast(features, 'clfnn1', frp_clim, frp_s5,  [9, 10, 11], 'clfnn_test')
+"""
