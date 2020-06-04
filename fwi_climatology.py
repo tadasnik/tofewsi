@@ -4,8 +4,8 @@ import datetime
 import numpy as np
 import pandas as pd
 import xarray as xr
-import dask as ds
-from dask.distributed import Client
+#import dask as ds
+#from dask.distributed import Client
 from envdata import Envdata
 import matplotlib.pyplot as plt
 from fwi.fwi_vectorized import FWI
@@ -304,9 +304,9 @@ class Weather(Envdata):
         stiched = xr.concat([obs, forecast], dim = 'time')
         return stiched
 
-    def monthly_obs_all_features_new(self, obs_all):
+    def monthly_obs_daily_features(self, obs_all):
         obs_m = obs_all[['fwi', 'ffmc', 'dc', 't2m', 'w10', 'h2m']].resample(time = '1M',
-                                                                           closed = 'right').median(dim = 'time')
+                         closed = 'right').median(dim = 'time')
         obs_m = obs_m.rename({'fwi': 'fwi_med', 'ffmc': 'ffmc_med', 'dc': 'dc_med',
                       't2m': 't2m_med', 'w10': 'w10_med', 'h2m': 'h2m_med'})
         obs_mtp = obs_all['tp'].resample(time = '1M', closed = 'right').sum(dim = 'time')
@@ -328,11 +328,49 @@ class Weather(Envdata):
         obs_sum3 = rolm3.rename({'fwi_med': 'fwi_3sum', 'ffmc_med': 'ffmc_3sum', 'dc_med': 'dc_3sum',
                       'tp_sum': 'tp_3sum', 't2m_med': 't2m_3sum',
                       'w10_med': 'w10_3sum', 'h2m_med': 'h2m_3sum'})
-        obs_m['tp_1'] = obs_mtp.shift(time = 1)
-        obs_m['tp_2'] = obs_mtp.shift(time = 2)
-        obs_m['tp_3'] = obs_mtp.shift(time = 3)
-        obs_m['tp_4'] = obs_mtp.shift(time = 4)
-        obs_m['tp_5'] = obs_mtp.shift(time = 5)
+        for lag in range(1, 6):
+            obs_m['tp_{0}'.format(lag)] = obs_mtp.shift(time = lag)
+            obs_m['t2m_{0}'.format(lag)] = obs_m['t2m_med'].shift(time = lag)
+            obs_m['w10_{0}'.format(lag)] = obs_m['w10_med'].shift(time = lag)
+            obs_m['h2m_{0}'.format(lag)] = obs_m['h2m_med'].shift(time = lag)
+
+        #rolm6 = obs_m.rolling(time = 6, min_periods = 1).sum()
+        #obs_sum6 = rolm6.rename({'fwi_med': 'fwi_6sum', 'ffmc_med': 'ffmc_6sum', 'dc_med': 'dc_6sum',
+        #              'tp_sum': 'tp_6sum', 't2m_med': 't2m_6sum',
+        #              'w10_med': 'w10_6sum', 'h2m_med': 'h2m_6sum'})
+        obs_feat = xr.merge([obs_m, obs_q, obs_mm, obs_sum3])
+        return obs_feat
+
+    def monthly_obs_all_features_new(self, obs_all):
+        obs_m = obs_all[['fwi', 'ffmc', 'dc', 't2m', 'w10', 'h2m']].resample(time = '1M',
+                         closed = 'right').median(dim = 'time')
+        obs_m = obs_m.rename({'fwi': 'fwi_med', 'ffmc': 'ffmc_med', 'dc': 'dc_med',
+                      't2m': 't2m_med', 'w10': 'w10_med', 'h2m': 'h2m_med'})
+        obs_mtp = obs_all['tp'].resample(time = '1M', closed = 'right').sum(dim = 'time')
+        obs_m['tp_sum'] = obs_mtp
+        obs_q = obs_all[['fwi', 'ffmc', 'dc', 't2m', 'w10', 'h2m']].resample(time = '1M',
+                                                                             closed = 'right').reduce(np.percentile, q = 75, dim = 'time')
+        obs_q = obs_q.rename({'fwi': 'fwi_75p', 'ffmc': 'ffmc_75p', 'dc': 'dc_75p',
+                      't2m': 't2m_75p',
+                      'w10': 'w10_75p', 'h2m': 'h2m_75p'})
+        rolm = obs_all[['fwi', 'ffmc', 'dc', 't2m', 'w10', 'h2m']].rolling(time = 7, min_periods = 1).mean()
+        obs_mm = rolm.resample(time = '1M', closed = 'right').max(dim = 'time')
+        obs_mm = obs_mm.rename({'fwi': 'fwi_7mm', 'ffmc': 'ffmc_7mm', 'dc': 'dc_7mm',
+                      't2m': 't2m_7mm',
+                      'w10': 'w10_7mm', 'h2m': 'h2m_7mm'})
+        roltp = obs_all['tp'].rolling(time = 7, min_periods = 1).mean()
+        obs_mmtp = roltp.resample(time = '1M', closed = 'right').min(dim = 'time')
+        obs_mm['tp_7dmin'] = obs_mmtp
+        rolm3 = obs_m.rolling(time = 3, min_periods = 1).sum()
+        obs_sum3 = rolm3.rename({'fwi_med': 'fwi_3sum', 'ffmc_med': 'ffmc_3sum', 'dc_med': 'dc_3sum',
+                      'tp_sum': 'tp_3sum', 't2m_med': 't2m_3sum',
+                      'w10_med': 'w10_3sum', 'h2m_med': 'h2m_3sum'})
+        for lag in range(1, 6):
+            obs_m['tp_{0}'.format(lag)] = obs_mtp.shift(time = lag)
+            obs_m['t2m_{0}'.format(lag)] = obs_m['t2m_med'].shift(time = lag)
+            obs_m['w10_{0}'.format(lag)] = obs_m['w10_med'].shift(time = lag)
+            obs_m['h2m_{0}'.format(lag)] = obs_m['h2m_med'].shift(time = lag)
+
         #rolm6 = obs_m.rolling(time = 6, min_periods = 1).sum()
         #obs_sum6 = rolm6.rename({'fwi_med': 'fwi_6sum', 'ffmc_med': 'ffmc_6sum', 'dc_med': 'dc_6sum',
         #              'tp_sum': 'tp_6sum', 't2m_med': 't2m_6sum',

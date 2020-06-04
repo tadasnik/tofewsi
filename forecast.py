@@ -125,6 +125,37 @@ class ForecastData():
         feats_fname = os.path.join(self.forecast_path, '{0}_features.nc'.format(name))
         stiched_feats.to_netcdf(feats_fname)
 
+    def era5_features(self, name):
+        wf = Weather(self.era_data_path, bbox = None)
+        obs = xr.open_dataset('/mnt/data/fwi/forecast/era5_obs_all_vars.nc')
+        feats = wf.monthly_obs_all_features_new(obs)
+        feats_fname = os.path.join('/mnt/data/fwi/forecast/', '{0}.nc'.format(name))
+        feats.to_netcdf(feats_fname)
+
+
+    def merge_daily_features(self, frp, ds, ds_all):
+        gri = Gridder(bbox = 'indonesia', step = self.res)
+        dfr = ds.to_dataframe().reset_index()
+        dfr = gri.add_grid_inds(dfr)
+        dfr = dfr.drop(['longitude', 'latitude'], axis = 1)
+        df = dfr.pivot_table(index = ['lonind', 'latind'], columns = 'time',
+                             values = ['tp'])
+        cols = [str(x) + '_' + str(y) for (x, y) in df.columns.tolist()]
+        df.columns = cols
+        df = df.reset_index()
+
+        dfra = ds_all.to_dataframe().reset_index()
+        dfra = gri.add_grid_inds(dfra)
+        dfra = dfra.drop(['longitude', 'latitude'], axis = 1)
+        dfa = dfra.pivot_table(index = ['lonind', 'latind'], columns = 'time',
+                             values = ['t2m', 'h2m', 'w10'])
+        colsa = [str(x) + '_' + str(y) for (x, y) in dfa.columns.tolist()]
+        dfa.columns = colsa
+        dfa = dfa.reset_index()
+        merged = pd.merge(frp, df, on = ['lonind', 'latind'], how = 'left')
+        merged = pd.merge(merged, dfa, on = ['lonind', 'latind'], how = 'left')
+        return merged
+
     def merge_features(self, frp, ds):
         gri = Gridder(bbox = 'indonesia', step = self.res)
         dfr = ds.to_dataframe().reset_index()
@@ -134,15 +165,42 @@ class ForecastData():
         merged = pd.merge(frp, dfr, on = ['lonind', 'latind', 'date'], how = 'left')
         return merged
 
+    def merge_frp_daily_weather_features(self, days):
+        from calendar import monthrange
+        first_year = 2001
+        data_path = '/mnt/data/'
+        cc = CompData(data_path, res)
+        cc.read_forest_change()
+        frp = pd.read_parquet('/mnt/data2/SEAS5/forecast/frp_features_2019_12_31_date.parquet')
+        #frp['date'] = [pd.datetime(2001, 12, 31) + pd.DateOffset(months = x) for x in frp.mind]
+        obs = xr.open_dataset('/mnt/data/fwi/forecast/era5_obs_all_vars.nc',
+                              drop_variables = ['dc', 'fwi', 'ffmc'])
+        merged = []
+        for year in frp.date.dt.year.unique():
+            for month in range(1, 13, 1):
+                frpsel = frp.loc[(frp.date.dt.year == year) & (frp.date.dt.month == month)]
+                end = pd.Timestamp(year, month, monthrange(year, month)[1])
+                start = end - pd.DateOffset(days = days)
+                start_all = end - pd.DateOffset(days = 31)
+                obsel = obs['tp'].sel(time = slice(start, end))
+                obsel_all = obs[['t2m', 'h2m', 'w10']].sel(time = slice(start_all, end))
+                obsel = obsel.assign_coords(time = range(0, days))
+                obsel_all = obsel_all.assign_coords(time = range(0, 31))
+                frpsel = self.merge_daily_features(frpsel, obsel, obsel_all)
+                merged.append(frpsel)
+        frpm = pd.concat(merged)
+        frpm = frpm.drop(['mind'], axis = 1)
+        frpm.to_parquet('data/feature_train_daily_0.25deg_2019_12_31.parquet')
+
     def merge_frp_weather_features_train(self):
         first_year = 2001
         data_path = '/mnt/data/'
         cc = CompData(data_path, res)
         cc.read_forest_change()
-        frp = pd.read_parquet('/mnt/data2/SEAS5/forecast/frp_features_2019_09.parquet')
+        frp = pd.read_parquet('/mnt/data2/SEAS5/forecast/frp_features_2019_12_31.parquet')
         frp['date'] = [pd.datetime(2001, 12, 31) + pd.DateOffset(months = x) for x in frp.mind]
-        cc.fwi_m = xr.open_dataset('/mnt/data/fwi/forecast/obs_features_tp_new.nc')
-        cc.fwi_m = cc.fwi_m.sel(time = slice(None, '2018-12-31'))
+        cc.fwi_m = xr.open_dataset('/mnt/data/fwi/forecast/obs_features_2019_12_31_full.nc')
+        cc.fwi_m = cc.fwi_m.sel(time = slice(None, '2019-12-31'))
         frp_train = frp[frp.date <= cc.fwi_m.time.values[-1]]
         start = pd.Timestamp(self.year, self.month, 1)
         end = start + pd.DateOffset(months = 4)
@@ -150,7 +208,7 @@ class ForecastData():
                                              '{0}-12-31'.format(self.year)))
         frp = self.merge_features(frp_train, cc.fwi_m)
         frp = frp.drop(['mind'], axis = 1)
-        frp.to_parquet('data/feature_train_fr_0.25deg_v4.parquet')
+        frp.to_parquet('data/feature_train_fr_0.25deg_2019_12_31.parquet')
 
     def merge_frp_weather_features_forecast(self):
         first_year = 2001
@@ -215,25 +273,29 @@ era_data_path = '/mnt/data/era5/glob'
 s5_data_path = '/mnt/data2/SEAS5/forecast'
 fd = ForecastData(era_data_path, s5_data_path, year, month, res, high_res = high_res)
 
+#fwi_m = xr.open_dataset('/mnt/data/fwi/forecast/obs_features_2019_12_31_full.nc')
 #pre step
 #if new era5 data available:
 #wf.update_fwi_vars(year, month)
 #era5_fwi()
 
+#fd.era5_features('obs_features_2019_12_31_full')
+#fd.merge_frp_daily_weather_features(120)
+
 #the steps:
-fd.grib_to_netcdf()
-fd.mean_std_biass_adjust()
+#fd.grib_to_netcdf()
+#fd.mean_std_biass_adjust()
 
 #get s5 forecast and climatology datasets and calculate fwi:
-fd.forecast_fwi()
+#fd.forecast_fwi()
 #climatology only
 #fd.climatology_fwi()
 
 #calculate fwi and weather features
-fd.s5_clim_monthly_features()
+#fd.s5_clim_monthly_features()
 #clim only
 #fd.clim_monthly_features()
 
 #add fire and lc features
-fd.merge_frp_weather_features_forecast()
-fd.merge_frp_weather_features_climatology()
+#fd.merge_frp_weather_features_forecast()
+#fd.merge_frp_weather_features_climatology()

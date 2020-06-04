@@ -928,18 +928,19 @@ if __name__ == '__main__':
 
     c_data_path = '/mnt/data/'
     res = 0.25
-    #gri = Gridder(bbox = 'indonesia', step = res)
+    gri = Gridder(bbox = 'indonesia', step = res)
     #gri = Gridder(bbox = 'canada_usa', step = res)
     #res = 0.01
     #data_path = '/home/tadas/data/'
     #cc = CompData(c_data_path, res)
 
-    out_name = 'ca_2019_12_31'
+    out_name = '2019_12_31'
     #cc.read_forest_change()
 
     #prepare M6 pixel data for indonesia
     dts = []
     year = 2019
+    grdfr = monthly_frp_dfr_clustered(gri, out_name)
     #for year in range(2002, 2019, 1):
     #ds = pd.read_parquet(os.path.join(data_path, 'M6_{0}.parquet'.format(year)))
     #dts.append([year, ds.shape[0], ds.frp.sum()])
@@ -950,6 +951,7 @@ if __name__ == '__main__':
         #dfr['cn'] = pd.read_csv('output.csv')
         #dfr = dfr[dfr.cn > -1]
 
+    """
     for year in range(2016, 2020, 1):
         print(year)
         #ds = fo.read_dfr_from_parquet('M6_{0}'.format(year))
@@ -961,6 +963,7 @@ if __name__ == '__main__':
             ds['date'] =  pd.to_datetime(ds['date'])
         ds.to_parquet(os.path.join(data_path, 'M6_{}.parquet'.format(year)))
 
+    """
     """
         am = env.spatial_subset_dfr(ds, gri.bboxes['canada_usa'])
         dts.append(am)

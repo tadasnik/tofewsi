@@ -6,7 +6,7 @@ import xarray as xr
 import pandas as pd
 #import dask.dataframe as dd
 #import pwlf
-import geopandas as gpd
+#import geopandas as gpd
 from envdata import Envdata
 from gridding import Gridder
 import matplotlib.pyplot as plt
@@ -831,8 +831,8 @@ class CompData(Envdata):
 
     def frp_lc_features(self, out_name):
         first_year = 2001
-        self.frpfr = pd.read_parquet('/mnt/data/frp/monthly_frp_count_indonesia_0.25deg_2019_10.parquet'.format(self.res, out_name))
-        grdfr = pd.read_parquet('/mnt/data/frp/monthly_fire_duration_size_daynight_0.25deg_2019_10.parquet'.format(self.res, out_name))
+        self.frpfr = pd.read_parquet('/mnt/data/frp/monthly_frp_count_indonesia_{0}deg_{1}.parquet'.format(self.res, out_name))
+        grdfr = pd.read_parquet('/mnt/data/frp/monthly_fire_duration_size_daynight_{0}deg_{1}.parquet'.format(self.res, out_name))
         grdfr = grdfr.fillna(0)
         current_year = grdfr.year.max()
         self.read_forest_change()
@@ -977,7 +977,7 @@ class CompData(Envdata):
 
 if __name__ == '__main__':
     data_path = '/mnt/data/'
-    res = 0.01
+    res = 0.25
     out_name = '2019_12_31'
     #res = 0.01
     #data_path = '/home/tadas/data/'
@@ -986,5 +986,5 @@ if __name__ == '__main__':
     first_year = 2001
     cc.read_forest_change()
 
-    #cc.frp_lc_features(out_name)
+    cc.frp_lc_features(out_name)
 
